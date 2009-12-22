@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry excluding="output/|output/" kind="src" path="src"/>
+	<classpathentry kind="src" path="src/output"/>
+	<classpathentry kind="src" path="output"/>
+	<classpathentry kind="src" path="test"/>
+	<classpathentry kind="con" path="ch.epfl.lamp.sdt.launching.SCALA_CONTAINER"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
+	<classpathentry kind="lib" path="G:/Apps/antlrworks-1.3.1.jar"/>
+	<classpathentry kind="lib" path="G:/dev/JavaLibs/asm/asm-3.2.jar" sourcepath="G:/dev/JavaLibs/asm/asm-3.2/asm-3.2/src"/>
+	<classpathentry kind="lib" path="G:/Program Files (x86)/Java/jdk1.6.0_16/lib/tools.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
+	<classpathentry kind="lib" path="G:/dev/scalatest-1.0.1-for-scala-2.8.0.Beta1-RC3-with-test-interfaces-0.2-SNAPSHOT.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

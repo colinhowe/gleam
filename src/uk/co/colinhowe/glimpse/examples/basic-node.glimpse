@@ -1,0 +1,7 @@
+node:h1 "Header"
+node:p {
+  "Some text "
+  node:a(href="http://www.google.co.uk") "Then a link to Google"
+  " and some more text!"
+}
+

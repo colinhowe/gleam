@@ -1,0 +1,183 @@
+Package uk.co.colinhowe.glimpse.compiler;
+
+Helpers     
+    letter = ['a' .. 'z'] | ['A' .. 'Z'];  
+    digit = ['0' .. '9'];
+    cr = 13;
+    lf = 10;
+    newline = cr | lf | cr lf;
+    newline_character = [ cr + lf ];
+    colon = ':';
+    all = [ 0 .. 65535 ];
+    quote = '"';
+    
+Tokens  
+    whitespace = (' ' | '\t' | 13 10  | 10 | 13 )+;
+    node = 'node';
+    macro = 'macro';
+    include = 'include';
+    
+    with = 'with';
+    
+    type_int = 'int';
+    type_string = 'string';
+    type_generator = 'generator';
+    
+    controller_token = 'controller';
+    
+    controller_ref = 'c';
+    
+    dot = '.';
+    
+    
+    identifier = letter (letter | digit)*;
+    number = digit+;
+    
+    string = '"' [[[all - '"'] - cr] - lf]* '"';
+
+    colon = ':';
+    
+    lparen = '(';
+    rparen = ')';
+    lbrace = '{';
+    rbrace = '}';
+    
+    comma = ',';
+    
+    equals = '=';
+    
+    increment = '++';
+    
+    rightarrow = '=>';
+    
+Ignored Tokens
+    whitespace;
+    
+Productions 
+    view = controller? macro_defn* stmt+ ;
+    
+    name = 
+        {simple} identifier
+      | {qualified} name dot identifier {-> New name.qualified(name, identifier)}
+      ;
+    
+    controller = controller_token name {-> New controller(name)};
+    
+    stmt = {node} node_create
+         | {macro} macro_invoke
+         | {include} include_a 
+         | {var_defn} var_defn
+         | {increment} identifier increment {-> New stmt.increment(identifier)}
+         | {assignment} identifier equals expr {-> New stmt.assignment(identifier, expr)}
+         ;
+    
+    type = {string} type_string
+         | {generator} type_generator
+         | {int} type_int
+         ;    
+         
+    expr = 
+           {string} string
+         | {generator} generator
+         | {constant} number
+         | {property} name
+         | {controller_prop} controller_ref dot name {-> New expr.controller_prop(name)}
+         ;
+          
+    var_defn = 
+        {no_init} type identifier
+      | {with_init} type identifier equals expr {-> New var_defn.with_init(type, identifier, expr)};
+        
+    macro_defn = 
+      macro [name]:identifier [macro_args]:arg_defns? with [content_type]:type [content_name]:identifier [gen_args]:arg_defns? generator 
+      {-> New macro_defn(name, [macro_args.arg_defn], content_type, content_name, generator)}
+      ;
+      
+    macro_invoke = 
+        {with_generator} identifier opt_args? generator {-> New macro_invoke.with_generator(identifier, [opt_args.argument], generator)}
+      | {with_string} identifier opt_args? string {-> New macro_invoke.with_string(identifier, [opt_args.argument], string)}
+      ;
+    
+    include_a = include [the_include]:identifier opt_args? {-> New include_a(the_include, [opt_args.argument])};
+
+    node_create {-> node_create} = 
+        node colon identifier opt_args? expr {-> New node_create(identifier, expr, [opt_args.argument]) }
+      ;
+      
+    arg_defns {-> arg_defn* } = lparen arg_defns2 rparen {-> [arg_defns2.arg_defn] };
+    
+    arg_defns2 {-> arg_defn*} = 
+        {single} arg_defn {-> [arg_defn]}
+      | {multiple} arg_defns2 comma arg_defn {-> [arg_defns2.arg_defn, arg_defn]}
+      ;
+
+    arg_defn = [type]:type [name]:identifier {-> New arg_defn(type, name) }; 
+    
+    generator = lbrace gen_args? stmt+ rbrace {-> New generator([stmt])};
+    
+    gen_args = arg_defns2 rightarrow;
+    
+    opt_args {-> argument* } = lparen arguments rparen {-> [arguments.argument] };
+    
+    arguments {-> argument* } = 
+        {single} argument {-> [argument]}
+      | {multiple} arguments comma argument {-> [arguments.argument, argument] }
+      ;
+      
+    argument = identifier colon expr {-> New argument(identifier, expr) };
+    
+    //string_literal = string;
+                     
+Abstract Syntax Tree
+    view = controller? macro_defn* stmt+;
+    
+    controller = name;
+    
+    name = 
+      {simple} identifier |
+      {qualified} name identifier
+      ;
+    
+    arg_defn = type identifier;
+    
+    argument = identifier expr; 
+    
+    stmt = {node}  node_create
+         | {macro} macro_invoke
+         | {include} include_a
+         | {var_defn} var_defn
+         | {increment} identifier
+         | {assignment} identifier expr
+         ;
+         
+    var_defn = 
+        {no_init} type identifier
+      | {with_init} type identifier expr;
+      
+    expr = 
+        {string} string
+      | {generator} generator
+      | {constant} number
+      | {property} name
+      | {controller_prop} name
+      ;
+      
+    type = 
+       {string} type_string
+     | {generator} type_generator
+     | {int} type_int
+     ;     
+      
+    node_create = 
+      [id]:identifier [expr]:expr [arguments]:argument*
+      ;
+      
+    generator = stmt+;
+    
+    macro_defn = [name]:identifier [arg_defn]:arg_defn* [content_type]:type [content_name]:identifier generator;
+    
+    macro_invoke = {with_generator} identifier [arguments]:argument* generator 
+                 | {with_string} identifier [arguments]:argument* string;
+    
+    include_a = [the_include]:identifier  [arguments]:argument*;
+    

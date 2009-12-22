@@ -1,0 +1,21 @@
+macro panel(Generator g) {
+  node:h1 "title"
+  node:div {
+    include g
+  }
+}
+
+node:h1 "Header"
+node:div {
+  node:p "hi"
+  node:div {
+    node:p "omg, nested!"
+  }
+ 
+  panel {
+    p "I'm in a panel :D"
+  }
+ 
+  node:p "bye"
+}
+

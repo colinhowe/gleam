@@ -1,0 +1,15 @@
+macro panel(title : String, g : Generator) {
+  node:div(class = "panel") {
+    node:h1 title
+    node:div(class="contents") g
+  }
+}
+
+macro p(contents : String) {
+  node:p contents
+}
+
+
+panel(title="Panel Example") {
+  p "Glimpse is really easy!"
+}
