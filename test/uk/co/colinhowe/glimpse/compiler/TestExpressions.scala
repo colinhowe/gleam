@@ -21,7 +21,7 @@ class TestExpressions extends CompilerTest {
   }
   
   @Test
-  def increment = {   
+  def increment = { 
     """
     int x = 1
     x++

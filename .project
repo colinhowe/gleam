@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>grammar-sandbox</name>
+	<name>glimpse</name>
 	<comment></comment>
 	<projects>
 	</projects>
@@ -20,7 +20,7 @@
 		<link>
 			<name>output</name>
 			<type>2</type>
-			<location>G:/dev/grammars/output</location>
+			<location>/home/colin/G::/dev/grammars/output</location>
 		</link>
 	</linkedResources>
 </projectDescription>

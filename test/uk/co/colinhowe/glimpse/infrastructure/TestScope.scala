@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse.infrastructure;
+package uk.co.colinhowe.glimpse.infrastructure
 import scala.reflect.BeanProperty
 
 import org.scalatest.junit.AssertionsForJUnit
@@ -53,22 +53,5 @@ class TestScope extends AssertionsForJUnit {
 
     scope.replace("x", new Integer(2))
     assert(2 === scope.get("x"))
-  }
-  
-  @Test
-  def x() {
-    val b : bean = new bean
-    b.setValue(1)
-    assert(1 === b.value)
-  }
-}
-
-private class bean {
-//  var value : Int = 2
-  @BeanProperty
-  var value = 1
- 
-  def setValue(x : Int) = {
-    
   }
 }

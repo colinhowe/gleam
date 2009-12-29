@@ -50,6 +50,9 @@ Tokens
     
     rightarrow = '=>';
     
+    lt = '<';
+    gt = '>';
+    
 Ignored Tokens
     whitespace;
     
@@ -74,7 +77,14 @@ Productions
     type = {string} type_string
          | {generator} type_generator
          | {int} type_int
-         ;    
+         | {simple} identifier
+         | {compound} identifier lt types gt {-> New type.compound([types.type]) }
+         ;
+         
+    types {-> type* } = 
+            {singular} type {-> [type] }
+          | {multiple} types comma type {-> [types.type, type] }
+          ;
          
     expr = 
            {string} string
@@ -166,6 +176,8 @@ Abstract Syntax Tree
        {string} type_string
      | {generator} type_generator
      | {int} type_int
+     | {simple} identifier
+     | {compound} [types]:type*
      ;     
       
     node_create = 

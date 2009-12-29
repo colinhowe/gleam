@@ -1,4 +1,5 @@
 package uk.co.colinhowe.glimpse.compiler
+import uk.co.colinhowe.glimpse.CompilationResult
 
 import java.io.File
 import java.net.URLClassLoader
@@ -36,8 +37,17 @@ abstract trait CompilerTest {
     
   }
  
+  def compile(compilationUnit : CompilationUnit) : CompilationResult = {
+    val tempFolder = new File("temp/")
+    if (!tempFolder.exists) {
+      tempFolder.mkdir()
+      tempFolder.deleteOnExit
+    }
+    return new GlimpseCompiler().compile(compilationUnit.source)
+  }
+  
   def checkCompilation(compilationUnit : CompilationUnit, expectedResult : scala.xml.Elem) {
-    new GlimpseCompiler().compile(compilationUnit.source)
+    compile(compilationUnit)
     
     // Load the source
     val classesDir = new File("temp/")
