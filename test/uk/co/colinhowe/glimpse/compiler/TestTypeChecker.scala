@@ -85,6 +85,6 @@ class TestTypeChecker extends TypeCheckerTest {
     TypeCheckError(
         line = 3, 
         expectedType = new SimpleType(classOf[String]), 
-        actualType = new SimpleType(classOf[Generator]))
-  }
+        actualType = new SimpleType(classOf[Generator]))  }  
+  @Test  def incrementOnString = {     """    string x = "1"    x++    node:h1 x    """ failsWith    TypeCheckError(        line = 3,         expectedType = new SimpleType(classOf[Integer]),         actualType = new SimpleType(classOf[String]))  }
 }

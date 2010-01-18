@@ -15,7 +15,7 @@ abstract trait TypeCheckerTest extends CompilerTest {
   case class FailsWith(source : String) {
     def failsWith(expectedError : TypeCheckError) : Unit = {
       System.out.println("Expected: " + expectedError)
-      val errors = runTypeChecker(CompilationUnit(source, null))
+      val errors = runTypeChecker(new CompilationSet(List(source), null))
       val actualError = errors(0)
       assertEquals(expectedError, actualError)
     }
@@ -25,7 +25,7 @@ abstract trait TypeCheckerTest extends CompilerTest {
   
   case class Succeeds(source : String) {
     def succeeds : Unit = {
-      val errors = runTypeChecker(CompilationUnit(source, null))
+      val errors = runTypeChecker(new CompilationSet(List(source), null))
       System.out.println(errors)
       assertEquals(0, errors.size)
     }
@@ -33,11 +33,13 @@ abstract trait TypeCheckerTest extends CompilerTest {
   
   implicit def succeeds(source : String) = Succeeds(source)
   
-  def runTypeChecker(compilationUnit : CompilationUnit) : List[TypeCheckError] = {
-    val result = compile(compilationUnit)
-    var errors = List[TypeCheckError]()
-    for (error <- result.getErrors()) {
-      errors = error.asInstanceOf[TypeCheckError] :: errors
+  def runTypeChecker(compilationUnit : CompilationSet) : List[CompilationError] = {
+    val results = compile(compilationUnit)
+    var errors = List[CompilationError]()
+    for (result <- results) {
+      for (error <- result.getErrors()) {
+        errors = error.asInstanceOf[CompilationError] :: errors
+      }
     }
     errors
   }

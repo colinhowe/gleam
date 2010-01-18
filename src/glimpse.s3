@@ -33,7 +33,7 @@ Tokens
     identifier = letter (letter | digit)*;
     number = digit+;
     
-    string = '"' [[[all - '"'] - cr] - lf]* '"';
+    string = '"' [[[all - '"'] - cr] - lf]* '"' | '<' [all - '<']* '>';
 
     colon = ':';
     
@@ -53,15 +53,20 @@ Tokens
     lt = '<';
     gt = '>';
     
+    single_line_comment = '//' [[all - cr] - lf]*;
+    multi_line_comment = '/*' (all)* '*/';
+    
 Ignored Tokens
-    whitespace;
+    whitespace,
+    single_line_comment,
+    multi_line_comment;
     
 Productions 
-    view = controller? macro_defn* stmt+ ;
+    view = controller? macro_defn* stmt* ;
     
     name = 
         {simple} identifier
-      | {qualified} name dot identifier {-> New name.qualified(name, identifier)}
+      | {qualified} identifier dot name {-> New name.qualified(identifier, name)}
       ;
     
     controller = controller_token name {-> New controller(name)};
@@ -111,7 +116,7 @@ Productions
     include_a = include [the_include]:identifier opt_args? {-> New include_a(the_include, [opt_args.argument])};
 
     node_create {-> node_create} = 
-        node colon identifier opt_args? expr {-> New node_create(identifier, expr, [opt_args.argument]) }
+        node colon identifier opt_args? expr {-> New node_create(identifier, [opt_args.argument], expr) }
       ;
       
     arg_defns {-> arg_defn* } = lparen arg_defns2 rparen {-> [arg_defns2.arg_defn] };
@@ -131,7 +136,7 @@ Productions
     
     arguments {-> argument* } = 
         {single} argument {-> [argument]}
-      | {multiple} arguments comma argument {-> [arguments.argument, argument] }
+      | {multiple} argument comma arguments {-> [argument, arguments.argument] }
       ;
       
     argument = identifier colon expr {-> New argument(identifier, expr) };
@@ -145,7 +150,7 @@ Abstract Syntax Tree
     
     name = 
       {simple} identifier |
-      {qualified} name identifier
+      {qualified} identifier name
       ;
     
     arg_defn = type identifier;
@@ -181,7 +186,7 @@ Abstract Syntax Tree
      ;     
       
     node_create = 
-      [id]:identifier [expr]:expr [arguments]:argument*
+      [id]:identifier [arguments]:argument* [expr]:expr 
       ;
       
     generator = stmt+;

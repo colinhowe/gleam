@@ -3,15 +3,20 @@
  */
 package uk.co.colinhowe.glimpse.compiler;
 
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import uk.co.colinhowe.glimpse.CompilationError;
 import uk.co.colinhowe.glimpse.Generator;
+import uk.co.colinhowe.glimpse.IdentifierNotFoundError;
+import uk.co.colinhowe.glimpse.IdentifierNotFoundException;
+import uk.co.colinhowe.glimpse.MacroDefinitionProvider;
 import uk.co.colinhowe.glimpse.TypeCheckError;
-import uk.co.colinhowe.glimpse.compiler.CallResolver.MacroDefinition;
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter;
 import uk.co.colinhowe.glimpse.compiler.node.AArgument;
 import uk.co.colinhowe.glimpse.compiler.node.AConstantExpr;
+import uk.co.colinhowe.glimpse.compiler.node.AIncrementStmt;
 import uk.co.colinhowe.glimpse.compiler.node.AIntType;
 import uk.co.colinhowe.glimpse.compiler.node.AMacroStmt;
 import uk.co.colinhowe.glimpse.compiler.node.ANoInitVarDefn;
@@ -27,21 +32,25 @@ import uk.co.colinhowe.glimpse.compiler.node.PMacroInvoke;
 import uk.co.colinhowe.glimpse.compiler.node.PType;
 import uk.co.colinhowe.glimpse.compiler.typing.SimpleType;
 import uk.co.colinhowe.glimpse.compiler.typing.Type;
+import uk.co.colinhowe.glimpse.infrastructure.Scope;
 
 public class TypeChecker extends DepthFirstAdapter {
   private final LineNumberProvider lineNumberProvider;
-  private final List<TypeCheckError> errors = new LinkedList<TypeCheckError>();
-  private final CallResolver callResolver;
+  private final List<CompilationError> errors = new LinkedList<CompilationError>();
+  private final MacroDefinitionProvider macroProvider;
   private final TypeProvider typeProvider;
+  
+  private final Scope scope;
 
-  public TypeChecker(final LineNumberProvider lineNumberProvider, final CallResolver callResolver, final TypeProvider typeProvider) {
+  public TypeChecker(final LineNumberProvider lineNumberProvider, final MacroDefinitionProvider macroProvider, final TypeProvider typeProvider) {
     this.lineNumberProvider = lineNumberProvider;
-    this.callResolver = callResolver;
+    this.macroProvider = macroProvider;
     this.typeProvider = typeProvider;
+    this.scope = new Scope(null, false);
   }
   
   
-  public List<TypeCheckError> getErrors() {
+  public List<CompilationError> getErrors() {
     return errors;
   }
   
@@ -82,12 +91,29 @@ public class TypeChecker extends DepthFirstAdapter {
   }
   
   
+  @Override
+  public void outAIncrementStmt(AIncrementStmt node) {
+    // Check that the variable is indeed an integer
+    try {
+      Type type = (Type)scope.get(node.getIdentifier().getText());
+      if (!type.equals(new SimpleType(Integer.class))) {
+        errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), new SimpleType(Integer.class), type));
+      }
+    } catch (IdentifierNotFoundException e) {
+      errors.add(new IdentifierNotFoundError(lineNumberProvider.getLineNumber(node), node.getIdentifier().getText()));
+    }
+  }
+  
+  
   public void outAVarDefnStmt(AVarDefnStmt node) {
     // Get the type of the LHS
     final Type varType;
+    final String varName;
+    
     if (node.getVarDefn() instanceof AWithInitVarDefn) {
       AWithInitVarDefn defn = (AWithInitVarDefn)node.getVarDefn();
       varType = getQualifiedType(defn.getType());
+      varName = defn.getIdentifier().getText();
       
       // Check the RHS type
       final Type rhsType = getExpressionType(defn.getExpr());
@@ -97,9 +123,14 @@ public class TypeChecker extends DepthFirstAdapter {
         errors.add(new TypeCheckError(
             lineNumberProvider.getLineNumber(defn), varType, rhsType));
       }
+      
+      // Add the variable and the type of it to the current scope
     } else {
-      varType = getQualifiedType(((ANoInitVarDefn)node.getVarDefn()).getType());
+      ANoInitVarDefn defn = (ANoInitVarDefn)node.getVarDefn();
+      varType = getQualifiedType(defn.getType());
+      varName = defn.getIdentifier().getText();
     }
+    scope.add(varName, varType);
   }
   
   
@@ -123,7 +154,11 @@ public class TypeChecker extends DepthFirstAdapter {
     }
     
     // TODO Make this handle multiple types of the same macro
-    final MacroDefinition macroDefinition = callResolver.getMacrosWithName(macroName).iterator().next(); 
+    Iterator<MacroDefinition> macrosWithName = macroProvider.get(macroName).iterator();
+    if (!macrosWithName.hasNext()) {
+      throw new IllegalArgumentException("Macro with name [" + macroName + "] not found");
+    }
+    final MacroDefinition macroDefinition = macrosWithName.next(); 
     
     if (!areTypesCompatible(macroDefinition.getValueType(), actualValueType)) {
       errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), macroDefinition.getValueType(), actualValueType));
@@ -142,6 +177,5 @@ public class TypeChecker extends DepthFirstAdapter {
         errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), defnType, callType));
       }
     }
-    
   }
 }

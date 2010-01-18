@@ -1,4 +1,6 @@
-package uk.co.colinhowe.glimpse.infrastructure
+package uk.co.colinhowe.glimpse.infrastructure
+import uk.co.colinhowe.glimpse.IdentifierNotFoundException
+
 import scala.collection.mutable.HashMap
 
 
@@ -96,13 +98,13 @@ class Scope(val parentScope : Scope, val isMacroScope : Boolean) {
     // If the first scope was macro scope and we've left macro scope then we must abort
     if (firstScopeWasMacro && !isMacroScope) {
       throw new IllegalArgumentException("Variable [" + variableName + "] not in scope")
-    }      
+    }
 
     if (!variables.contains(variableName)) {
       if (parentScope != null) {
         return parentScope.get(variableName, firstScopeWasMacro)
       } else {
-        throw new IllegalArgumentException("Variable [" + variableName + "] not in scope")
+        throw new IdentifierNotFoundException(variableName)
       }
     }
     return variables.get(variableName).get

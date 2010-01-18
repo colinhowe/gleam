@@ -6,6 +6,7 @@ import java.net.URLClassLoader
 import java.net.URL
 import uk.co.colinhowe.glimpse.View
 import uk.co.colinhowe.glimpse.Node
+import uk.co.colinhowe.glimpse.IdentifierNotFoundError
 
 import org.junit.Assert._
 
@@ -66,7 +67,7 @@ class TestGeneratorEnvironments extends CompilerTest {
       value++
     }
     """ compilesTo 
-    <view><div /><p>4</p></view>
+    <view><p>4</p></view>
   }
   
   @Test
@@ -82,6 +83,7 @@ class TestGeneratorEnvironments extends CompilerTest {
     <view><p>1</p></view>
   }
   
+  // TODO This should error!
   @Test
   def generatorArguments = {   
     """
@@ -99,12 +101,12 @@ class TestGeneratorEnvironments extends CompilerTest {
   @Test
   def cannotBindOutsideMacroGenerator = {   
     """
-    int y = 4
-    macro p with generator g(int value) {
-      y = y + 1
+    macro p with generator g {
+      node:p "hi"
+      y++
     }
-    """ compilesTo 
-    <view><div /><p>4</p></view>
+    int y = 4
+    """ errors classOf[IdentifierNotFoundError]
     // TODO Should be a compile failure y cannot be found
   }
 }

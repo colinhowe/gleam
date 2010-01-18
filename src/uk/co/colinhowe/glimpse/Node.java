@@ -7,8 +7,8 @@ import java.util.Map;
 public class Node {
   private final List<Node> nodes;
   private final String id;
-  private final String text;
-  private final Map<String, String> attributes = new HashMap<String, String>();
+  private final Object value;
+  private final Map<String, Object> attributes = new HashMap<String, Object>();
   
   public List<Node> getNodes() {
     return nodes;
@@ -20,25 +20,25 @@ public class Node {
   }
   
   
-  public String getText() {
-    return text;
+  public Object getValue() {
+    return value;
   }
 
 
-  public Node(List<Node> nodes, String id, String text) {
+  public Node(List<Node> nodes, String id, Object value) {
     super();
     this.nodes = nodes;
     this.id = id;
-    this.text = text;
+    this.value = value;
   }
   
   
-  public void setAttribute(final String name, final String value) {
+  public void setAttribute(final String name, final Object value) {
     this.attributes.put(name, value);
   }
   
   
-  public Map<String, String> getAttributes() {
+  public Map<String, Object> getAttributes() {
     return attributes;
   }
 }

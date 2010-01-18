@@ -40,4 +40,30 @@ class TestMacro extends CompilerTest {
       <p>Hi</p>
     </view>
   }
+  
+  @Test
+  def macroWithStringArguments = {   
+    """
+    macro p(int value) with string s {
+      node:p(value: value) s
+    }
+    p(value: 4) "hi"
+    """ compilesTo 
+    <view><p value="4">hi</p></view>
+  }
+  
+  @Test
+  def macroWithGeneratorArguments = {   
+    """
+    macro div(int value) with generator g {
+      node:div(value: value) {
+        include g
+      }
+    }
+    div(value: 4) {
+      node:span "hi"
+    }
+    """ compilesTo 
+    <view><div value="4"><span>hi</span></div></view>
+  }
 }

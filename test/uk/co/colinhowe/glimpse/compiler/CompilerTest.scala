@@ -13,41 +13,62 @@ import scala.xml._
 abstract trait CompilerTest {
   val view_name = "basic_string"
   
-  implicit def compilesTo(source : String) = {
-    CompilesTo(new CompilationUnit(source, null))
+  implicit def errors(source : String) = {
+    Errors(new CompilationSet(List(source), null))
   }
   
-  implicit def compilesTo(compilationUnit : CompilationUnit) = {
-    CompilesTo(compilationUnit)
+  case class Errors(CompilationSet : CompilationSet) {
+    def errors(expectedError : java.lang.Class[_]) {
+      val results = compile(CompilationSet)
+      
+      for (result <- results) {
+        for (error <- result.getErrors()) {
+          if (error.getClass.equals(expectedError)) {
+            return
+          }
+        }
+      }
+      fail("Did not find error [" + expectedError + "]")
+    }
+  }
+    
+  implicit def compilationSet(source : String) = {
+    new CompilationSet(List(source), null)
   }
   
-  case class CompilesTo(compilationUnit : CompilationUnit) {
+  class CompilationSet(val sources : List[String], val controller : Object) {
+    def and(source : String) : CompilationSet = {
+      new CompilationSet(source :: sources, controller)
+    }
+
+    def controller(controller : Object) = new CompilationSet(sources, controller)
+
     def compilesTo(expectedResult : scala.xml.Elem) {
-      checkCompilation(compilationUnit, expectedResult)
+      checkCompilation(this, expectedResult)
     }
   }
   
-  implicit def controller(source : String) = Controller(source)
-  
-  case class Controller(source : String) {
-    def controller(controller : Object) = new CompilationUnit(source, controller)
-  }
-  
-  case class CompilationUnit(source : String, controller : Object) {
-    
-  }
- 
-  def compile(compilationUnit : CompilationUnit) : CompilationResult = {
+  def compile(compilationSet : CompilationSet) : scala.collection.mutable.Buffer[CompilationResult] = {
     val tempFolder = new File("temp/")
     if (!tempFolder.exists) {
       tempFolder.mkdir()
       tempFolder.deleteOnExit
     }
-    return new GlimpseCompiler().compile(compilationUnit.source)
+    
+    // Build up a list of compilation units
+    val compilationUnits = scala.collection.mutable.ListBuffer[CompilationUnit]()
+    var i = 0
+    for (source <- compilationSet.sources) {
+      val compilationUnit = new CompilationUnit("view" + i, source)
+      i = i + 1
+      compilationUnits += compilationUnit
+    }
+    
+    return new GlimpseCompiler().compile(compilationUnits)
   }
   
-  def checkCompilation(compilationUnit : CompilationUnit, expectedResult : scala.xml.Elem) {
-    compile(compilationUnit)
+  def checkCompilation(compilationSet : CompilationSet, expectedResult : scala.xml.Elem) {
+    compile(compilationSet)
     
     // Load the source
     val classesDir = new File("temp/")
@@ -58,14 +79,11 @@ abstract trait CompilerTest {
     // Load class "basic_string" with our own classloader.
     val loader1 = new URLClassLoader(
             Array[URL] ( classesDir.toURL() ), parentLoader)
-    val cls1 = loader1.loadClass(view_name)
     
-    val view = if (compilationUnit.controller != null) {
-      cls1.getDeclaredConstructors()(0).newInstance(compilationUnit.controller).asInstanceOf[View]
-    } else {
-      cls1.newInstance().asInstanceOf[View]
-    }
-    val nodes = view.getClass().getMethods()(0).invoke(view).asInstanceOf[java.util.List[Node]]
+    val cls1 = loader1.loadClass("view0")
+    
+    val view = cls1.newInstance().asInstanceOf[View]
+    val nodes = view.getClass().getMethods()(0).invoke(view, compilationSet.controller).asInstanceOf[java.util.List[Node]]
 
     val scalaNodes = List.fromArray(nodes.toArray).asInstanceOf[List[Node]]
     
@@ -98,7 +116,7 @@ abstract trait CompilerTest {
         val inner = printXml(List.fromArray(node.getNodes().toArray).asInstanceOf[List[Node]])
         inner.split("\n").foldLeft("") { _ + "  " + _ + "\n" }
       } else {
-        "  " + node.getText() + "\n"
+        "  " + node.getValue() + "\n"
       }
     "<" + node.getId() + attrs + ">\n" +
     innerText +

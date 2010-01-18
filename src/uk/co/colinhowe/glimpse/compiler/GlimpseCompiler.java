@@ -1,10 +1,8 @@
 package uk.co.colinhowe.glimpse.compiler;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.FileOutputStream;
 import java.io.PushbackReader;
 import java.io.StringReader;
 import java.util.HashMap;
@@ -16,154 +14,137 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.objectweb.asm.ClassWriter;
+
 import uk.co.colinhowe.glimpse.CompilationError;
 import uk.co.colinhowe.glimpse.CompilationResult;
-import uk.co.colinhowe.glimpse.TypeCheckError;
+import uk.co.colinhowe.glimpse.MacroDefinitionFinder;
+import uk.co.colinhowe.glimpse.MacroDefinitionProvider;
 import uk.co.colinhowe.glimpse.compiler.lexer.Lexer;
-import uk.co.colinhowe.glimpse.compiler.node.AConstantExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AGenerator;
-import uk.co.colinhowe.glimpse.compiler.node.AQualifiedName;
-import uk.co.colinhowe.glimpse.compiler.node.ASimpleName;
-import uk.co.colinhowe.glimpse.compiler.node.PExpr;
-import uk.co.colinhowe.glimpse.compiler.node.PName;
+import uk.co.colinhowe.glimpse.compiler.node.AView;
 import uk.co.colinhowe.glimpse.compiler.node.Start;
 import uk.co.colinhowe.glimpse.compiler.parser.Parser;
 
 public class GlimpseCompiler {
   
-  public CompilationResult compile(String viewname, Start ast) {
-    final List<CompilationError> errors = new LinkedList<CompilationError>();
+  @SuppressWarnings("unchecked")
+  private List<CompilationResult> compileAsts(List<IntermediateResult> intermediates, List<String> classPaths) {
+    List<CompilationResult> results = new LinkedList<CompilationResult>();
     
+    /*
+     * Stage 1
+     * Matching line numbers to nodes
+     * Typing of nodes
+     * Finding macro definitions
+     */
     final LineNumberProvider lineNumberProvider = new LineNumberProvider();
-    ast.apply(lineNumberProvider);
-    
     final TypeProvider typeProvider = new TypeProvider();
-    ast.apply(typeProvider);
- 
-    final CallResolver callResolver = new CallResolver(lineNumberProvider, typeProvider);
-    ast.apply(callResolver);
+    final MacroDefinitionProvider macroProvider = new MacroDefinitionProvider();
     
-    // Run the type checker
-    final TypeChecker typeChecker = new TypeChecker(lineNumberProvider, callResolver, typeProvider);
-    ast.apply(typeChecker);
-    errors.addAll(typeChecker.getErrors());
+    for (IntermediateResult intermediate : intermediates) {
+      String viewname = intermediate.viewName;
+      Start ast = intermediate.ast;
     
-    // Create the java source to compile
-    final StringBuffer javaSource = new StringBuffer();
-    final List<String> methods = new LinkedList<String>();
-    final Stack<StringBuffer> buffers = new Stack<StringBuffer>();
-    final AtomicInteger generatorCount = new AtomicInteger();
-    final Map<AGenerator, Integer> generatorIds = new HashMap<AGenerator, Integer>();
-    final Set<String> macroDefns = new HashSet<String>();
-    final Set<String> currentMacroArguments = new HashSet<String>();
-    
-    // Start the class for the view
-    viewname = viewname.replaceAll("-", "_");
-    javaSource.append("import java.util.List;\n");
-    javaSource.append("import java.util.LinkedList;\n");
-    javaSource.append("import java.util.Map;\n");
-    javaSource.append("import java.util.HashMap;\n");
-    javaSource.append("import uk.co.colinhowe.glimpse.Node;\n");
-    javaSource.append("import uk.co.colinhowe.glimpse.View;\n");
-    javaSource.append("import uk.co.colinhowe.glimpse.Generator;\n");
-    javaSource.append("import java.util.Map.Entry;\n");
-    javaSource.append("public class " + viewname + " implements View {\n");
-
-    // Create the view
-    buffers.add(new StringBuffer());
-    
-    // Create the initial environment for variables
-    buffers.peek().append("  private Map<String, Object> environment = new HashMap<String, Object>();\n");
-
-    // Start the view method
-    buffers.peek().append("  public List<Node> view() {\n");
-    buffers.peek().append("    List<Node> nodes = new LinkedList<Node>();\n");
-    
-    final StringBuffer controllerType = new StringBuffer();
-    
-    // Compile all the nodes down to java
-    ast.apply(new ByteCodeProducer(generatorCount, methods, buffers, generatorIds,
-        currentMacroArguments, macroDefns, controllerType));
-    
-    // End the view method
-    buffers.peek().append("    return nodes;\n");
-    buffers.peek().append("  }\n");
-    
-    // Push the final buffer onto the method list
-    methods.add(buffers.pop().toString());
-    
-    // Output all the methods
-    for (String method : methods) {
-      javaSource.append(method);
-    }
-    
-    // Output all the macros
-    for (String macroDefn : macroDefns) {
-      javaSource.append(macroDefn);
-    }
-    
-    // Output a constructor if needed
-    if (controllerType.length() != 0) {
-      javaSource.append("  final private " + controllerType + " controller;\n");
-      javaSource.append("  public " + viewname + "(final " + controllerType + " controller) {\n");
-      javaSource.append("    this.controller = controller;\n");
-      javaSource.append("  }\n");
-    }
-    
-    // End the class
-    javaSource.append("}\n");
-
-    // Output the class with line counters
-    int i = 1;
-    for (String line : javaSource.toString().split("\n")) {
-      System.out.println(String.format("%03d %s", i++, line));
-    }
-    
-//    System.out.println(javaSource);
-    
-    // Output the source to a temporary file
-    try {
-      File file = new File(viewname + ".java");
-      file.deleteOnExit();
+      ast.apply(lineNumberProvider);
+      ast.apply(typeProvider);
       
-      BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-      writer.write(javaSource.toString());
-      writer.close();
+      MacroDefinitionFinder finder = new MacroDefinitionFinder(typeProvider, lineNumberProvider, macroProvider);
+      ast.apply(finder);
+      intermediate.errors.addAll(finder.errorsAsJavaList());
+    }
+    
+    /*
+     * Stage 2
+     * Check type safety
+     * Produce byte code
+     * 
+     * TODO Bundle all java files together and output in one go
+     */
+    final List<String> javaSourcesToCompile = new LinkedList<String>();
+    for (IntermediateResult intermediate : intermediates) {
       
-      // Compile the code
-      int errorCode = com.sun.tools.javac.Main.compile(new String[] {
-          "-classpath", "bin",
-          "-d", "temp",
-          file.getAbsolutePath() });
+      String viewname = intermediate.viewName;
+      Start ast = intermediate.ast;
       
-      File clazz = new File("temp/" + viewname + ".class");
-      clazz.deleteOnExit();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+      final List<CompilationError> errors = new LinkedList<CompilationError>(intermediate.errors);
+      
+      // Run the type checker
+      final TypeChecker typeChecker = new TypeChecker(lineNumberProvider, macroProvider, typeProvider);
+      ast.apply(typeChecker);
+      errors.addAll(typeChecker.getErrors());
+      
+      // Create the java source to compile
+      final StringBuffer javaSource = new StringBuffer();
+      final List<String> methods = new LinkedList<String>();
+      final Stack<StringBuffer> buffers = new Stack<StringBuffer>();
+      final AtomicInteger generatorCount = new AtomicInteger();
+      final Map<AGenerator, Integer> generatorIds = new HashMap<AGenerator, Integer>();
+      final Set<String> macroDefns = new HashSet<String>();
+      final Set<String> currentMacroArguments = new HashSet<String>();
+      
+      // Start the class for the view
+      viewname = viewname.replaceAll("-", "_");
+  
+      // Create the view
+      buffers.add(new StringBuffer());
+      
+      final StringBuffer controllerType = new StringBuffer();
+      
+      // Compile all the nodes down to java
+      ast.apply(new ByteCodeProducer(viewname, generatorCount, methods, buffers, generatorIds,
+          currentMacroArguments, macroDefns, controllerType, javaSourcesToCompile, lineNumberProvider, typeProvider, "temp/" + viewname + ".class"));
+      
+      // Output the view as a file only if needed
+      File file = new File("temp/" + viewname + ".class");
+      final CompilationResult result = new CompilationResult(viewname, file);
+      for (final CompilationError error : errors) {
+        result.addError(error);
+      }
+      results.add(result);
     }
 
-    final CompilationResult result = new CompilationResult(viewname);
-    for (final CompilationError error : errors) {
-      result.addError(error);
-    }
-    return result;
+    return results;
   }
 
-  public CompilationResult compile(String source) {
-    // create lexer
-    Lexer lexer = new Lexer (new PushbackReader(new BufferedReader(new StringReader(source))));
-    
-    // parse program
-    Parser parser = new Parser(lexer);
+  public List<CompilationResult> compile(List<CompilationUnit> units) {
+    return compile(units, new LinkedList<String>());
+  }
+  
+  public List<CompilationResult> compile(List<CompilationUnit> units, List<String> classPaths) {
 
-    Start ast;
-    try {
-      ast = parser.parse();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+    // Parse each source file
+    List<IntermediateResult> intermediates = new LinkedList<IntermediateResult>();
+    
+    for (CompilationUnit unit : units) {
+      // create lexer
+      Lexer lexer = new Lexer(new PushbackReader(new BufferedReader(new StringReader(unit.getSource())), 204800));
+      
+      // parse program
+      Parser parser = new Parser(lexer);
+
+      Start ast;
+      try {
+        ast = parser.parse();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+      
+      intermediates.add(new IntermediateResult(ast, unit.getViewName()));
     }
 
-    // Compile the program
-    return compile("basic-string", ast);
+    // Compile the programs
+    return compileAsts(intermediates, classPaths);
+  }
+  
+  private static class IntermediateResult {
+    private Start ast;
+    private String viewName;
+    private List<CompilationError> errors = new LinkedList<CompilationError>();
+
+    public IntermediateResult(Start ast, String viewName) {
+      this.ast = ast;
+      this.viewName = viewName;
+    }
   }
 }

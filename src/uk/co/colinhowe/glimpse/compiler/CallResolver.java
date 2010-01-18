@@ -30,34 +30,6 @@ public class CallResolver extends DepthFirstAdapter {
   }
 
 
-  public class MacroDefinition {
-    private final String name;
-    private final Map<String, Type> arguments;
-    private final Type valueType;
-    
-    public MacroDefinition(final String name, final Type valueType) {
-      this.name = name;
-      this.valueType = valueType;
-      this.arguments = new HashMap<String, Type>();
-    }
-    
-    public void addArgument(String argumentName, Type type) {
-      this.arguments.put(argumentName, type);
-    }
-    
-    public String getName() {
-      return name;
-    }
-    
-    public Type getValueType() {
-      return valueType;
-    }
-
-    public Map<String, Type> getArguments() {
-      return arguments;
-    }
-  }
-  
   private Map<String, Set<MacroDefinition>> macros = new HashMap<String, Set<MacroDefinition>>();
   
   @Override

@@ -80,7 +80,7 @@ class TestCallResolver extends AssertionsForJUnit {
     val errors = resolver.getErrors()
     assert(1 === errors.size())
     val error = errors.get(0).asInstanceOf[MultipleDefinitionError]
-    assert(2 === error.getLineNumber())
+    assert(2 === error.lineNumber)
     assert("p" === error.macroName)
     verify(lineNumberProvider).getLineNumber(any())
   }

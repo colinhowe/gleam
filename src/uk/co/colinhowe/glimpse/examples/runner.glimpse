@@ -1,0 +1,13 @@
+macro p with string s {
+  node:p s
+}
+
+macro div with generator g {
+  node:div {
+    include g
+  }
+}
+
+div {
+  p "hi2"
+}

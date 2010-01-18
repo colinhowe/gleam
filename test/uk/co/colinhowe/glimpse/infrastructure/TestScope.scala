@@ -1,4 +1,6 @@
-package uk.co.colinhowe.glimpse.infrastructure
+package uk.co.colinhowe.glimpse.infrastructure
+import uk.co.colinhowe.glimpse.IdentifierNotFoundException
+
 import scala.reflect.BeanProperty
 
 import org.scalatest.junit.AssertionsForJUnit
@@ -19,7 +21,7 @@ class TestScope extends AssertionsForJUnit {
   def getVariableThatDoesNotExist() {   
     val macroScope = new Scope(null, false)
     
-    intercept[IllegalArgumentException] {
+    intercept[IdentifierNotFoundException] {
       assert(1 === macroScope.get("y"))
     }
   }
@@ -53,5 +55,17 @@ class TestScope extends AssertionsForJUnit {
 
     scope.replace("x", new Integer(2))
     assert(2 === scope.get("x"))
+  }
+
+  @Test
+  def replaceDoesNotFallTrhough() {   
+    val parentScope = new Scope(null, false)
+    parentScope.add("x", new Integer(1))
+    
+    val macroScope = new Scope(parentScope, true)
+    macroScope.add("x", new Integer(2))
+    
+    assert(2 === macroScope.get("x"))
+    assert(1 === parentScope.get("x"))
   }
 }

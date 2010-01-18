@@ -3,8 +3,10 @@ package uk.co.colinhowe.glimpse.compiler;
 import java.util.HashMap;
 import java.util.Map;
 
+import uk.co.colinhowe.glimpse.Generator;
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter;
 import uk.co.colinhowe.glimpse.compiler.node.AConstantExpr;
+import uk.co.colinhowe.glimpse.compiler.node.AGeneratorType;
 import uk.co.colinhowe.glimpse.compiler.node.AIntType;
 import uk.co.colinhowe.glimpse.compiler.node.AMacroDefn;
 import uk.co.colinhowe.glimpse.compiler.node.AStringExpr;
@@ -48,5 +50,10 @@ public class TypeProvider extends DepthFirstAdapter {
   @Override
   public void outAStringType(AStringType node) {
     types.put(node, new SimpleType(String.class));
+  }
+  
+  @Override
+  public void outAGeneratorType(AGeneratorType node) {
+    types.put(node, new SimpleType(Generator.class));
   }
 }
