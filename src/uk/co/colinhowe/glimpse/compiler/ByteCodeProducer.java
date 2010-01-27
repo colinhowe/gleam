@@ -25,8 +25,6 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
-import com.sun.tools.internal.xjc.generator.bean.MethodWriter;
-
 import uk.co.colinhowe.glimpse.CompilationError;
 import uk.co.colinhowe.glimpse.CompilationResult;
 import uk.co.colinhowe.glimpse.Node;

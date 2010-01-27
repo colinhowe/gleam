@@ -18,10 +18,10 @@ class TestTypeChecker extends TypeCheckerTest {
     """    
     int x = "a"
     """ failsWith
-    TypeCheckError(
-        line = 2, 
-        expectedType = new SimpleType(classOf[Integer]), 
-        actualType = new SimpleType(classOf[String]))
+    new TypeCheckError(
+        2, 
+        new SimpleType(classOf[Integer]), 
+        new SimpleType(classOf[String]))
   }
   
   @Test
@@ -29,10 +29,10 @@ class TestTypeChecker extends TypeCheckerTest {
     """    
     string x = 1
     """ failsWith
-    TypeCheckError(
-        line = 2, 
-        expectedType = new SimpleType(classOf[String]), 
-        actualType = new SimpleType(classOf[Integer]))
+    new TypeCheckError(
+        2, 
+        new SimpleType(classOf[String]), 
+        new SimpleType(classOf[Integer]))
   }
   
 
@@ -58,10 +58,10 @@ class TestTypeChecker extends TypeCheckerTest {
     macro p(int v) with string s { node:p s }
     p(v: "1") "1"
     """ failsWith
-    TypeCheckError(
-        line = 3, 
-        expectedType = new SimpleType(classOf[Integer]), 
-        actualType = new SimpleType(classOf[String]))
+    new TypeCheckError(
+        3, 
+        new SimpleType(classOf[Integer]), 
+        new SimpleType(classOf[String]))
   }
   
 
@@ -82,9 +82,9 @@ class TestTypeChecker extends TypeCheckerTest {
       node:div "hi"
     }
     """ failsWith
-    TypeCheckError(
-        line = 3, 
-        expectedType = new SimpleType(classOf[String]), 
-        actualType = new SimpleType(classOf[Generator]))  }  
-  @Test  def incrementOnString = {     """    string x = "1"    x++    node:h1 x    """ failsWith    TypeCheckError(        line = 3,         expectedType = new SimpleType(classOf[Integer]),         actualType = new SimpleType(classOf[String]))  }
+    new TypeCheckError(
+        3, 
+        new SimpleType(classOf[String]), 
+        new SimpleType(classOf[Generator]))  }  
+  @Test  def incrementOnString = {     """    string x = "1"    x++    node:h1 x    """ failsWith    new TypeCheckError(        3,         new SimpleType(classOf[Integer]),         new SimpleType(classOf[String]))  }
 }
