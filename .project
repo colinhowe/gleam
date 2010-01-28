@@ -16,4 +16,11 @@
 		<nature>org.eclipse.jdt.core.javanature</nature>
 		<nature>org.deved.antlride.core.nature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>output</name>
+			<type>2</type>
+			<location>/home/colin/G::/dev/grammars/output</location>
+		</link>
+	</linkedResources>
 </projectDescription>
