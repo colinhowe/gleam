@@ -3,21 +3,14 @@
  */
 package uk.co.colinhowe.glimpse.compiler;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.net.URL;
-import java.net.URLClassLoader;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Stack;
-import java.util.concurrent.atomic.AtomicInteger;
 
-import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -25,14 +18,7 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
-import com.sun.tools.internal.xjc.generator.bean.MethodWriter;
-
-import uk.co.colinhowe.glimpse.CompilationError;
-import uk.co.colinhowe.glimpse.CompilationResult;
-import uk.co.colinhowe.glimpse.Node;
-import uk.co.colinhowe.glimpse.View;
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter;
-import uk.co.colinhowe.glimpse.compiler.node.AArgDefn;
 import uk.co.colinhowe.glimpse.compiler.node.AArgument;
 import uk.co.colinhowe.glimpse.compiler.node.AAssignmentStmt;
 import uk.co.colinhowe.glimpse.compiler.node.AConstantExpr;
@@ -52,16 +38,13 @@ import uk.co.colinhowe.glimpse.compiler.node.ANodeCreate;
 import uk.co.colinhowe.glimpse.compiler.node.APropertyExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AQualifiedName;
 import uk.co.colinhowe.glimpse.compiler.node.ASimpleName;
-import uk.co.colinhowe.glimpse.compiler.node.AStringExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AStringType;
 import uk.co.colinhowe.glimpse.compiler.node.AView;
 import uk.co.colinhowe.glimpse.compiler.node.AWithGeneratorMacroInvoke;
 import uk.co.colinhowe.glimpse.compiler.node.AWithInitVarDefn;
 import uk.co.colinhowe.glimpse.compiler.node.AWithStringMacroInvoke;
-import uk.co.colinhowe.glimpse.compiler.node.PArgDefn;
 import uk.co.colinhowe.glimpse.compiler.node.PArgument;
 import uk.co.colinhowe.glimpse.compiler.node.PExpr;
-import uk.co.colinhowe.glimpse.compiler.node.PGenerator;
 import uk.co.colinhowe.glimpse.compiler.node.PMacroInvoke;
 import uk.co.colinhowe.glimpse.compiler.node.PName;
 import uk.co.colinhowe.glimpse.compiler.node.PType;
@@ -72,17 +55,10 @@ import uk.co.colinhowe.glimpse.infrastructure.Scope;
 public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
   private final String nodeInitMethodSignature = "(Ljava/util/List;Ljava/lang/String;Ljava/lang/Object;)V";
   
-  private final AtomicInteger generatorCount;
-  private final List<String> methods;
-  private final Stack<StringBuffer> buffers;
+  private int generatorCount;
   private final Map<AGenerator, Integer> generatorIds;
-  private final Set<String> currentMacroArguments;
-  private final Set<String> macroDefns;
-  private final List<String> macroFilenames;
-  private final Stack<ClassVisitor> classVisitors;
   private final Stack<MethodVisitor> methodVisitors;
   private final LineNumberProvider lineNumberProvider;
-  private final Stack<String> owners;
   private final String viewname;
   private final Stack<Label> labels;
   private final Stack<String> generatorNames;
@@ -94,28 +70,15 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
   private final Stack<Scope> scopes;
   
   private Stack<ClassWriter> classWriters;
-  
-  private int methodsBeforeMacroDefinition = 0;
 
-  public ByteCodeProducer(String viewname, AtomicInteger generatorCount, List<String> methods,
-      Stack<StringBuffer> buffers, Map<AGenerator, Integer> generatorIds,
-      Set<String> currentMacroArguments, Set<String> macroDefns,
-      StringBuffer controllerType, List<String> macroFilenames, LineNumberProvider lineNumberProvider,
+  public ByteCodeProducer(String viewname, LineNumberProvider lineNumberProvider,
       final TypeProvider typeProvider, final String outputFileName) {
-    this.generatorCount = generatorCount;
-    this.methods = methods;
-    this.buffers = buffers;
-    this.generatorIds = generatorIds;
-    this.currentMacroArguments = currentMacroArguments;
-    this.macroDefns = macroDefns;
-    this.macroFilenames = macroFilenames;
+    this.generatorIds = new HashMap<AGenerator, Integer>();
     this.lineNumberProvider = lineNumberProvider;
     this.typeProvider = typeProvider;
     
     this.scopes = new Stack<Scope>();
-    this.classVisitors = new Stack<ClassVisitor>();
     this.methodVisitors = new Stack<MethodVisitor>();
-    this.owners = new Stack<String>();
     this.viewname = viewname;
     this.labels = new Stack<Label>();
     this.classWriters = new Stack<ClassWriter>();
@@ -284,8 +247,6 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
           ACC_PRIVATE, "globalScope", Type.getDescriptor(Scope.class), null, null);
       fv.visitEnd();
   
-      owners.push(viewname);
-      
       // Create a scope for the view
       final Scope scope = new Scope(null, false);
       scopes.add(scope);
@@ -469,15 +430,6 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     scopes.add(scope);
     
     // TODO Macros really should be ripped out into their own ASTs and processed separately
-    methodsBeforeMacroDefinition = methods.size();
-    
-    // Create arguments 
-    for (PArgDefn pargDefn : node.getArgDefn()) {
-      if (pargDefn instanceof AArgDefn) {
-        AArgDefn argDefn = (AArgDefn)pargDefn;
-        currentMacroArguments.add(argDefn.getIdentifier().getText());
-      }
-    }
     
     // Create a new top level class
     final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
@@ -645,9 +597,6 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
-    
-    // Bin all the arguments
-    currentMacroArguments.clear();
   }
   
   @Override
@@ -737,7 +686,7 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     final ClassWriter outerClassWriter = classWriters.peek();
     
     // Get the ID for the generator
-    final int id = generatorCount.getAndIncrement();
+    final int id = generatorCount++;
     final String generatorName = "$generator" + id;
 
     generatorNames.push(generatorName);
@@ -752,8 +701,6 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
 
     generatorIds.put(node, id);
 
-    owners.push(viewname);
-    
     // Constructor
     {
       MethodVisitor mv = innerClassWriter.visitMethod(ACC_PRIVATE, "<init>", "()V", null, null);
@@ -876,14 +823,11 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     mv.visitLdcInsn(varname);
 
     PType type = node.getType();
-    String typeString = "";
     if (type instanceof AIntType) {
 //      mv.visitLocalVariable("x", "I", null, l1, l2, 2);
       int i = Integer.parseInt(getStringFromExpr(node.getExpr()));
       mv.visitIntInsn(SIPUSH, i);
       mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;");
-    } else if (type instanceof AStringType) {
-      typeString = "String";
     } else if (type instanceof AGeneratorType) {
       throw new RuntimeException("Cannot declare a generator as a variable");
     }
@@ -896,24 +840,7 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
 
   @Override
   public void outANoInitVarDefn(ANoInitVarDefn node) {
-
-    PType type = node.getType();
-    String typeString = "";
-    String defaultValue = "";
-    if (type instanceof AIntType) {
-      typeString = "int";
-      defaultValue = "0";
-    } else if (type instanceof AStringType) {
-      typeString = "String";
-      defaultValue = "null";
-    } else if (type instanceof AGeneratorType) {
-      throw new RuntimeException("Cannot declare a generator as a variable");
-    }
-    buffers.peek().append("      " + typeString + " " + node.getIdentifier().getText() + "=" + defaultValue + ";\n");
-    
-    String varname = "";
-    varname = node.getIdentifier().getText();
-    buffers.peek().append("    environment.put(\"" + varname + "\", " + varname + ");\n");
+    final String varname = node.getIdentifier().getText();
     
     // Put this variable and the type of it on to the scope
     scopes.peek().add(varname, typeProvider.getType(node));
@@ -978,7 +905,6 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
 
   @Override
   public void outAMacroStmt(AMacroStmt node) {
-    StringBuffer buffer = buffers.peek();
     PMacroInvoke invocation = node.getMacroInvoke();
     MethodVisitor mv = methodVisitors.peek();
     
@@ -1100,11 +1026,11 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     Label l1 = new Label();
     mv.visitLabel(l1);
 //    mv.visitVarInsn(ALOAD, 2); // list, value
-    
-  mv.visitTypeInsn(NEW, "uk/co/colinhowe/glimpse/Node"); // node, value
-  mv.visitInsn(DUP_X1); // node, value, node
-  mv.visitInsn(SWAP); // value, node, node
-    
+      
+    mv.visitTypeInsn(NEW, "uk/co/colinhowe/glimpse/Node"); // node, value
+    mv.visitInsn(DUP_X1); // node, value, node
+    mv.visitInsn(SWAP); // value, node, node
+      
     // TODO Expression evaluation should be done way better!
     if (node.getExpr() instanceof AGeneratorExpr) {
       // TODO Create the generator object :)
@@ -1196,33 +1122,6 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
       mv.visitLdcInsn(name); // name, value, node, node
       mv.visitInsn(SWAP); // value, name, node, node
       mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/Node", "setAttribute", "(Ljava/lang/String;Ljava/lang/Object;)V");
-    }
-  }
-  
-  
-  private void addParameters(final StringBuffer buffer, ANodeCreate node) {
-    // Add the parameters on
-    for (PArgument _argument : node.getArguments()) {
-      AArgument argument = (AArgument)_argument;
-
-      String name = argument.getIdentifier().getText();
-      String value = null;
-      if (argument.getExpr() instanceof AStringExpr) {
-        value = "\"" + ((AStringExpr)argument.getExpr()).getString().getText() + "\"";
-      } else if (node.getExpr() instanceof APropertyExpr) {
-        APropertyExpr identifierExpr = (APropertyExpr)argument.getExpr();
-        
-        if (identifierExpr.getName() instanceof ASimpleName) {
-          String text = ((ASimpleName)identifierExpr.getName()).getIdentifier().getText();
-          value = "scope.get(\"" + text + "\").toString()";
-        } else {
-          throw new RuntimeException("Evaluating properties on a controller not supported, yet");
-        }          
-      } else {
-        throw new RuntimeException("Expressions not supported yet");
-      }
-      
-      buffer.append("    n.setAttribute(\"" + name + "\", " + value + ");\n");
     }
   }
 }

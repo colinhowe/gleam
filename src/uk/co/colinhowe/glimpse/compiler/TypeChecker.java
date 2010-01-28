@@ -11,7 +11,6 @@ import uk.co.colinhowe.glimpse.CompilationError;
 import uk.co.colinhowe.glimpse.Generator;
 import uk.co.colinhowe.glimpse.IdentifierNotFoundError;
 import uk.co.colinhowe.glimpse.IdentifierNotFoundException;
-import uk.co.colinhowe.glimpse.MacroDefinitionProvider;
 import uk.co.colinhowe.glimpse.TypeCheckError;
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter;
 import uk.co.colinhowe.glimpse.compiler.node.AArgument;

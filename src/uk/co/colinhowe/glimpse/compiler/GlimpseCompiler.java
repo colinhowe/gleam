@@ -2,33 +2,19 @@ package uk.co.colinhowe.glimpse.compiler;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.PushbackReader;
 import java.io.StringReader;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Stack;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.objectweb.asm.ClassWriter;
 
 import uk.co.colinhowe.glimpse.CompilationError;
 import uk.co.colinhowe.glimpse.CompilationResult;
-import uk.co.colinhowe.glimpse.MacroDefinitionFinder;
-import uk.co.colinhowe.glimpse.MacroDefinitionProvider;
 import uk.co.colinhowe.glimpse.compiler.lexer.Lexer;
-import uk.co.colinhowe.glimpse.compiler.node.AGenerator;
-import uk.co.colinhowe.glimpse.compiler.node.AView;
 import uk.co.colinhowe.glimpse.compiler.node.Start;
 import uk.co.colinhowe.glimpse.compiler.parser.Parser;
 
 public class GlimpseCompiler {
   
-  @SuppressWarnings("unchecked")
   private List<CompilationResult> compileAsts(List<IntermediateResult> intermediates, List<String> classPaths) {
     List<CompilationResult> results = new LinkedList<CompilationResult>();
     
@@ -43,7 +29,6 @@ public class GlimpseCompiler {
     final MacroDefinitionProvider macroProvider = new MacroDefinitionProvider();
     
     for (IntermediateResult intermediate : intermediates) {
-      String viewname = intermediate.viewName;
       Start ast = intermediate.ast;
     
       ast.apply(lineNumberProvider);
@@ -61,7 +46,6 @@ public class GlimpseCompiler {
      * 
      * TODO Bundle all java files together and output in one go
      */
-    final List<String> javaSourcesToCompile = new LinkedList<String>();
     for (IntermediateResult intermediate : intermediates) {
       
       String viewname = intermediate.viewName;
@@ -74,26 +58,11 @@ public class GlimpseCompiler {
       ast.apply(typeChecker);
       errors.addAll(typeChecker.getErrors());
       
-      // Create the java source to compile
-      final StringBuffer javaSource = new StringBuffer();
-      final List<String> methods = new LinkedList<String>();
-      final Stack<StringBuffer> buffers = new Stack<StringBuffer>();
-      final AtomicInteger generatorCount = new AtomicInteger();
-      final Map<AGenerator, Integer> generatorIds = new HashMap<AGenerator, Integer>();
-      final Set<String> macroDefns = new HashSet<String>();
-      final Set<String> currentMacroArguments = new HashSet<String>();
-      
       // Start the class for the view
       viewname = viewname.replaceAll("-", "_");
   
-      // Create the view
-      buffers.add(new StringBuffer());
-      
-      final StringBuffer controllerType = new StringBuffer();
-      
       // Compile all the nodes down to java
-      ast.apply(new ByteCodeProducer(viewname, generatorCount, methods, buffers, generatorIds,
-          currentMacroArguments, macroDefns, controllerType, javaSourcesToCompile, lineNumberProvider, typeProvider, "temp/" + viewname + ".class"));
+      ast.apply(new ByteCodeProducer(viewname, lineNumberProvider, typeProvider, "temp/" + viewname + ".class"));
       
       // Output the view as a file only if needed
       File file = new File("temp/" + viewname + ".class");

@@ -1,18 +1,12 @@
 package uk.co.colinhowe.glimpse.tools;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.StringReader;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.LinkedList;
 import java.util.List;
-
-import javax.management.RuntimeErrorException;
 
 import uk.co.colinhowe.glimpse.CompilationResult;
 import uk.co.colinhowe.glimpse.Node;
@@ -53,7 +47,7 @@ public class GlimpseRunner {
       List<CompilationUnit> units = new LinkedList<CompilationUnit>();
       units.add(new CompilationUnit(viewname, lines.toString()));
       
-      List<CompilationResult> results = compiler.compile(units);
+      compiler.compile(units);
       
       // Run the view
       URLClassLoader loader = new URLClassLoader(new URL[] { new File("temp/").toURL() });

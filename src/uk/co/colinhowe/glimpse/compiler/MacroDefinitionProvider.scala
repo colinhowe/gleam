@@ -1,6 +1,5 @@
-package uk.co.colinhowe.glimpse
+package uk.co.colinhowe.glimpse.compiler
 
-import uk.co.colinhowe.glimpse.compiler.MacroDefinition
 import scala.collection.mutable.ListBuffer
 import scala.collection.mutable.SynchronizedBuffer
 import scala.collection.mutable.Map

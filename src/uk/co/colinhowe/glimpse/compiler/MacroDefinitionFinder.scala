@@ -1,12 +1,10 @@
-package uk.co.colinhowe.glimpse
+package uk.co.colinhowe.glimpse.compiler
 
 import uk.co.colinhowe.glimpse.CompilationError
-import uk.co.colinhowe.glimpse.compiler.LineNumberProvider
-import uk.co.colinhowe.glimpse.compiler.TypeProvider
 import uk.co.colinhowe.glimpse.compiler.node.AMacroDefn
 import uk.co.colinhowe.glimpse.compiler.node.AArgDefn
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
-import uk.co.colinhowe.glimpse.compiler.MacroDefinition
+import uk.co.colinhowe.glimpse.MultipleDefinitionError
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConversions._
 

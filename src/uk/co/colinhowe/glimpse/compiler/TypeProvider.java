@@ -8,7 +8,6 @@ import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter;
 import uk.co.colinhowe.glimpse.compiler.node.AConstantExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AGeneratorType;
 import uk.co.colinhowe.glimpse.compiler.node.AIntType;
-import uk.co.colinhowe.glimpse.compiler.node.AMacroDefn;
 import uk.co.colinhowe.glimpse.compiler.node.AStringExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AStringType;
 import uk.co.colinhowe.glimpse.compiler.node.AWithInitVarDefn;
