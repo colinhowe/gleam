@@ -3,9 +3,11 @@
  */
 package uk.co.colinhowe.glimpse.compiler;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import uk.co.colinhowe.glimpse.CompilationError;
 import uk.co.colinhowe.glimpse.Generator;
@@ -15,6 +17,7 @@ import uk.co.colinhowe.glimpse.TypeCheckError;
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter;
 import uk.co.colinhowe.glimpse.compiler.node.AArgument;
 import uk.co.colinhowe.glimpse.compiler.node.AConstantExpr;
+import uk.co.colinhowe.glimpse.compiler.node.AGenericDefn;
 import uk.co.colinhowe.glimpse.compiler.node.AIncrementStmt;
 import uk.co.colinhowe.glimpse.compiler.node.AIntType;
 import uk.co.colinhowe.glimpse.compiler.node.AMacroStmt;
@@ -29,6 +32,7 @@ import uk.co.colinhowe.glimpse.compiler.node.PArgument;
 import uk.co.colinhowe.glimpse.compiler.node.PExpr;
 import uk.co.colinhowe.glimpse.compiler.node.PMacroInvoke;
 import uk.co.colinhowe.glimpse.compiler.node.PType;
+import uk.co.colinhowe.glimpse.compiler.typing.GenericType;
 import uk.co.colinhowe.glimpse.compiler.typing.SimpleType;
 import uk.co.colinhowe.glimpse.compiler.typing.Type;
 import uk.co.colinhowe.glimpse.infrastructure.Scope;
@@ -163,6 +167,9 @@ public class TypeChecker extends DepthFirstAdapter {
       errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), macroDefinition.getValueType(), actualValueType));
     }
     
+    // Build a map of bound generics
+    Map<GenericType, Type> genericBindings = new HashMap<GenericType, Type>();
+    
     
     for (PArgument pargument : arguments) {
       // Get the type of the argument in the call
@@ -172,7 +179,12 @@ public class TypeChecker extends DepthFirstAdapter {
       // Get the type of the argument as defined in the macro
       Type defnType = macroDefinition.getArguments().get(argument.getIdentifier().getText());
       
-      if (!areTypesCompatible(defnType, callType)) {
+      // Check if this type has been bound already
+      if (defnType instanceof GenericType && !genericBindings.containsKey(defnType)) {
+        genericBindings.put((GenericType)defnType, callType);
+      } else if (defnType instanceof GenericType && !areTypesCompatible(genericBindings.get(defnType), callType)) {
+        errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), defnType, callType));
+      } else if (!areTypesCompatible(defnType, callType)) {
         errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), defnType, callType));
       }
     }

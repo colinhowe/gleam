@@ -5,6 +5,7 @@ package uk.co.colinhowe.glimpse.compiler;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -24,6 +25,7 @@ import uk.co.colinhowe.glimpse.compiler.node.AAssignmentStmt;
 import uk.co.colinhowe.glimpse.compiler.node.AConstantExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AController;
 import uk.co.colinhowe.glimpse.compiler.node.AControllerPropExpr;
+import uk.co.colinhowe.glimpse.compiler.node.AForloop;
 import uk.co.colinhowe.glimpse.compiler.node.AGenerator;
 import uk.co.colinhowe.glimpse.compiler.node.AGeneratorExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AGeneratorType;
@@ -47,6 +49,7 @@ import uk.co.colinhowe.glimpse.compiler.node.PArgument;
 import uk.co.colinhowe.glimpse.compiler.node.PExpr;
 import uk.co.colinhowe.glimpse.compiler.node.PMacroInvoke;
 import uk.co.colinhowe.glimpse.compiler.node.PName;
+import uk.co.colinhowe.glimpse.compiler.node.PStmt;
 import uk.co.colinhowe.glimpse.compiler.node.PType;
 import uk.co.colinhowe.glimpse.compiler.node.TString;
 import uk.co.colinhowe.glimpse.compiler.typing.SimpleType;
@@ -88,6 +91,64 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     classWriters.push(classWriter);
   }
   
+  
+  @Override
+  public void caseAForloop(AForloop node) {
+    inAForloop(node);
+    if (node.getType() != null) {
+      node.getType().apply(this);
+    }
+    if (node.getIdentifier() != null) {
+      node.getIdentifier().apply(this);
+    }
+    if (node.getExpr() != null) {
+      node.getExpr().apply(this);
+    }
+
+    // The iterable should be on the top of the stack
+    MethodVisitor mv = methodVisitors.peek();
+    mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "iterator", "()Ljava/util/Iterator;");
+
+    Label l2 = new Label();
+    mv.visitJumpInsn(GOTO, l2);
+
+    Label l3 = new Label();
+    mv.visitLabel(l3);
+
+    mv.visitInsn(DUP); // iterator, iterator
+    mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Iterator", "next", "()Ljava/lang/Object;"); // object, iterator
+
+    // TODO Check the type of the expression against what we get
+
+    Label l4 = new Label();
+    mv.visitLabel(l4);
+    
+    // Push the value on to the scope
+    mv.visitVarInsn(ALOAD, 1); // scope, string, iterator
+    mv.visitInsn(SWAP); // string, scope, iterator
+    mv.visitLdcInsn(node.getIdentifier().getText()); // name, value, scope, iterator
+    mv.visitInsn(SWAP); // value, name, scope, iterator
+    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V");
+    
+    // Now invoke the statements in between
+    List<PStmt> copy = new ArrayList<PStmt>(node.getStmt());
+    for (PStmt e : copy) {
+      e.apply(this);
+    }
+    
+    // iterator
+    mv.visitLabel(l2);
+    mv.visitInsn(DUP); // iterator, iterator
+    mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Iterator", "hasNext", "()Z");
+    mv.visitJumpInsn(IFNE, l3);
+    
+    // iterator
+    mv.visitInsn(POP);
+
+
+
+    outAForloop(node);
+  }
   
   @Override
   public void outAView(AView node) {
@@ -368,12 +429,14 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
   @Override
   public void caseTString(TString node) {
     
-    if (node.getText().startsWith("<")) {
+    String sep = "\"\"";
+    
+    if (node.getText().startsWith(sep)) {
       String[] lines = node.getText().split("\n");
       
       // Determine indentation from the last line - and then 2 spaces more
       // TODO Make this configurable... or nicer
-      int indentation = lines[lines.length - 1].indexOf(">") + 2;
+      int indentation = lines[lines.length - 1].indexOf(sep) + 2;
       
       // Remove the indentation from each line and build up a string to output
       final StringBuffer outputStringBuffer = new StringBuffer();

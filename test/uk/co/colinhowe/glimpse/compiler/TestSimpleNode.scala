@@ -58,9 +58,9 @@ class TestSimpleNode extends CompilerTest {
   @Test
   def multiLineString = {   
     """
-    node:h1 <
+    node:h1 ""
         title
-    >
+    ""
     """ compilesTo 
     <view><h1>  title</h1></view>
   }
@@ -68,10 +68,10 @@ class TestSimpleNode extends CompilerTest {
   @Test
   def multiLineStringWithQuotes = {   
     """
-    node:h1 <
+    node:h1 ""
       "title"
         indented
-    >
+    ""
     """ compilesTo 
     <view><h1>"title"
   indented</h1></view>

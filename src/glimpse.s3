@@ -18,6 +18,8 @@ Tokens
     include = 'include';
     
     with = 'with';
+    for = 'for';
+    in = 'in';
     
     type_int = 'int';
     type_string = 'string';
@@ -30,10 +32,13 @@ Tokens
     dot = '.';
     
     
-    identifier = letter (letter | digit)*;
+    identifier = letter (letter | digit | '_')*;
     number = digit+;
     
-    string = '"' [[[all - '"'] - cr] - lf]* '"' | '<' [all - '<']* '>';
+    lt = '<';
+    gt = '>';
+    
+    string = '"' [[[all - '"'] - cr] - lf]* '"' | '""' all* '""';
 
     colon = ':';
     
@@ -41,6 +46,8 @@ Tokens
     rparen = ')';
     lbrace = '{';
     rbrace = '}';
+    lbracket = '[';
+    rbracket = ']';
     
     comma = ',';
     
@@ -49,9 +56,6 @@ Tokens
     increment = '++';
     
     rightarrow = '=>';
-    
-    lt = '<';
-    gt = '>';
     
     single_line_comment = '//' [[all - cr] - lf]*;
     multi_line_comment = '/*' (all)* '*/';
@@ -77,14 +81,20 @@ Productions
          | {var_defn} var_defn
          | {increment} identifier increment {-> New stmt.increment(identifier)}
          | {assignment} identifier equals expr {-> New stmt.assignment(identifier, expr)}
+         | {for} forloop
          ;
     
     type = {string} type_string
          | {generator} type_generator
          | {int} type_int
-         | {simple} identifier
-         | {compound} identifier lt types gt {-> New type.compound([types.type]) }
+         | {qualified} qualified_type 
+         | {compound} type lt types gt {-> New type.compound(type, [types.type]) }
          ;
+         
+    qualified_type =
+        {simple} identifier
+      | {compound} identifier dot qualified_type {-> New qualified_type.compound(identifier, qualified_type) };
+         
          
     types {-> type* } = 
             {singular} type {-> [type] }
@@ -104,9 +114,18 @@ Productions
       | {with_init} type identifier equals expr {-> New var_defn.with_init(type, identifier, expr)};
         
     macro_defn = 
-      macro [name]:identifier [macro_args]:arg_defns? with [content_type]:type [content_name]:identifier [gen_args]:arg_defns? generator 
-      {-> New macro_defn(name, [macro_args.arg_defn], content_type, content_name, generator)}
+      macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with [content_type]:type [content_name]:identifier [gen_args]:arg_defns? generator 
+      {-> New macro_defn(name, [generic_defns.generic_defn], [macro_args.arg_defn], content_type, content_name, generator)}
       ;
+      
+    generic_defns {-> generic_defn* } = lt generic_defns2 gt {-> [generic_defns2.generic_defn] };
+    
+    generic_defns2 {-> generic_defn* } =
+        {single} generic_defn {-> [generic_defn] }
+      | {multiple} generic_defns2 comma generic_defn {-> [generic_defns2.generic_defn, generic_defn] }
+      ;
+      
+    generic_defn = identifier {-> New generic_defn(identifier) };
       
     macro_invoke = 
         {with_generator} identifier opt_args? generator {-> New macro_invoke.with_generator(identifier, [opt_args.argument], generator)}
@@ -141,6 +160,8 @@ Productions
       
     argument = identifier colon expr {-> New argument(identifier, expr) };
     
+    forloop = for lparen type identifier in expr rparen lbrace stmt+ rbrace {-> New forloop(type, identifier, expr, [stmt]) };
+    
     //string_literal = string;
                      
 Abstract Syntax Tree
@@ -155,6 +176,8 @@ Abstract Syntax Tree
     
     arg_defn = type identifier;
     
+    generic_defn = identifier;
+    
     argument = identifier expr; 
     
     stmt = {node}  node_create
@@ -163,6 +186,7 @@ Abstract Syntax Tree
          | {var_defn} var_defn
          | {increment} identifier
          | {assignment} identifier expr
+         | {for} forloop
          ;
          
     var_defn = 
@@ -181,9 +205,13 @@ Abstract Syntax Tree
        {string} type_string
      | {generator} type_generator
      | {int} type_int
-     | {simple} identifier
-     | {compound} [types]:type*
+     | {qualified} qualified_type
+     | {compound} [parenttype]:type [types]:type*
      ;     
+     
+    qualified_type = 
+      {simple} identifier
+    | {compound} identifier qualified_type;
       
     node_create = 
       [id]:identifier [arguments]:argument* [expr]:expr 
@@ -191,7 +219,9 @@ Abstract Syntax Tree
       
     generator = stmt+;
     
-    macro_defn = [name]:identifier [arg_defn]:arg_defn* [content_type]:type [content_name]:identifier generator;
+    forloop = type identifier expr stmt+;
+    
+    macro_defn = [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* [content_type]:type [content_name]:identifier generator;
     
     macro_invoke = {with_generator} identifier [arguments]:argument* generator 
                  | {with_string} identifier [arguments]:argument* string;
