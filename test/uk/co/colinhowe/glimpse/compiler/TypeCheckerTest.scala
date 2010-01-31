@@ -13,7 +13,7 @@ import uk.co.colinhowe.glimpse.TypeCheckError
 
 abstract trait TypeCheckerTest extends CompilerTest {
   case class FailsWith(source : String) {
-    def failsWith(expectedError : TypeCheckError) : Unit = {
+    def failsWith(expectedError : CompilationError) : Unit = {
       System.out.println("Expected: " + expectedError)
       val errors = runTypeChecker(new CompilationSet(List(source), null))
       val actualError = errors(0)

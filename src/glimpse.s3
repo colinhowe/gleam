@@ -20,6 +20,7 @@ Tokens
     with = 'with';
     for = 'for';
     in = 'in';
+    dynamic = 'dynamic';
     
     type_int = 'int';
     type_string = 'string';
@@ -66,7 +67,11 @@ Ignored Tokens
     multi_line_comment;
     
 Productions 
-    view = controller? macro_defn* stmt* ;
+    view = controller? defn* stmt* ;
+    
+    defn = 
+        {m} macro_defn 
+      | {d} dynamic_macro_defn;
     
     name = 
         {simple} identifier
@@ -118,6 +123,11 @@ Productions
       {-> New macro_defn(name, [generic_defns.generic_defn], [macro_args.arg_defn], content_type, content_name, generator)}
       ;
       
+    dynamic_macro_defn = 
+      dynamic macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with [content_type]:type [content_name]:identifier [gen_args]:arg_defns? 
+      {-> New dynamic_macro_defn(name, [generic_defns.generic_defn], [macro_args.arg_defn], content_type, content_name)}
+      ;
+      
     generic_defns {-> generic_defn* } = lt generic_defns2 gt {-> [generic_defns2.generic_defn] };
     
     generic_defns2 {-> generic_defn* } =
@@ -165,7 +175,11 @@ Productions
     //string_literal = string;
                      
 Abstract Syntax Tree
-    view = controller? macro_defn* stmt+;
+    view = controller? defn* stmt+;
+    
+    defn =
+        {m} macro_defn
+      | {d} dynamic_macro_defn ;
     
     controller = name;
     
@@ -223,6 +237,8 @@ Abstract Syntax Tree
     
     macro_defn = [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* [content_type]:type [content_name]:identifier generator;
     
+    dynamic_macro_defn = [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* [content_type]:type [content_name]:identifier;
+
     macro_invoke = {with_generator} identifier [arguments]:argument* generator 
                  | {with_string} identifier [arguments]:argument* string;
     
