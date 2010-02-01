@@ -20,8 +20,13 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import scala.collection.JavaConversions;
 
+import scala.Tuple2;
+import scala.collection.mutable.ListBuffer;
+import uk.co.colinhowe.glimpse.CompilationError;
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter;
+import uk.co.colinhowe.glimpse.compiler.node.AArgDefn;
 import uk.co.colinhowe.glimpse.compiler.node.AArgument;
 import uk.co.colinhowe.glimpse.compiler.node.AAssignmentStmt;
 import uk.co.colinhowe.glimpse.compiler.node.AConstantExpr;
@@ -48,6 +53,7 @@ import uk.co.colinhowe.glimpse.compiler.node.AView;
 import uk.co.colinhowe.glimpse.compiler.node.AWithGeneratorMacroInvoke;
 import uk.co.colinhowe.glimpse.compiler.node.AWithInitVarDefn;
 import uk.co.colinhowe.glimpse.compiler.node.AWithStringMacroInvoke;
+import uk.co.colinhowe.glimpse.compiler.node.PArgDefn;
 import uk.co.colinhowe.glimpse.compiler.node.PArgument;
 import uk.co.colinhowe.glimpse.compiler.node.PExpr;
 import uk.co.colinhowe.glimpse.compiler.node.PMacroInvoke;
@@ -57,6 +63,7 @@ import uk.co.colinhowe.glimpse.compiler.node.PType;
 import uk.co.colinhowe.glimpse.compiler.node.TString;
 import uk.co.colinhowe.glimpse.compiler.typing.SimpleType;
 import uk.co.colinhowe.glimpse.infrastructure.Scope;
+import uk.co.colinhowe.glimpse.DynamicMacroMismatchError;
 
 public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
   private final String nodeInitMethodSignature = "(Ljava/util/List;Ljava/lang/String;Ljava/lang/Object;)V";
@@ -74,11 +81,17 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
   private final Set<String> dynamicMacros = new HashSet<String>();
   private final Set<String> macros = new HashSet<String>();
   private uk.co.colinhowe.glimpse.compiler.typing.Type controllerType = null;
-
+  private final Map<String, MethodSignature> signatures = new HashMap<String, MethodSignature>();
+  
+  private final List<CompilationError> errors = new LinkedList<CompilationError>();
   private final Stack<Scope> scopes;
   
   private Stack<ClassWriter> classWriters;
 
+  public List<CompilationError> getErrors() {
+    return errors;
+  }
+  
   public ByteCodeProducer(String viewname, LineNumberProvider lineNumberProvider,
       final TypeProvider typeProvider, final String outputFileName) {
     this.generatorIds = new HashMap<AGenerator, Integer>();
@@ -164,6 +177,17 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     
     // Get the name of the macro
     final String macroName = node.getName().getText();
+    
+    // Create the signature for the macro
+    Set<Tuple2<String, String>> args = new HashSet<Tuple2<String, String>>();
+    for (PArgDefn parg : node.getArgDefn()) {
+      AArgDefn arg = (AArgDefn)parg;
+      args.add(new Tuple2(arg.getIdentifier().toString(), arg.getType().toString()));
+    }
+    
+    MethodSignature signature = new MethodSignature(node.getContentType().toString(), JavaConversions.asSet(args).toSet());
+    signatures.put(macroName, signature);
+    
     
     cw.visit(V1_6, ACC_SUPER, macroName, null, "java/lang/Object", new String[] { "uk/co/colinhowe/glimpse/Macro" });
 
@@ -623,6 +647,16 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     // Get the name of the macro
     final String macroName = node.getName().getText();
     macros.add(macroName);
+    
+    // Create the signature for the macro
+    Set<Tuple2<String, String>> args = new HashSet<Tuple2<String, String>>();
+    for (PArgDefn parg : node.getArgDefn()) {
+      AArgDefn arg = (AArgDefn)parg;
+      args.add(new Tuple2(arg.getIdentifier().toString(), arg.getType().toString()));
+    }
+    
+    MethodSignature signature = new MethodSignature(node.getContentType().toString(), JavaConversions.asSet(args).toSet());
+    signatures.put(macroName, signature);
     
     cw.visit(V1_6, ACC_SUPER, macroName, null, "java/lang/Object", new String[] { "uk/co/colinhowe/glimpse/Macro" });
 
@@ -1099,9 +1133,23 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     String destinationVariable = node.getIdentifier().getText();
     
     if (dynamicMacros.contains(destinationVariable)) {
-      // Set the value of the macro
-      debug("setting dynamic macro [" + destinationVariable + "]");
-      mv.visitFieldInsn(PUTSTATIC, destinationVariable, "toInvoke", "Luk/co/colinhowe/glimpse/Macro;");
+      // Set the value of the macro if the type matches
+      MethodSignature dynamicSignature = signatures.get(destinationVariable);
+      
+      // TODO Move this into the type checker
+      APropertyExpr expr = (APropertyExpr)node.getExpr();
+      ASimpleName name = (ASimpleName)expr.getName();
+      MethodSignature macroSignature = signatures.get(name.getIdentifier().getText());
+      
+      if (dynamicSignature.equals(macroSignature)) {
+        debug("setting dynamic macro [" + destinationVariable + "]");
+        mv.visitFieldInsn(PUTSTATIC, destinationVariable, "toInvoke", "Luk/co/colinhowe/glimpse/Macro;");
+      } else {
+        errors.add(new DynamicMacroMismatchError(
+            lineNumberProvider.getLineNumber(node), 
+            "p",
+            "dynamo"));
+      }
     } else {
       // The value will be sitting on the stack
       mv.visitVarInsn(ALOAD, 1); // scope, value

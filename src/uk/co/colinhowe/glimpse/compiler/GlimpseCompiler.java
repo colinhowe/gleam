@@ -62,7 +62,14 @@ public class GlimpseCompiler {
       viewname = viewname.replaceAll("-", "_");
   
       // Compile all the nodes down to java
-      ast.apply(new ByteCodeProducer(viewname, lineNumberProvider, typeProvider, "temp/" + viewname + ".class"));
+      final ByteCodeProducer bcp = new ByteCodeProducer(viewname, lineNumberProvider, typeProvider, "temp/" + viewname + ".class");
+      ast.apply(bcp);
+      errors.addAll(bcp.getErrors());
+      
+      // Output the errors
+      for (CompilationError error : errors) {
+        System.out.println(error);
+      }
       
       // Output the view as a file only if needed
       File file = new File("temp/" + viewname + ".class");

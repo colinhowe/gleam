@@ -13,7 +13,8 @@ import org.junit.Assert._
 class TestDynamicMacro extends TypeCheckerTest {
   
   @Test
-  def noArguments = {   
+  def noArguments = {  
+    
     """
     dynamic macro dynamo with generator g 
     macro div with generator g {
@@ -76,7 +77,7 @@ class TestDynamicMacro extends TypeCheckerTest {
     
     dynamo = p
     
-    dynamo(value: 2) "hi"
+    dynamo "hi"
     """ failsWith
     DynamicMacroMismatchError(
         line = 7, 
