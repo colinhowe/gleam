@@ -195,6 +195,19 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
       mv.visitEnd(); 
     } 
     
+    // getInstance method
+    {
+      MethodVisitor mv = cw.visitMethod(ACC_STATIC | ACC_PUBLIC, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;", null, null);
+      mv.visitCode();
+
+      Label l1 = new Label();
+      mv.visitLabel(l1);
+      mv.visitFieldInsn(GETSTATIC, macroName, "instance", "Luk/co/colinhowe/glimpse/Macro;");
+      mv.visitInsn(ARETURN);
+      mv.visitMaxs(0, 0);
+      mv.visitEnd(); 
+    } 
+    
     // Constructor
     {
       MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
@@ -306,7 +319,6 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     // Get the value from the scope
     Label l1 = new Label();
     mv.visitLabel(l1);
-    mv.visitVarInsn(ALOAD, 1); // scope
     
     if (node.getName() instanceof ASimpleName) {
       ASimpleName simpleName = (ASimpleName)node.getName();
@@ -317,6 +329,7 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
         mv.visitMethodInsn(INVOKESTATIC, name, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;"); // target
         debug("simpleMacroExpr [" + simpleName.getIdentifier().getText() + "]");
       } else {
+        mv.visitVarInsn(ALOAD, 1); // scope
         mv.visitLdcInsn(name); // name, scope
         mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;");
         debug("simpleExpr [" + simpleName.getIdentifier().getText() + "]");
@@ -1146,13 +1159,11 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
       AArgument argument = (AArgument)pargument;
 
       // Shuffle the stack around so the macro value and args are at the bottom
-      // TODO must be a neater way to do this! :)
+
       // args, macro value, arg
-      mv.visitInsn(DUP2_X1); // args, macro value, arg, args, macro value
-      mv.visitInsn(POP); // macro value, arg, args, macro value
-      mv.visitInsn(POP); // arg, args, macro value
-      mv.visitInsn(SWAP); // args, arg, macro value
-      mv.visitInsn(DUP_X2); // args, arg, macro value, args
+      mv.visitInsn(SWAP); // macro value, args, arg
+      mv.visitInsn(DUP2_X1); // macro value, args, arg, macro value, args
+      mv.visitInsn(POP); // args, arg, macro value, args
       mv.visitInsn(SWAP); // arg, args, macro value, args
       
       // Put the variable name on
@@ -1166,62 +1177,40 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
       mv.visitInsn(POP); // macro value, args
       mv.visitInsn(SWAP); // args, macro value
     }
-    
+
+    final String macroName;
     if (invocation instanceof AWithStringMacroInvoke) {
-      // Stack: args, value (string)
-      mv.visitInsn(SWAP); // value, args
-      mv.visitTypeInsn(CHECKCAST, "java/lang/String");
-
       AWithStringMacroInvoke stringInvocation = (AWithStringMacroInvoke)invocation;
-      String macroName = stringInvocation.getIdentifier().getText();
-
-      mv.visitTypeInsn(NEW, macroName); // macro, value, args
-      mv.visitInsn(DUP); // macro, macro, value, args
-      mv.visitMethodInsn(INVOKESPECIAL, macroName, "<init>", "()V");
-      // macro, value, args
-      mv.visitInsn(DUP_X2); // macro, value, args, macro
-      mv.visitInsn(POP); // value, args, macro
-
-      mv.visitVarInsn(ALOAD, 1); // scope, value, args, macro
-      mv.visitInsn(DUP_X2); // scope, value, args, scope, macro
-      mv.visitInsn(POP); // value, args, scope, macro
-
-      mv.visitTypeInsn(CHECKCAST, "java/lang/Object"); // value, args, scope, macro
-      mv.visitMethodInsn(INVOKEVIRTUAL, macroName, "invoke", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;");
-      // nodes
-      mv.visitVarInsn(ALOAD, 2); // list, nodes
-      mv.visitInsn(SWAP); // nodes, list
-      mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "addAll", "(Ljava/util/Collection;)Z");
-      mv.visitInsn(POP);
-
+      macroName = stringInvocation.getIdentifier().getText();
     } else if (invocation instanceof AWithGeneratorMacroInvoke) {
-      // Stack: args, generator
-
       AWithGeneratorMacroInvoke generatorInvocation = (AWithGeneratorMacroInvoke)invocation;
-      String macroName = generatorInvocation.getIdentifier().getText();
-
-      mv.visitInsn(SWAP); // generator, args
-      mv.visitTypeInsn(NEW, macroName); // macro, generator, args
-      mv.visitInsn(DUP); // macro, macro, generator, args
-      mv.visitMethodInsn(INVOKESPECIAL, macroName, "<init>", "()V");
-      // macro, generator, args
-      mv.visitInsn(DUP_X2); // macro, generator, args, macro
-      mv.visitInsn(POP); // generator, args, macro
-
-      mv.visitVarInsn(ALOAD, 1); // scope, generator, args, macro
-      mv.visitInsn(DUP_X2); // scope, generator, args, scope, macro
-      mv.visitInsn(POP); // generator, args, scope, macro
-      mv.visitTypeInsn(CHECKCAST, "java/lang/Object"); // generator, args, scope, macro
-      
-      // -> generator, args, scope, macro
-      mv.visitMethodInsn(INVOKEVIRTUAL, macroName, "invoke", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;");
-
-      // nodes
-      mv.visitVarInsn(ALOAD, 2); // list, nodes
-      mv.visitInsn(SWAP); // list, nodes
-      mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "addAll", "(Ljava/util/Collection;)Z");
-      mv.visitInsn(POP);
+      macroName = generatorInvocation.getIdentifier().getText();
+    } else {
+      throw new IllegalArgumentException("Unexpected invocation type [" + invocation + "]");
     }
+    
+    // Stack: args, value (string)
+    mv.visitInsn(SWAP); // value, args
+
+    debug("macro invokation [" + macroName + "]");
+    mv.visitMethodInsn(INVOKESTATIC, macroName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;"); // macro, value, args
+    
+    // macro, value, args
+    mv.visitInsn(DUP_X2); // macro, value, args, macro
+    mv.visitInsn(POP); // value, args, macro
+
+    mv.visitVarInsn(ALOAD, 1); // scope, value, args, macro
+    mv.visitInsn(DUP_X2); // scope, value, args, scope, macro
+    mv.visitInsn(POP); // value, args, scope, macro
+
+    mv.visitTypeInsn(CHECKCAST, "java/lang/Object"); // value, args, scope, macro
+    mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Macro", "invoke", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;");
+    
+    // nodes
+    mv.visitVarInsn(ALOAD, 2); // list, nodes
+    mv.visitInsn(SWAP); // nodes, list
+    mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "addAll", "(Ljava/util/Collection;)Z");
+    mv.visitInsn(POP);
   }
   
   
