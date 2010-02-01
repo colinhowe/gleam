@@ -77,11 +77,12 @@ class TestDynamicMacro extends TypeCheckerTest {
     
     dynamo = p
     
-    dynamo "hi"
+    dynamo {
+      node:p "hi"
+    }
     """ failsWith
     DynamicMacroMismatchError(
         line = 7, 
-        macro = "p",
         dynamicMacro = "dynamo") // TODO Add some details to this error
   }
     
@@ -99,7 +100,6 @@ class TestDynamicMacro extends TypeCheckerTest {
     """ failsWith
     DynamicMacroMismatchError(
         line = 7, 
-        macro = "p",
         dynamicMacro = "dynamo") // TODO Add some details to this error
   }
 

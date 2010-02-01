@@ -21,12 +21,12 @@ public class CallResolver extends DepthFirstAdapter {
   
   private final List<CompilationError> errors = new LinkedList<CompilationError>();
   private final LineNumberProvider lineNumberProvider;
-  private final TypeProvider typeProvider;
+  private final TypeResolver typeResolver;
   
-  public CallResolver(LineNumberProvider lineNumberProvider, TypeProvider typeProvider) {
+  public CallResolver(LineNumberProvider lineNumberProvider, TypeResolver typeResolver) {
     super();
     this.lineNumberProvider = lineNumberProvider;
-    this.typeProvider = typeProvider;
+    this.typeResolver = typeResolver;
   }
 
 
@@ -45,13 +45,13 @@ public class CallResolver extends DepthFirstAdapter {
     }
     
     // Get the type of the content
-    Type contentType = typeProvider.getType(node.getContentType());
-    final MacroDefinition defn = new MacroDefinition(name, contentType);
+    Type contentType = typeResolver.getType(node.getContentType());
+    final MacroDefinition defn = new MacroDefinition(name, contentType, false);
 
     // Process all the arguments
     for (PArgDefn pargDefn : node.getArgDefn()) {
       AArgDefn argDefn = (AArgDefn)pargDefn;
-      Type type = typeProvider.getType(argDefn.getType());
+      Type type = typeResolver.getType(argDefn.getType());
       String argumentName = argDefn.getIdentifier().getText();
       defn.addArgument(argumentName, type);
     }

@@ -157,9 +157,9 @@ Productions
 
     arg_defn = [type]:type [name]:identifier {-> New arg_defn(type, name) }; 
     
-    generator = lbrace gen_args? stmt+ rbrace {-> New generator([stmt])};
+    generator = lbrace gen_args? stmt+ rbrace {-> New generator([gen_args.arg_defn], [stmt])};
     
-    gen_args = arg_defns2 rightarrow;
+    gen_args {-> arg_defn*} = arg_defns2 rightarrow {-> [arg_defns2.arg_defn] };
     
     opt_args {-> argument* } = lparen arguments rparen {-> [arguments.argument] };
     
@@ -231,7 +231,7 @@ Abstract Syntax Tree
       [id]:identifier [arguments]:argument* [expr]:expr 
       ;
       
-    generator = stmt+;
+    generator = arg_defn* stmt+;
     
     forloop = type identifier expr stmt+;
     

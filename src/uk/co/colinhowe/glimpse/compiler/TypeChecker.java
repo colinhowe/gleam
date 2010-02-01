@@ -3,35 +3,24 @@
  */
 package uk.co.colinhowe.glimpse.compiler;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import scala.collection.JavaConversions;
+import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 import uk.co.colinhowe.glimpse.CompilationError;
+import uk.co.colinhowe.glimpse.DynamicMacroMismatchError;
 import uk.co.colinhowe.glimpse.Generator;
 import uk.co.colinhowe.glimpse.IdentifierNotFoundError;
 import uk.co.colinhowe.glimpse.IdentifierNotFoundException;
 import uk.co.colinhowe.glimpse.TypeCheckError;
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter;
-import uk.co.colinhowe.glimpse.compiler.node.AArgument;
-import uk.co.colinhowe.glimpse.compiler.node.AConstantExpr;
-import uk.co.colinhowe.glimpse.compiler.node.AGenericDefn;
-import uk.co.colinhowe.glimpse.compiler.node.AIncrementStmt;
-import uk.co.colinhowe.glimpse.compiler.node.AIntType;
-import uk.co.colinhowe.glimpse.compiler.node.AMacroStmt;
-import uk.co.colinhowe.glimpse.compiler.node.ANoInitVarDefn;
-import uk.co.colinhowe.glimpse.compiler.node.AStringExpr;
-import uk.co.colinhowe.glimpse.compiler.node.AStringType;
-import uk.co.colinhowe.glimpse.compiler.node.AVarDefnStmt;
-import uk.co.colinhowe.glimpse.compiler.node.AWithGeneratorMacroInvoke;
-import uk.co.colinhowe.glimpse.compiler.node.AWithInitVarDefn;
-import uk.co.colinhowe.glimpse.compiler.node.AWithStringMacroInvoke;
-import uk.co.colinhowe.glimpse.compiler.node.PArgument;
-import uk.co.colinhowe.glimpse.compiler.node.PExpr;
-import uk.co.colinhowe.glimpse.compiler.node.PMacroInvoke;
-import uk.co.colinhowe.glimpse.compiler.node.PType;
+import uk.co.colinhowe.glimpse.compiler.node.*;
+import uk.co.colinhowe.glimpse.compiler.typing.CompoundType;
 import uk.co.colinhowe.glimpse.compiler.typing.GenericType;
 import uk.co.colinhowe.glimpse.compiler.typing.SimpleType;
 import uk.co.colinhowe.glimpse.compiler.typing.Type;
@@ -41,14 +30,16 @@ public class TypeChecker extends DepthFirstAdapter {
   private final LineNumberProvider lineNumberProvider;
   private final List<CompilationError> errors = new LinkedList<CompilationError>();
   private final MacroDefinitionProvider macroProvider;
-  private final TypeProvider typeProvider;
+  private final TypeResolver typeResolver;
+  private Scope scope;
   
-  private final Scope scope;
+  private Type typeOnStack;
+  private Class<?> controllerClazz;
 
-  public TypeChecker(final LineNumberProvider lineNumberProvider, final MacroDefinitionProvider macroProvider, final TypeProvider typeProvider) {
+  public TypeChecker(final LineNumberProvider lineNumberProvider, final MacroDefinitionProvider macroProvider, final TypeResolver typeResolver) {
     this.lineNumberProvider = lineNumberProvider;
     this.macroProvider = macroProvider;
-    this.typeProvider = typeProvider;
+    this.typeResolver = typeResolver;
     this.scope = new Scope(null, false);
   }
   
@@ -78,6 +69,7 @@ public class TypeChecker extends DepthFirstAdapter {
       throw new IllegalArgumentException("Cannot handle expression[" + expr + "]");
     }
   }
+
   
   
   /**
@@ -88,8 +80,18 @@ public class TypeChecker extends DepthFirstAdapter {
    * @return
    */
   public boolean areTypesCompatible(final Type destinationType, final Type sourceType) {
-    // For now, we only allow types to be the same
     System.out.println(destinationType + " == " + sourceType + " -> " + destinationType.equals(sourceType));
+
+    if (destinationType instanceof MacroDefinition && sourceType instanceof MacroDefinition) {
+      return ((MacroDefinition)destinationType).areCompatible((MacroDefinition)sourceType);
+    }
+    
+    if (destinationType instanceof CompoundType && sourceType instanceof CompoundType) {
+      CompoundType cdt = (CompoundType)destinationType;
+      CompoundType sdt = (CompoundType)sourceType;
+      return sdt.clazz().isAssignableFrom(cdt.clazz());
+    }
+    
     return destinationType.equals(sourceType);
   }
   
@@ -106,7 +108,6 @@ public class TypeChecker extends DepthFirstAdapter {
       errors.add(new IdentifierNotFoundError(lineNumberProvider.getLineNumber(node), node.getIdentifier().getText()));
     }
   }
-  
   
   public void outAVarDefnStmt(AVarDefnStmt node) {
     // Get the type of the LHS
@@ -134,6 +135,47 @@ public class TypeChecker extends DepthFirstAdapter {
       varName = defn.getIdentifier().getText();
     }
     scope.add(varName, varType);
+  }
+  
+  @Override
+  public void inAGenerator(AGenerator node) {
+    scope = new Scope(scope, scope.isMacroScope());
+    for (PArgDefn parg : node.getArgDefn()) {
+      AArgDefn arg = (AArgDefn)parg;
+      scope.add(arg.getIdentifier().getText(), typeResolver.getType(arg.getType()));
+    }
+  }
+  
+  @Override
+  public void outAGenerator(AGenerator node) {
+    scope = scope.parentScope();
+  }
+  
+  @Override
+  public void inAForloop(AForloop node) {
+    scope = new Scope(scope, scope.isMacroScope());
+    scope.add(node.getIdentifier().getText(), typeResolver.getType(node.getType()));
+  }
+  
+  @Override
+  public void outAForloop(AForloop node) {
+    scope = scope.parentScope();
+  }
+  
+  @Override
+  public void inAMacroDefn(AMacroDefn node) {
+    scope = new Scope(scope, true);
+    for (PArgDefn parg : node.getArgDefn()) {
+      AArgDefn arg = (AArgDefn)parg;
+      scope.add(arg.getIdentifier().getText(), typeResolver.getType(arg.getType()));
+    }
+    
+    scope.add(node.getContentName().getText(), typeResolver.getType(node.getContentType()));
+  }
+  
+  @Override
+  public void outAMacroDefn(AMacroDefn node) {
+    scope = scope.parentScope();
   }
   
   
@@ -174,12 +216,13 @@ public class TypeChecker extends DepthFirstAdapter {
     for (PArgument pargument : arguments) {
       // Get the type of the argument in the call
       AArgument argument = (AArgument)pargument;
-      Type callType = typeProvider.getType(argument.getExpr());
+      Type callType = typeResolver.getType(argument.getExpr());
       
       // Get the type of the argument as defined in the macro
       Type defnType = macroDefinition.getArguments().get(argument.getIdentifier().getText());
+      defnType = bind(genericBindings, defnType, callType);
       
-      // Check if this type has been bound already
+      // Check if this type or any subtypes has been bound already
       if (defnType instanceof GenericType && !genericBindings.containsKey(defnType)) {
         genericBindings.put((GenericType)defnType, callType);
       } else if (defnType instanceof GenericType && !areTypesCompatible(genericBindings.get(defnType), callType)) {
@@ -187,6 +230,140 @@ public class TypeChecker extends DepthFirstAdapter {
       } else if (!areTypesCompatible(defnType, callType)) {
         errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), defnType, callType));
       }
+    }
+  }
+  
+  public Type bind(Map<GenericType, Type> genericBindings, Type defnType, Type callType) {
+    if (defnType instanceof GenericType && !genericBindings.containsKey(defnType)) {
+      genericBindings.put((GenericType)defnType, callType);
+    } 
+    
+    if (defnType instanceof GenericType && genericBindings.containsKey(defnType)) {
+      return genericBindings.get(defnType);
+    }
+    
+    if (defnType instanceof CompoundType) {
+      CompoundType compoundDefnType = (CompoundType)defnType;
+      CompoundType compoundCallType = (CompoundType)callType;
+      
+      List<Type> innerTypes = new LinkedList<Type>();
+      for (int i = 0; i < compoundDefnType.innerTypes().size(); i++) {
+        innerTypes.add(bind(genericBindings, compoundDefnType.innerTypes().get(i), compoundCallType.innerTypes().get(i)));
+      }
+      return new CompoundType(((CompoundType)defnType).clazz(), innerTypes);
+    } else {
+      return defnType;
+    }
+  }
+  
+  public void outAPropertyExpr(APropertyExpr node) {
+    // Get the type from the variable
+    // TODO Move this in to the resolver?
+    PName pname = node.getName();
+    if (pname instanceof ASimpleName) {
+      // TODO Make this handle multiple types of the same macro
+      Iterator<MacroDefinition> macrosWithName = macroProvider.get(((ASimpleName)pname).getIdentifier().getText()).iterator();
+      if (macrosWithName.hasNext()) {
+        typeResolver.addType(
+            node, 
+            macrosWithName.next()); 
+      } else {
+        typeResolver.addType(
+            node, 
+            (Type)scope.get(((ASimpleName)pname).getIdentifier().getText()));
+      }
+    }
+  }
+  
+  public String capitalise(String s) {
+    return s.substring(0, 1).toUpperCase() + s.substring(1);
+  }
+  
+  @Override
+  public void outAControllerPropExpr(AControllerPropExpr node) { 
+    PName nameNode = node.getName();
+    Class<?> currentType = controllerClazz;
+    Type returnType = null;
+    while (nameNode != null) {
+      final String methodName;
+      if (nameNode instanceof AQualifiedName) {
+        methodName = "get" + capitalise(((AQualifiedName)nameNode).getIdentifier().getText());
+        nameNode = ((AQualifiedName)nameNode).getName();
+      } else {
+        methodName = "get" + capitalise(((ASimpleName)nameNode).getIdentifier().getText());
+        nameNode = null;
+      }
+      Method getter;
+      try {
+        getter = currentType.getMethod(methodName);
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+      Object t = getter.getGenericReturnType();
+      
+      if (t instanceof ParameterizedTypeImpl) {
+        ParameterizedTypeImpl p = (ParameterizedTypeImpl)t;
+        List innerTypes = new LinkedList<Class<?>>();
+        for (java.lang.reflect.Type type : p.getActualTypeArguments()) {
+          innerTypes.add(new SimpleType((Class)type));
+        }
+        returnType = new CompoundType(
+            (Class)p.getRawType(), 
+            innerTypes);
+      } else {
+        returnType = new SimpleType(currentType);
+      }
+      currentType = getter.getReturnType();
+    }
+    // TODO Only set currentType on last iteration
+    typeResolver.addType(node, returnType);
+  }
+  
+  @Override
+  public void outAController(AController node) {
+    String clazzName = nameToString(node.getName());
+    try {
+      controllerClazz = this.getClass().getClassLoader().loadClass(clazzName);
+    } catch (ClassNotFoundException e) {
+      throw new RuntimeException(e);
+    }
+  }
+  
+  
+  public String nameToString(PName node) {
+    // Chunk the name down
+    PName nameNode = node;
+    String name = "";
+    
+    while (nameNode != null) {
+      if (nameNode instanceof AQualifiedName) {
+        name = name + ((AQualifiedName)nameNode).getIdentifier().getText() + ".";
+        nameNode = ((AQualifiedName)nameNode).getName();
+      } else {
+        name = name + ((ASimpleName)nameNode).getIdentifier().getText();
+        nameNode = null;
+      }
+    }
+    return name;
+  }
+  
+  
+  @Override
+  public void outAAssignmentStmt(AAssignmentStmt node) {
+    // This could be a dynamic macro assignment
+    String destinationVariable = node.getIdentifier().getText();
+    
+    // TODO Cope with overloading
+    if (macroProvider.get(destinationVariable).size() > 0) {
+      MacroDefinition macroDefinition = (MacroDefinition)macroProvider.get(destinationVariable).iterator().next();
+      
+      if (macroDefinition != null && macroDefinition.isDynamic()) {
+        if (!areTypesCompatible(macroDefinition, typeResolver.getType(node.getExpr()))) {
+          errors.add(new DynamicMacroMismatchError(
+              lineNumberProvider.getLineNumber(node), 
+              macroDefinition.getName()));
+        }
+      } 
     }
   }
 }

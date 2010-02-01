@@ -2,11 +2,14 @@ package uk.co.colinhowe.glimpse.compiler;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import uk.co.colinhowe.glimpse.Generator;
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter;
+import uk.co.colinhowe.glimpse.compiler.node.AArgDefn;
+import uk.co.colinhowe.glimpse.compiler.node.AArgument;
 import uk.co.colinhowe.glimpse.compiler.node.ACompoundQualifiedType;
 import uk.co.colinhowe.glimpse.compiler.node.ACompoundType;
 import uk.co.colinhowe.glimpse.compiler.node.AConstantExpr;
@@ -14,7 +17,9 @@ import uk.co.colinhowe.glimpse.compiler.node.AGeneratorType;
 import uk.co.colinhowe.glimpse.compiler.node.AGenericDefn;
 import uk.co.colinhowe.glimpse.compiler.node.AIntType;
 import uk.co.colinhowe.glimpse.compiler.node.AMacroDefn;
+import uk.co.colinhowe.glimpse.compiler.node.APropertyExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AQualifiedType;
+import uk.co.colinhowe.glimpse.compiler.node.ASimpleName;
 import uk.co.colinhowe.glimpse.compiler.node.ASimpleQualifiedType;
 import uk.co.colinhowe.glimpse.compiler.node.AStringExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AStringType;
@@ -28,10 +33,11 @@ import uk.co.colinhowe.glimpse.compiler.typing.SimpleType;
 import uk.co.colinhowe.glimpse.compiler.typing.Type;
 
 
-public class TypeProvider extends DepthFirstAdapter {
+public class SimpleTypeProvider extends DepthFirstAdapter {
 
   private final Map<Node, Type> types = new HashMap<Node, Type>();
   private final Map<String, Type> genericsInScope = new HashMap<String, Type>();
+
   
   public Type getType(Node node) {
     return types.get(node);
@@ -68,6 +74,7 @@ public class TypeProvider extends DepthFirstAdapter {
     types.put(node, new SimpleType(Generator.class));
   }
   
+  
   @Override
   public void outAGenericDefn(AGenericDefn node) {
     GenericType type = new GenericType(node.getIdentifier().getText(), Object.class);
@@ -91,6 +98,12 @@ public class TypeProvider extends DepthFirstAdapter {
         type += ((ACompoundQualifiedType)typeNode).getIdentifier().getText() + ".";
         typeNode = ((ACompoundQualifiedType)typeNode).getQualifiedType();
       }
+    }
+    
+    // Overrides for known types
+    // TODO Imports
+    if (type.equals("string")) {
+      type = "java.lang.string";
     }
     
     // Check if this is a generic type
@@ -120,6 +133,8 @@ public class TypeProvider extends DepthFirstAdapter {
     
     types.put(node, new CompoundType(parentType.getClazz(), subTypes));
   }
+  
+  
   
 //  
 //  

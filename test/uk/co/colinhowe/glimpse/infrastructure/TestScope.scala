@@ -41,7 +41,7 @@ class TestScope extends AssertionsForJUnit {
     parentScope.add("x", new Integer(1))
     
     val macroScope = new Scope(parentScope, true)
-    intercept[IllegalArgumentException] {
+    intercept[IdentifierNotFoundException] {
       assert(1 === macroScope.get("x"))
     }
   }

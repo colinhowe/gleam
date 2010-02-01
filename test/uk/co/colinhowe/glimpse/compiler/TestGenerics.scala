@@ -35,7 +35,7 @@ class TestGenerics extends CompilerTest {
       }
     }
 
-    result_set(list: c.names) { String row =>
+    result_set(list: c.names) { string row =>
       node:p row
     }
     """ controller(new DummyController) compilesTo 

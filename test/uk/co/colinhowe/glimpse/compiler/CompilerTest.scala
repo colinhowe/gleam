@@ -1,4 +1,6 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.glimpse.compiler
+import uk.co.colinhowe.glimpse.CompilationError
+
 import uk.co.colinhowe.glimpse.CompilationResult
 
 import java.io.File
@@ -68,7 +70,7 @@ abstract trait CompilerTest {
   }
   
   def checkCompilation(compilationSet : CompilationSet, expectedResult : scala.xml.Elem) {
-    compile(compilationSet)
+    val results = compile(compilationSet)
     
     // Load the source
     val classesDir = new File("temp/")
@@ -94,6 +96,14 @@ abstract trait CompilerTest {
       "</view>"
     
     assertEquals(printXml(expectedResult), xml)
+    
+    var errors = List[CompilationError]()
+    for (result <- results) {
+      for (error <- result.getErrors()) {
+        errors = error.asInstanceOf[CompilationError] :: errors
+      }
+    }
+    assertEquals("Got errors", 0, errors.size)
   }
  
   def printXml(nodes : List[Node]) : String = {
