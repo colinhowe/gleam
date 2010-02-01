@@ -7,9 +7,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Stack;
 
 import org.objectweb.asm.FieldVisitor;
@@ -25,6 +27,7 @@ import uk.co.colinhowe.glimpse.compiler.node.AAssignmentStmt;
 import uk.co.colinhowe.glimpse.compiler.node.AConstantExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AController;
 import uk.co.colinhowe.glimpse.compiler.node.AControllerPropExpr;
+import uk.co.colinhowe.glimpse.compiler.node.ADynamicMacroDefn;
 import uk.co.colinhowe.glimpse.compiler.node.AForloop;
 import uk.co.colinhowe.glimpse.compiler.node.AGenerator;
 import uk.co.colinhowe.glimpse.compiler.node.AGeneratorExpr;
@@ -68,6 +71,8 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
   private final TypeProvider typeProvider;
   private final ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
   private final String outputFileName;
+  private final Set<String> dynamicMacros = new HashSet<String>();
+  private final Set<String> macros = new HashSet<String>();
   private uk.co.colinhowe.glimpse.compiler.typing.Type controllerType = null;
 
   private final Stack<Scope> scopes;
@@ -151,6 +156,106 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
   }
   
   @Override
+  public void outADynamicMacroDefn(ADynamicMacroDefn node) {
+    dynamicMacros.add(node.getName().getText());
+    
+    // Create the class for the dynamic macro
+    final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+    
+    // Get the name of the macro
+    final String macroName = node.getName().getText();
+    
+    cw.visit(V1_6, ACC_SUPER, macroName, null, "java/lang/Object", new String[] { "uk/co/colinhowe/glimpse/Macro" });
+
+    // Instance field for the macro
+    FieldVisitor fv = cw.visitField(ACC_PRIVATE + ACC_STATIC, "instance", "Luk/co/colinhowe/glimpse/Macro;", null, null);
+    fv.visitEnd();
+    
+    // Instance field for the macro that will be invoked at run-time
+    fv = cw.visitField(ACC_PUBLIC + ACC_STATIC, "toInvoke", "Luk/co/colinhowe/glimpse/Macro;", null, null);
+    fv.visitEnd();
+
+    // Static constructor
+    {
+      MethodVisitor mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
+      mv.visitCode();
+
+      // Initialise the instance
+      Label l0 = new Label();
+      mv.visitLabel(l0);
+      mv.visitTypeInsn(NEW, macroName);
+      mv.visitInsn(DUP);
+      mv.visitMethodInsn(INVOKESPECIAL, macroName, "<init>", "()V");
+      mv.visitFieldInsn(PUTSTATIC, macroName, "instance", "Luk/co/colinhowe/glimpse/Macro;");
+      
+      Label l1 = new Label();
+      mv.visitLabel(l1);
+      mv.visitInsn(RETURN);
+      mv.visitMaxs(0, 0);
+      mv.visitEnd(); 
+    } 
+    
+    // Constructor
+    {
+      MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
+      mv.visitCode();
+
+      // Initialise super class
+      Label l0 = new Label();
+      mv.visitLabel(l0);
+      mv.visitVarInsn(ALOAD, 0);
+      mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V");
+      mv.visitInsn(RETURN);
+  
+      Label l3 = new Label();
+      mv.visitLabel(l3);
+      mv.visitLocalVariable("this", "L" + macroName + ";", null, l0, l3, 0);
+      mv.visitMaxs(0, 0);
+      mv.visitEnd();
+    } 
+    
+    // Invoke method - just calls through to the target macro
+    {
+      MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, 
+          "invoke", 
+          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;",
+          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;Ljava/lang/Object;)Ljava/util/List<Luk/co/colinhowe/glimpse/Node;>;", null);
+      mv.visitCode();
+
+      mv.visitFieldInsn(GETSTATIC, macroName, "toInvoke", "Luk/co/colinhowe/glimpse/Macro;"); // target
+      mv.visitVarInsn(ALOAD, 1); // scope, target
+      mv.visitVarInsn(ALOAD, 2); // args, scope, target
+      mv.visitVarInsn(ALOAD, 3); // value, args, scope, target
+      mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Macro", "invoke",
+          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;");
+
+      mv.visitInsn(ARETURN);
+      
+      mv.visitMaxs(4, 7);
+      mv.visitEnd();
+    }
+    
+    cw.visitEnd();
+    
+    // Write the bytes out
+    byte[] bytes = cw.toByteArray();
+    
+    // Output the class to a class file!
+    File file = new File("temp/" + macroName + ".class");
+//    file.deleteOnExit();
+      
+    try {
+      FileOutputStream stream = new FileOutputStream(file);
+      stream.write(bytes);
+      stream.close();
+      
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+
+  }
+  
+  @Override
   public void outAView(AView node) {
     if (node.getStmt().size() > 0) {
       // Return the list of nodes
@@ -207,14 +312,18 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
       ASimpleName simpleName = (ASimpleName)node.getName();
       
       String name = simpleName.getIdentifier().getText();
-      mv.visitLdcInsn(name); // name, scope
-      debug("simpleExpr [" + simpleName.getIdentifier().getText() + "]");
+      
+      if (macros.contains(name)) {
+        mv.visitMethodInsn(INVOKESTATIC, name, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;"); // target
+        debug("simpleMacroExpr [" + simpleName.getIdentifier().getText() + "]");
+      } else {
+        mv.visitLdcInsn(name); // name, scope
+        mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;");
+        debug("simpleExpr [" + simpleName.getIdentifier().getText() + "]");
+      }
     } else {
       throw new RuntimeException("Unsupported type of node");
     }
-    
-    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;");
-
     
     // Leave the property on the stack for the next instruction to pick up
 
@@ -500,8 +609,46 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     
     // Get the name of the macro
     final String macroName = node.getName().getText();
+    macros.add(macroName);
     
-    cw.visit(V1_6, ACC_SUPER, macroName, null, "java/lang/Object", null);
+    cw.visit(V1_6, ACC_SUPER, macroName, null, "java/lang/Object", new String[] { "uk/co/colinhowe/glimpse/Macro" });
+
+    // Instance field for the macro
+    FieldVisitor fv = cw.visitField(ACC_PRIVATE + ACC_STATIC, "instance", "Luk/co/colinhowe/glimpse/Macro;", null, null);
+    fv.visitEnd();
+    
+    // Static constructor
+    {
+      MethodVisitor mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
+      mv.visitCode();
+
+      // Initialise the instance
+      Label l0 = new Label();
+      mv.visitLabel(l0);
+      mv.visitTypeInsn(NEW, macroName);
+      mv.visitInsn(DUP);
+      mv.visitMethodInsn(INVOKESPECIAL, macroName, "<init>", "()V");
+      mv.visitFieldInsn(PUTSTATIC, macroName, "instance", "Luk/co/colinhowe/glimpse/Macro;");
+      
+      Label l1 = new Label();
+      mv.visitLabel(l1);
+      mv.visitInsn(RETURN);
+      mv.visitMaxs(0, 0);
+      mv.visitEnd(); 
+    } 
+    
+    // getInstance method
+    {
+      MethodVisitor mv = cw.visitMethod(ACC_STATIC | ACC_PUBLIC, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;", null, null);
+      mv.visitCode();
+
+      Label l1 = new Label();
+      mv.visitLabel(l1);
+      mv.visitFieldInsn(GETSTATIC, macroName, "instance", "Luk/co/colinhowe/glimpse/Macro;");
+      mv.visitInsn(ARETURN);
+      mv.visitMaxs(0, 0);
+      mv.visitEnd(); 
+    } 
     
     // Constructor
     {
@@ -525,18 +672,12 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     
     // Invoke method
     {
-      String contentType = null;
-      if (node.getContentType() instanceof AStringType) {
-        contentType = "java/lang/String";
-      } else {
-        contentType = "uk/co/colinhowe/glimpse/Generator";
-      }
       String valueName = node.getContentName().getText();
       
       MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, 
           "invoke", 
-          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;L" + contentType + ";)Ljava/util/List;",
-          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;L" + contentType + ";)Ljava/util/List<Luk/co/colinhowe/glimpse/Node;>;", null);
+          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;",
+          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;Ljava/lang/Object;)Ljava/util/List<Luk/co/colinhowe/glimpse/Node;>;", null);
       methodVisitors.push(mv);
       mv.visitCode();
 
@@ -573,7 +714,7 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
       Label l3 = new Label();
       mv.visitLabel(l3);
       mv.visitFrame(Opcodes.F_FULL, 7, 
-          new Object[] { macroName, "uk/co/colinhowe/glimpse/infrastructure/Scope", "java/util/Map", contentType, "uk/co/colinhowe/glimpse/infrastructure/Scope", Opcodes.TOP, "java/util/Iterator"}, 0, new Object[] {});
+          new Object[] { macroName, "uk/co/colinhowe/glimpse/infrastructure/Scope", "java/util/Map", "java/lang/Object", "uk/co/colinhowe/glimpse/infrastructure/Scope", Opcodes.TOP, "java/util/Iterator"}, 0, new Object[] {});
       mv.visitVarInsn(ALOAD, 6);
       mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Iterator", "next", "()Ljava/lang/Object;");
       mv.visitTypeInsn(CHECKCAST, "java/util/Map$Entry");
@@ -936,17 +1077,27 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "replace", "(Ljava/lang/String;Ljava/lang/Object;)V");
   }
 
+  
   @Override
   public void outAAssignmentStmt(AAssignmentStmt node) {
     final MethodVisitor mv = methodVisitors.peek();
     
-    // The value will be sitting on the stack
-    mv.visitVarInsn(ALOAD, 1); // scope, value
-    mv.visitInsn(SWAP); // value, scope
-
-    mv.visitLdcInsn(node.getIdentifier().getText()); // name, scope, value
-    mv.visitInsn(SWAP); // value, name, scope
-    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "replace", "(Ljava/lang/String;Ljava/lang/Object;)V");
+    // This could be a dynamic macro assignment
+    String destinationVariable = node.getIdentifier().getText();
+    
+    if (dynamicMacros.contains(destinationVariable)) {
+      // Set the value of the macro
+      debug("setting dynamic macro [" + destinationVariable + "]");
+      mv.visitFieldInsn(PUTSTATIC, destinationVariable, "toInvoke", "Luk/co/colinhowe/glimpse/Macro;");
+    } else {
+      // The value will be sitting on the stack
+      mv.visitVarInsn(ALOAD, 1); // scope, value
+      mv.visitInsn(SWAP); // value, scope
+  
+      mv.visitLdcInsn(node.getIdentifier().getText()); // name, scope, value
+      mv.visitInsn(SWAP); // value, name, scope
+      mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "replace", "(Ljava/lang/String;Ljava/lang/Object;)V");
+    }
   }
   
   @Override
@@ -1035,7 +1186,8 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
       mv.visitInsn(DUP_X2); // scope, value, args, scope, macro
       mv.visitInsn(POP); // value, args, scope, macro
 
-      mv.visitMethodInsn(INVOKEVIRTUAL, macroName, "invoke", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/String;)Ljava/util/List;");
+      mv.visitTypeInsn(CHECKCAST, "java/lang/Object"); // value, args, scope, macro
+      mv.visitMethodInsn(INVOKEVIRTUAL, macroName, "invoke", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;");
       // nodes
       mv.visitVarInsn(ALOAD, 2); // list, nodes
       mv.visitInsn(SWAP); // nodes, list
@@ -1059,9 +1211,10 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
       mv.visitVarInsn(ALOAD, 1); // scope, generator, args, macro
       mv.visitInsn(DUP_X2); // scope, generator, args, scope, macro
       mv.visitInsn(POP); // generator, args, scope, macro
+      mv.visitTypeInsn(CHECKCAST, "java/lang/Object"); // generator, args, scope, macro
       
       // -> generator, args, scope, macro
-      mv.visitMethodInsn(INVOKEVIRTUAL, macroName, "invoke", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Luk/co/colinhowe/glimpse/Generator;)Ljava/util/List;");
+      mv.visitMethodInsn(INVOKEVIRTUAL, macroName, "invoke", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;");
 
       // nodes
       mv.visitVarInsn(ALOAD, 2); // list, nodes
