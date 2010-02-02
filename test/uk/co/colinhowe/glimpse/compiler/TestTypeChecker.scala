@@ -55,7 +55,7 @@ class TestTypeChecker extends TypeCheckerTest {
   @Test
   def invalidArgumentToMacro = {   
     """
-    macro p(int v) with string s { node:p s }
+    macro p(int v) with string s { node p s }
     p(v: "1") "1"
     """ failsWith
     TypeCheckError(
@@ -68,7 +68,7 @@ class TestTypeChecker extends TypeCheckerTest {
   @Test
   def validCallToMacro = {
     """
-    macro p(int v) with string s { node:p s }
+    macro p(int v) with string s { node p s }
     p(v: 1) "1"
     """ succeeds
   }
@@ -77,14 +77,14 @@ class TestTypeChecker extends TypeCheckerTest {
   @Test
   def invalidValueToMacro = {   
     """
-    macro p(int v) with string s { node:p s }
+    macro p(int v) with string s { node p s }
     p(v: 1) {
-      node:div "hi"
+      node div "hi"
     }
     """ failsWith
     TypeCheckError(
         line = 3, 
         expectedType = new SimpleType(classOf[String]), 
         actualType = new SimpleType(classOf[Generator]))  }  
-  @Test  def incrementOnString = {     """    string x = "1"    x++    node:h1 x    """ failsWith    TypeCheckError(        line = 3,         expectedType = new SimpleType(classOf[Integer]),         actualType = new SimpleType(classOf[String]))  }
+  @Test  def incrementOnString = {     """    string x = "1"    x++    node h1 x    """ failsWith    TypeCheckError(        line = 3,         expectedType = new SimpleType(classOf[Integer]),         actualType = new SimpleType(classOf[String]))  }
 }

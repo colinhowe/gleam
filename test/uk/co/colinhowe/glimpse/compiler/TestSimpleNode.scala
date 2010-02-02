@@ -14,7 +14,7 @@ class TestSimpleNode extends CompilerTest {
   @Test
   def basic = {   
     """
-    node:h1 "title"
+    node h1 "title"
     """ compilesTo 
     <view><h1>title</h1></view>
   }
@@ -22,8 +22,8 @@ class TestSimpleNode extends CompilerTest {
   @Test
   def compound = {   
     """
-    node:div {
-      node:h1 "title"
+    node div {
+      node h1 "title"
     }
     """ compilesTo 
     <view>
@@ -36,7 +36,7 @@ class TestSimpleNode extends CompilerTest {
   @Test
   def basicWithArguments = {   
     """
-    node:h1(name: "theName") "title"
+    node h1(name: "theName") "title"
     """ compilesTo 
     <view><h1 name="theName">title</h1></view>
   }
@@ -44,8 +44,8 @@ class TestSimpleNode extends CompilerTest {
   @Test
   def compoundWithArguments = {   
     """
-    node:div(name: "theName") {
-      node:h1 "title"
+    node div(name: "theName") {
+      node h1 "title"
     }
     """ compilesTo 
     <view>
@@ -58,7 +58,7 @@ class TestSimpleNode extends CompilerTest {
   @Test
   def multiLineString = {   
     """
-    node:h1 ""
+    node h1 ""
         title
     ""
     """ compilesTo 
@@ -68,7 +68,7 @@ class TestSimpleNode extends CompilerTest {
   @Test
   def multiLineStringWithQuotes = {   
     """
-    node:h1 ""
+    node h1 ""
       "title"
         indented
     ""

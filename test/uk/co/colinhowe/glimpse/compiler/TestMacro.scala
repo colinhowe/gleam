@@ -15,12 +15,12 @@ class TestMacro extends CompilerTest {
   def generator = {   
     """
     macro div with generator g {
-      node:div {
+      node div {
         include g
       }   
     }
     div {
-      node:p "Inside"
+      node p "Inside"
     }
     """ compilesTo <view>
       <div>
@@ -33,7 +33,7 @@ class TestMacro extends CompilerTest {
   def string = {   
     """
     macro p with string s {
-      node:p s
+      node p s
     }
     p "Hi"
     """ compilesTo <view>
@@ -45,7 +45,7 @@ class TestMacro extends CompilerTest {
   def macroWithStringArguments = {   
     """
     macro p(int value) with string s {
-      node:p(value: value) s
+      node p(value: value) s
     }
     p(value: 4) "hi"
     """ compilesTo 
@@ -56,12 +56,12 @@ class TestMacro extends CompilerTest {
   def macroWithGeneratorArguments = {   
     """
     macro div(int value) with generator g {
-      node:div(value: value) {
+      node div(value: value) {
         include g
       }
     }
     div(value: 4) {
-      node:span "hi"
+      node span "hi"
     }
     """ compilesTo 
     <view><div value="4"><span>hi</span></div></view>

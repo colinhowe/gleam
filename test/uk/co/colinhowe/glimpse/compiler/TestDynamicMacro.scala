@@ -18,7 +18,7 @@ class TestDynamicMacro extends TypeCheckerTest {
     """
     dynamic macro dynamo with generator g 
     macro div with generator g {
-      node:div {
+      node div {
         include g
       }   
     }
@@ -26,7 +26,7 @@ class TestDynamicMacro extends TypeCheckerTest {
     dynamo = div
     
     dynamo {
-      node:p "Inside"
+      node p "Inside"
     }
     """ compilesTo <view>
       <div>
@@ -40,7 +40,7 @@ class TestDynamicMacro extends TypeCheckerTest {
     """
     dynamic macro dynamo(int value) with string s 
     macro p(int value) with string s {
-      node:p(value: value) s   
+      node p(value: value) s   
     }
     
     dynamo = p
@@ -56,7 +56,7 @@ class TestDynamicMacro extends TypeCheckerTest {
     """
     dynamic macro dynamo with string str
     macro p with string s {
-      node:p s
+      node p s
     }
     
     dynamo = p
@@ -72,13 +72,13 @@ class TestDynamicMacro extends TypeCheckerTest {
     """
     dynamic macro dynamo with generator g 
     macro p with string s {
-      node:p s   
+      node p s   
     }
     
     dynamo = p
     
     dynamo {
-      node:p "hi"
+      node p "hi"
     }
     """ failsWith
     DynamicMacroMismatchError(
@@ -91,7 +91,7 @@ class TestDynamicMacro extends TypeCheckerTest {
     """
     dynamic macro dynamo(int value) with string s 
     macro p with string s {
-      node:p s   
+      node p s   
     }
     
     dynamo = p

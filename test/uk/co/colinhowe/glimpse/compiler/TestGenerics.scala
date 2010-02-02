@@ -15,7 +15,7 @@ class TestGenerics extends CompilerTest {
   def simpleGenerics = {   
     """
     macro p<T>(T value) with string s {
-      node:p(value: value) s
+      node p(value: value) s
     }
 
     p(value: "a") "hi1"
@@ -36,7 +36,7 @@ class TestGenerics extends CompilerTest {
     }
 
     result_set(list: c.names) { string row =>
-      node:p row
+      node p row
     }
     """ controller(new DummyController) compilesTo 
     <view><p>Alan</p><p>Bob</p><p>Colin</p></view>
@@ -54,7 +54,7 @@ class TestGenerics extends CompilerTest {
     }
 
     result_set(list: c.ages) { int row =>
-      node:p row
+      node p row
     }
     """ controller(new DummyController) compilesTo 
     <view><p>18</p><p>21</p><p>25</p></view>

@@ -17,7 +17,7 @@ class TestBoolean extends TypeCheckerTest {
   def booleanDeclaration = {   
     """    
     bool x = false
-    node:h1 x
+    node h1 x
     """ compilesTo 
     <view><h1>false</h1></view>
   }
@@ -27,9 +27,9 @@ class TestBoolean extends TypeCheckerTest {
     """
     bool x = false
     x = !x
-    node:h1 x
+    node h1 x
     x = !x
-    node:h1 x
+    node h1 x
     """ compilesTo 
     <view><h1>true</h1><h1>false</h1></view>
   }
@@ -38,7 +38,7 @@ class TestBoolean extends TypeCheckerTest {
   def asMacroArgument = {   
     """    
     macro b(bool value) with string s {
-      node:b(value: value) s
+      node b(value: value) s
     }
     b(value: false) "hi"
     """ compilesTo 

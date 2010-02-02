@@ -15,7 +15,7 @@ class TestMultipleArgumentMacro extends CompilerTest {
   def nameArgument = {   
     """
     macro p(string name) with string s {
-      node:p(name: name) s
+      node p(name: name) s
     }
     p(name: "div1") "hi"
     """ compilesTo <view>

@@ -16,10 +16,10 @@ class TestGeneratorEnvironments extends CompilerTest {
   def basicChanges = {   
     """
     int x = 4
-    node:div {
+    node div {
       x++
     }
-    node:p x
+    node p x
     """ compilesTo 
     <view><div /><p>5</p></view>
   }
@@ -28,7 +28,7 @@ class TestGeneratorEnvironments extends CompilerTest {
   def changesInMacroInvokation = {   
     """
     macro div with generator g {
-      node:div {
+      node div {
         include g
       }   
     }
@@ -36,7 +36,7 @@ class TestGeneratorEnvironments extends CompilerTest {
     div {
       x++
     }
-    node:p x
+    node p x
     """ compilesTo 
     <view><div /><p>5</p></view>
   }
@@ -46,7 +46,7 @@ class TestGeneratorEnvironments extends CompilerTest {
     """
     macro p(int value) with string s {
       value++
-      node:p(value: value) s
+      node p(value: value) s
     }
     int y = 10
     p(value: y) "hi"
@@ -61,7 +61,7 @@ class TestGeneratorEnvironments extends CompilerTest {
     macro p with generator g(int value) {
       int x = 4
       include g(value: x) 
-      node:p x
+      node p x
     }
     p { int value =>
       value++
@@ -77,7 +77,7 @@ class TestGeneratorEnvironments extends CompilerTest {
       include g(v1: 1) 
     }
     p { int v1 =>
-      node:p v1
+      node p v1
     }
     """ compilesTo 
     <view><p>1</p></view>
@@ -91,8 +91,8 @@ class TestGeneratorEnvironments extends CompilerTest {
       include g(v1: 1, v2: 2) 
     }
     p { int v1, int v2 =>
-      node:p v1
-      node:p v2
+      node p v1
+      node p v2
     }
     """ compilesTo 
     <view><p>1</p><p>2</p></view>
@@ -102,7 +102,7 @@ class TestGeneratorEnvironments extends CompilerTest {
   def cannotBindOutsideMacroGenerator = {   
     """
     macro p with generator g {
-      node:p "hi"
+      node p "hi"
       y++
     }
     int y = 4

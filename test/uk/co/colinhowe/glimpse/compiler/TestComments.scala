@@ -15,7 +15,7 @@ class TestComments extends CompilerTest {
   def singleLineComment = {   
     """
     // Single line comment
-    node:p "a"
+    node p "a"
     """ compilesTo 
     <view><p>a</p></view>
   }
@@ -26,7 +26,7 @@ class TestComments extends CompilerTest {
     /*
      Multi line comment
      */
-    node:p "b"
+    node p "b"
     """ compilesTo 
     <view><p>b</p></view>
   }
@@ -37,7 +37,7 @@ class TestComments extends CompilerTest {
     /*
      /* Inner one! */
      */
-    node:p "c"
+    node p "c"
     """ compilesTo 
     <view><p>c</p></view>
   }
@@ -48,7 +48,7 @@ class TestComments extends CompilerTest {
     /*
      /* Inner one!
      */
-    node:p "d"
+    node p "d"
     """ compilesTo 
     <view><p>d</p></view>
   }
@@ -59,7 +59,7 @@ class TestComments extends CompilerTest {
     /*
      // Inner one!
      */
-    node:p "e"
+    node p "e"
     """ compilesTo 
     <view><p>e</p></view>
   }

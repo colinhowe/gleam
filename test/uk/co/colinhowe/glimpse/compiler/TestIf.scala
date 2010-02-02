@@ -17,9 +17,9 @@ class TestIf extends TypeCheckerTest {
   def simpleIf = {   
     """
     if (false) {
-      node:h1 false
+      node h1 false
     }
-    node:h1 true
+    node h1 true
     """ compilesTo 
     <view><h1>true</h1></view>
   }
@@ -28,11 +28,11 @@ class TestIf extends TypeCheckerTest {
   def ifElse = {   
     """
     if (false) {
-      node:h1 false
+      node h1 false
     } else {
-      node:h1 "else"
+      node h1 "else"
     }
-    node:h1 true
+    node h1 true
     """ compilesTo 
     <view><h1>else</h1><h1>true</h1></view>
   }
