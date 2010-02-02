@@ -32,6 +32,9 @@ Tokens
     
     controller_token = 'controller';
     
+    if = 'if';
+    telse = 'else';
+    
     controller_ref = 'c';
     
     dot = '.';
@@ -91,7 +94,14 @@ Productions
          | {increment} identifier increment {-> New stmt.increment(identifier)}
          | {assignment} identifier equals expr {-> New stmt.assignment(identifier, expr)}
          | {for} forloop
+         | {if} ifelse 
          ;
+         
+    ifelse = if lparen expr rparen codeblock else? {-> New ifelse(expr, codeblock, else) };
+    
+    else = telse codeblock {-> New else(codeblock) };
+    
+    codeblock = lbrace stmt+ rbrace {-> New codeblock([stmt]) } ;
     
     type = {string} type_string
          | {generator} type_generator
@@ -209,7 +219,10 @@ Abstract Syntax Tree
          | {increment} identifier
          | {assignment} identifier expr
          | {for} forloop
+         | {if} ifelse
          ;
+         
+    codeblock = stmt+ ;
          
     var_defn = 
         {no_init} type identifier
@@ -226,6 +239,9 @@ Abstract Syntax Tree
       | {invert} expr
       ;
       
+    ifelse = expr codeblock else? ;
+    else = codeblock ;  
+    
     type = 
        {string} type_string
      | {generator} type_generator

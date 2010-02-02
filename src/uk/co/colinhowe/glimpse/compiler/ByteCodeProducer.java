@@ -38,6 +38,7 @@ import uk.co.colinhowe.glimpse.compiler.node.AForloop;
 import uk.co.colinhowe.glimpse.compiler.node.AGenerator;
 import uk.co.colinhowe.glimpse.compiler.node.AGeneratorExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AGeneratorType;
+import uk.co.colinhowe.glimpse.compiler.node.AIfelse;
 import uk.co.colinhowe.glimpse.compiler.node.AIncludeA;
 import uk.co.colinhowe.glimpse.compiler.node.AIncludeStmt;
 import uk.co.colinhowe.glimpse.compiler.node.AIncrementStmt;
@@ -50,6 +51,7 @@ import uk.co.colinhowe.glimpse.compiler.node.ANodeCreate;
 import uk.co.colinhowe.glimpse.compiler.node.APropertyExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AQualifiedName;
 import uk.co.colinhowe.glimpse.compiler.node.ASimpleName;
+import uk.co.colinhowe.glimpse.compiler.node.ATrueExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AView;
 import uk.co.colinhowe.glimpse.compiler.node.AWithGeneratorMacroInvoke;
 import uk.co.colinhowe.glimpse.compiler.node.AWithInitVarDefn;
@@ -109,6 +111,36 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
   }
   
   @Override
+  public void caseAIfelse(AIfelse node) {
+    MethodVisitor mv = methodVisitors.peek();
+
+    // Calculate the expression
+    if(node.getExpr() != null) {
+      node.getExpr().apply(this);
+    }
+
+    // Assume boolean on the stack that can be cast to a bool
+    Label start = new Label();
+    mv.visitLabel(start);
+    mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z");
+    
+    // Jump to the end if the expression is false
+    Label elseLabel = new Label();
+    mv.visitJumpInsn(IFEQ, elseLabel);
+
+    // Add in the code block for truth
+    if(node.getCodeblock() != null) {
+      node.getCodeblock().apply(this);
+    }
+    
+    // The else block begins now
+    mv.visitLabel(elseLabel);
+    if(node.getElse() != null) {
+      node.getElse().apply(this);
+    }
+  }
+  
+  @Override
   public void outAFalseExpr(AFalseExpr node) {
     MethodVisitor mv = methodVisitors.peek();
 
@@ -119,6 +151,19 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;");
     
     debug("boolean [false]");
+  }
+  
+  @Override
+  public void outATrueExpr(ATrueExpr node) {
+    MethodVisitor mv = methodVisitors.peek();
+
+    // Up-cast to a boolean
+    // we don't like leave primitive types on the stack
+    // This is inefficient but it simplifies implementation
+    mv.visitInsn(ICONST_1);
+    mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;");
+    
+    debug("boolean [true]");
   }
   
   
