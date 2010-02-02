@@ -10,9 +10,11 @@ import uk.co.colinhowe.glimpse.Generator;
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter;
 import uk.co.colinhowe.glimpse.compiler.node.AArgDefn;
 import uk.co.colinhowe.glimpse.compiler.node.AArgument;
+import uk.co.colinhowe.glimpse.compiler.node.ABoolType;
 import uk.co.colinhowe.glimpse.compiler.node.ACompoundQualifiedType;
 import uk.co.colinhowe.glimpse.compiler.node.ACompoundType;
 import uk.co.colinhowe.glimpse.compiler.node.AConstantExpr;
+import uk.co.colinhowe.glimpse.compiler.node.AFalseExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AGeneratorType;
 import uk.co.colinhowe.glimpse.compiler.node.AGenericDefn;
 import uk.co.colinhowe.glimpse.compiler.node.AIntType;
@@ -23,6 +25,7 @@ import uk.co.colinhowe.glimpse.compiler.node.ASimpleName;
 import uk.co.colinhowe.glimpse.compiler.node.ASimpleQualifiedType;
 import uk.co.colinhowe.glimpse.compiler.node.AStringExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AStringType;
+import uk.co.colinhowe.glimpse.compiler.node.ATrueExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AWithInitVarDefn;
 import uk.co.colinhowe.glimpse.compiler.node.Node;
 import uk.co.colinhowe.glimpse.compiler.node.PQualifiedType;
@@ -41,6 +44,18 @@ public class SimpleTypeProvider extends DepthFirstAdapter {
   
   public Type getType(Node node) {
     return types.get(node);
+  }
+  
+  
+  @Override
+  public void outAFalseExpr(AFalseExpr node) {
+    types.put(node, new SimpleType(Boolean.class));
+  }
+  
+  
+  @Override
+  public void outATrueExpr(ATrueExpr node) {
+    types.put(node, new SimpleType(Boolean.class));
   }
   
   
@@ -67,6 +82,11 @@ public class SimpleTypeProvider extends DepthFirstAdapter {
   @Override
   public void outAStringType(AStringType node) {
     types.put(node, new SimpleType(String.class));
+  }
+  
+  @Override
+  public void outABoolType(ABoolType node) {
+    types.put(node, new SimpleType(Boolean.class));
   }
   
   @Override
@@ -133,20 +153,6 @@ public class SimpleTypeProvider extends DepthFirstAdapter {
     
     types.put(node, new CompoundType(parentType.getClazz(), subTypes));
   }
-  
-  
-  
-//  
-//  
-//  @Override
-//  public void outASimpleType(ASimpleType node) {
-//    // Look for a matching identifier in scope
-//    
-//    // Look for a matching generic
-//    if (genericsInScope.containsKey(node.getIdentifier().getText())) {
-//      types.put(node, genericsInScope.get(node.getIdentifier().getText()));
-//    }
-//  }
   
   
   @Override

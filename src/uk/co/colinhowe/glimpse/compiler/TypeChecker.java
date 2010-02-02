@@ -54,6 +54,8 @@ public class TypeChecker extends DepthFirstAdapter {
       return new SimpleType(Integer.class);
     } else if (type instanceof AStringType) {
       return new SimpleType(String.class);
+    } else if (type instanceof ABoolType) {
+      return new SimpleType(Boolean.class);
     } else {
       throw new IllegalArgumentException("Cannot handle type [" + type + "]");
     }
@@ -65,6 +67,10 @@ public class TypeChecker extends DepthFirstAdapter {
       return new SimpleType(String.class);
     } else if (expr instanceof AConstantExpr) {
       return new SimpleType(Integer.class);
+    } else if (expr instanceof AFalseExpr) {
+      return new SimpleType(Boolean.class);
+    } else if (expr instanceof ATrueExpr) {
+      return new SimpleType(Boolean.class);
     } else {
       throw new IllegalArgumentException("Cannot handle expression[" + expr + "]");
     }
@@ -80,7 +86,8 @@ public class TypeChecker extends DepthFirstAdapter {
    * @return
    */
   public boolean areTypesCompatible(final Type destinationType, final Type sourceType) {
-    System.out.println(destinationType + " == " + sourceType + " -> " + destinationType.equals(sourceType));
+    System.out.print(destinationType + " == " + sourceType + " -> ");
+    System.out.println(destinationType.equals(sourceType));
 
     if (destinationType instanceof MacroDefinition && sourceType instanceof MacroDefinition) {
       return ((MacroDefinition)destinationType).areCompatible((MacroDefinition)sourceType);

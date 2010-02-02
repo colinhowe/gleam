@@ -33,6 +33,7 @@ import uk.co.colinhowe.glimpse.compiler.node.AConstantExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AController;
 import uk.co.colinhowe.glimpse.compiler.node.AControllerPropExpr;
 import uk.co.colinhowe.glimpse.compiler.node.ADynamicMacroDefn;
+import uk.co.colinhowe.glimpse.compiler.node.AFalseExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AForloop;
 import uk.co.colinhowe.glimpse.compiler.node.AGenerator;
 import uk.co.colinhowe.glimpse.compiler.node.AGeneratorExpr;
@@ -41,6 +42,7 @@ import uk.co.colinhowe.glimpse.compiler.node.AIncludeA;
 import uk.co.colinhowe.glimpse.compiler.node.AIncludeStmt;
 import uk.co.colinhowe.glimpse.compiler.node.AIncrementStmt;
 import uk.co.colinhowe.glimpse.compiler.node.AIntType;
+import uk.co.colinhowe.glimpse.compiler.node.AInvertExpr;
 import uk.co.colinhowe.glimpse.compiler.node.AMacroDefn;
 import uk.co.colinhowe.glimpse.compiler.node.AMacroStmt;
 import uk.co.colinhowe.glimpse.compiler.node.ANoInitVarDefn;
@@ -104,6 +106,19 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     this.outputFileName = outputFileName;
     
     classWriters.push(classWriter);
+  }
+  
+  @Override
+  public void outAFalseExpr(AFalseExpr node) {
+    MethodVisitor mv = methodVisitors.peek();
+
+    // Up-cast to a boolean
+    // we don't like leave primitive types on the stack
+    // This is inefficient but it simplifies implementation
+    mv.visitInsn(ICONST_0);
+    mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;");
+    
+    debug("boolean [false]");
   }
   
   
@@ -1049,6 +1064,17 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
   }
 
   @Override
+  public void outAInvertExpr(AInvertExpr node) {
+    // Assume that a Boolean is on the stack
+    MethodVisitor mv = methodVisitors.peek();
+    mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean");
+    mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z");
+    mv.visitLdcInsn(1);
+    mv.visitInsn(IXOR); // 1 ^ x is equivalent to !x
+    mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;");
+  }
+  
+  @Override
   public void outAWithInitVarDefn(AWithInitVarDefn node) {
     MethodVisitor mv = methodVisitors.peek();
 
@@ -1056,14 +1082,16 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     Label l1 = new Label();
     mv.visitLabel(l1);
     mv.visitVarInsn(ALOAD, 1);
+    mv.visitInsn(SWAP); // Value will already be on the stack, so swap it with the scope
     mv.visitLdcInsn(varname);
+    mv.visitInsn(SWAP); // value, name, scope
 
     PType type = node.getType();
     if (type instanceof AIntType) {
 //      mv.visitLocalVariable("x", "I", null, l1, l2, 2);
-      int i = Integer.parseInt(getStringFromExpr(node.getExpr()));
-      mv.visitIntInsn(SIPUSH, i);
-      mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;");
+//      int i = Integer.parseInt(getStringFromExpr(node.getExpr()));
+//      mv.visitIntInsn(SIPUSH, i);
+//      mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;");
     } else if (type instanceof AGeneratorType) {
       throw new RuntimeException("Cannot declare a generator as a variable");
     }
@@ -1140,6 +1168,7 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     // Up-cast to an Integer
     // we don't like leave primitive types on the stack
     // This is inefficient but it simplifies implementation
+    // TODO use valueOf
     mv.visitTypeInsn(NEW, "java/lang/Integer");
     mv.visitInsn(DUP_X1); 
     mv.visitInsn(SWAP);

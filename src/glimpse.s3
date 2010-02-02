@@ -23,15 +23,19 @@ Tokens
     dynamic = 'dynamic';
     
     type_int = 'int';
+    type_bool = 'bool';
     type_string = 'string';
     type_generator = 'generator';
+    
+    false = 'false';
+    true = 'true';
     
     controller_token = 'controller';
     
     controller_ref = 'c';
     
     dot = '.';
-    
+    bang = '!';
     
     identifier = letter (letter | digit | '_')*;
     number = digit+;
@@ -92,6 +96,7 @@ Productions
     type = {string} type_string
          | {generator} type_generator
          | {int} type_int
+         | {bool} type_bool
          | {qualified} qualified_type 
          | {compound} type lt types gt {-> New type.compound(type, [types.type]) }
          ;
@@ -112,6 +117,9 @@ Productions
          | {constant} number
          | {property} name
          | {controller_prop} controller_ref dot name {-> New expr.controller_prop(name)}
+         | {false} false
+         | {true} true
+         | {invert} bang expr {-> New expr.invert(expr)}
          ;
           
     var_defn = 
@@ -213,12 +221,16 @@ Abstract Syntax Tree
       | {constant} number
       | {property} name
       | {controller_prop} name
+      | {false} false
+      | {true} true
+      | {invert} expr
       ;
       
     type = 
        {string} type_string
      | {generator} type_generator
      | {int} type_int
+     | {bool} type_bool
      | {qualified} qualified_type
      | {compound} [parenttype]:type [types]:type*
      ;     

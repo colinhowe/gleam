@@ -9,7 +9,7 @@ import java.util.Map;
 
 public class Speed {
   
-  private int ITERATIONS = 10000000;
+  private int ITERATIONS = 30000000;
   
   public static List<Object> invokeStatic() {
     return new LinkedList<Object>();
@@ -19,6 +19,16 @@ public class Speed {
     public List<Object> invoke() {
       return new LinkedList<Object>();
     }
+  }
+  
+  public void withOneInstance() {
+    long start = System.currentTimeMillis();
+    GeneratorClass instance = new GeneratorClass();
+    for (int i = 0; i < ITERATIONS; i++) {
+      instance.invoke();
+    }
+    long end = System.currentTimeMillis();
+    System.out.println("With instance took:\t\t" + (end - start) + "ms");
   }
   
   public void withInstance() {
@@ -73,6 +83,7 @@ public class Speed {
   }
   
   public static void main(String[] args) throws SecurityException, IllegalArgumentException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+    new Speed().withOneInstance();
     new Speed().withInstance();
     new Speed().withCachedReflection();
     new Speed().peelingArguments();
