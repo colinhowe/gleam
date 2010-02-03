@@ -77,7 +77,7 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
   private final String viewname;
   private final Stack<Label> labels;
   private final Stack<String> generatorNames;
-  private final SimpleTypeProvider typeProvider;
+  private final TypeProvider typeProvider;
   private final ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
   private final String outputFileName;
   private final Set<String> dynamicMacros = new HashSet<String>();
@@ -94,7 +94,7 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
   }
   
   public ByteCodeProducer(String viewname, LineNumberProvider lineNumberProvider,
-      final SimpleTypeProvider typeProvider, final String outputFileName) {
+      final TypeProvider typeProvider, final String outputFileName) {
     this.generatorIds = new HashMap<AGenerator, Integer>();
     this.lineNumberProvider = lineNumberProvider;
     this.typeProvider = typeProvider;
@@ -1144,7 +1144,7 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V");
     
     // Put this variable and the type of it on to the scope
-    scopes.peek().add(varname, typeProvider.getType(node));
+    scopes.peek().add(varname, typeProvider.get(node));
   }
 
   @Override
@@ -1152,7 +1152,7 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     final String varname = node.getIdentifier().getText();
     
     // Put this variable and the type of it on to the scope
-    scopes.peek().add(varname, typeProvider.getType(node));
+    scopes.peek().add(varname, typeProvider.get(node));
   }
 
   @Override

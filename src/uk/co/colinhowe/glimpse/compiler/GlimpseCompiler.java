@@ -25,7 +25,7 @@ public class GlimpseCompiler {
      * Finding macro definitions
      */
     final LineNumberProvider lineNumberProvider = new LineNumberProvider();
-    final SimpleTypeProvider typeProvider = new SimpleTypeProvider();
+    final TypeProvider typeProvider = new TypeProvider();
     final MacroDefinitionProvider macroProvider = new MacroDefinitionProvider();
     final TypeResolver typeResolver = new TypeResolver(typeProvider, macroProvider);
     
@@ -35,7 +35,7 @@ public class GlimpseCompiler {
       ast.apply(lineNumberProvider);
       ast.apply(typeProvider);
       
-      MacroDefinitionFinder finder = new MacroDefinitionFinder(typeProvider, lineNumberProvider, macroProvider);
+      MacroDefinitionFinder finder = new MacroDefinitionFinder(lineNumberProvider, typeProvider, macroProvider);
       ast.apply(finder);
       intermediate.errors.addAll(finder.errorsAsJavaList());
 

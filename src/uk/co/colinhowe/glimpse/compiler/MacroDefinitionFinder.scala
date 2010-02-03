@@ -11,8 +11,8 @@ import scala.collection.JavaConversions._
 
 
 class MacroDefinitionFinder(
-    val typeProvider : SimpleTypeProvider, 
-    val lineNumberProvider : LineNumberProvider, 
+    val lineNumberProvider : LineNumberProvider,
+    val typeProvider : TypeProvider,
     val macroProvider : MacroDefinitionProvider)
   extends DepthFirstAdapter {
   
@@ -31,13 +31,13 @@ class MacroDefinitionFinder(
     }
     
     // Get the type of the content
-    val contentType = typeProvider.getType(node.getContentType())
+    val contentType = typeProvider.get(node.getContentType())
     val defn = new MacroDefinition(name, contentType, false)
 
     // Process all the arguments
     for (pargDefn <- node.getArgDefn()) {
       val argDefn = pargDefn.asInstanceOf[AArgDefn]
-      val argType = typeProvider.getType(argDefn.getType())
+      val argType = typeProvider.get(argDefn.getType())
       val argumentName = argDefn.getIdentifier().getText()
       defn.addArgument(argumentName, argType)
     }

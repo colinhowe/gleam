@@ -35,15 +35,15 @@ public class TypeResolver extends DepthFirstAdapter {
 
   private final Map<Node, Type> types = new HashMap<Node, Type>();
   private final Map<String, Type> genericsInScope = new HashMap<String, Type>();
-  private final SimpleTypeProvider simpleTypeProvider;
+  private final TypeProvider typeProvider;
   private final MacroDefinitionProvider macroProvider;
   
   public void addType(Node node, Type type) {
     types.put(node, type);
   }
   
-  public TypeResolver(SimpleTypeProvider simpleTypeProvider, MacroDefinitionProvider macroProvider) {
-    this.simpleTypeProvider = simpleTypeProvider;
+  public TypeResolver(TypeProvider typeProvider, MacroDefinitionProvider macroProvider) {
+    this.typeProvider = typeProvider;
     this.macroProvider = macroProvider;
   }
   
@@ -51,7 +51,7 @@ public class TypeResolver extends DepthFirstAdapter {
     if (types.containsKey(node)) {
       return types.get(node);
     } else {
-      return simpleTypeProvider.getType(node);
+      return typeProvider.get(node);
     }
   }
   
