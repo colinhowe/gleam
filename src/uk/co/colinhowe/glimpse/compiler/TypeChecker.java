@@ -17,6 +17,7 @@ import uk.co.colinhowe.glimpse.DynamicMacroMismatchError;
 import uk.co.colinhowe.glimpse.Generator;
 import uk.co.colinhowe.glimpse.IdentifierNotFoundError;
 import uk.co.colinhowe.glimpse.IdentifierNotFoundException;
+import uk.co.colinhowe.glimpse.MapUtil;
 import uk.co.colinhowe.glimpse.TypeCheckError;
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter;
 import uk.co.colinhowe.glimpse.compiler.node.*;
@@ -25,6 +26,7 @@ import uk.co.colinhowe.glimpse.compiler.typing.GenericType;
 import uk.co.colinhowe.glimpse.compiler.typing.SimpleType;
 import uk.co.colinhowe.glimpse.compiler.typing.Type;
 import uk.co.colinhowe.glimpse.infrastructure.Scope;
+import uk.co.colinhowe.glimpse.MapUtil;
 
 public class TypeChecker extends DepthFirstAdapter {
   private final LineNumberProvider lineNumberProvider;
@@ -35,6 +37,7 @@ public class TypeChecker extends DepthFirstAdapter {
   
   private Type typeOnStack;
   private Class<?> controllerClazz;
+  private scala.collection.mutable.Map genericsInScope = JavaConversions.asMap(new HashMap<String, Type>());
 
   public TypeChecker(final LineNumberProvider lineNumberProvider, final MacroDefinitionProvider macroProvider, final TypeResolver typeResolver) {
     this.lineNumberProvider = lineNumberProvider;
@@ -144,12 +147,16 @@ public class TypeChecker extends DepthFirstAdapter {
     scope.add(varName, varType);
   }
   
+  private scala.collection.immutable.Map<String, Type> immutableGenerics() {
+    return new MapUtil().asImmutable(genericsInScope);
+  }
+  
   @Override
   public void inAGenerator(AGenerator node) {
     scope = new Scope(scope, scope.isMacroScope());
     for (PArgDefn parg : node.getArgDefn()) {
       AArgDefn arg = (AArgDefn)parg;
-      scope.add(arg.getIdentifier().getText(), typeResolver.getType(arg.getType()));
+      scope.add(arg.getIdentifier().getText(), typeResolver.getType(arg.getType(), immutableGenerics()));
     }
   }
   
@@ -161,7 +168,7 @@ public class TypeChecker extends DepthFirstAdapter {
   @Override
   public void inAForloop(AForloop node) {
     scope = new Scope(scope, scope.isMacroScope());
-    scope.add(node.getIdentifier().getText(), typeResolver.getType(node.getType()));
+    scope.add(node.getIdentifier().getText(), typeResolver.getType(node.getType(), immutableGenerics()));
   }
   
   @Override
@@ -172,17 +179,31 @@ public class TypeChecker extends DepthFirstAdapter {
   @Override
   public void inAMacroDefn(AMacroDefn node) {
     scope = new Scope(scope, true);
-    for (PArgDefn parg : node.getArgDefn()) {
-      AArgDefn arg = (AArgDefn)parg;
-      scope.add(arg.getIdentifier().getText(), typeResolver.getType(arg.getType()));
+    
+    for (PGenericDefn pdefn : node.getGenericDefn()) {
+      AGenericDefn defn = (AGenericDefn)pdefn;
+      Type nodeType = typeResolver.getType(defn, immutableGenerics());
+
+      // Put this generic in scope
+      System.out.println("Put generic["+defn.getIdentifier().getText()+"] in scope");
+      genericsInScope.put(defn.getIdentifier().getText(), nodeType);
     }
     
-    scope.add(node.getContentName().getText(), typeResolver.getType(node.getContentType()));
+    for (PArgDefn parg : node.getArgDefn()) {
+      AArgDefn arg = (AArgDefn)parg;
+      scope.add(arg.getIdentifier().getText(), typeResolver.getType(arg.getType(), immutableGenerics()));
+    }
+    
+    scope.add(node.getContentName().getText(), typeResolver.getType(node.getContentType(), immutableGenerics()));
   }
   
   @Override
   public void outAMacroDefn(AMacroDefn node) {
     scope = scope.parentScope();
+
+    // Clear any generics in scope
+    genericsInScope.clear();
+    System.out.println("Cleared generics from scope");
   }
   
   
@@ -223,7 +244,7 @@ public class TypeChecker extends DepthFirstAdapter {
     for (PArgument pargument : arguments) {
       // Get the type of the argument in the call
       AArgument argument = (AArgument)pargument;
-      Type callType = typeResolver.getType(argument.getExpr());
+      Type callType = typeResolver.getType(argument.getExpr(), immutableGenerics());
       
       // Get the type of the argument as defined in the macro
       Type defnType = macroDefinition.getArguments().get(argument.getIdentifier().getText());
@@ -365,7 +386,7 @@ public class TypeChecker extends DepthFirstAdapter {
       MacroDefinition macroDefinition = (MacroDefinition)macroProvider.get(destinationVariable).iterator().next();
       
       if (macroDefinition != null && macroDefinition.isDynamic()) {
-        if (!areTypesCompatible(macroDefinition, typeResolver.getType(node.getExpr()))) {
+        if (!areTypesCompatible(macroDefinition, typeResolver.getType(node.getExpr(), immutableGenerics()))) {
           errors.add(new DynamicMacroMismatchError(
               lineNumberProvider.getLineNumber(node), 
               macroDefinition.getName()));

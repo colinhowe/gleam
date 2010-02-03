@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import scala.collection.JavaConversions;
 import uk.co.colinhowe.glimpse.Generator;
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter;
 import uk.co.colinhowe.glimpse.compiler.node.ACompoundQualifiedType;
@@ -29,12 +30,11 @@ import uk.co.colinhowe.glimpse.compiler.typing.CompoundType;
 import uk.co.colinhowe.glimpse.compiler.typing.GenericType;
 import uk.co.colinhowe.glimpse.compiler.typing.SimpleType;
 import uk.co.colinhowe.glimpse.compiler.typing.Type;
-
+import uk.co.colinhowe.glimpse.MapUtil;
 
 public class TypeResolver extends DepthFirstAdapter {
 
   private final Map<Node, Type> types = new HashMap<Node, Type>();
-  private final Map<String, Type> genericsInScope = new HashMap<String, Type>();
   private final TypeProvider typeProvider;
   private final MacroDefinitionProvider macroProvider;
   
@@ -47,11 +47,11 @@ public class TypeResolver extends DepthFirstAdapter {
     this.macroProvider = macroProvider;
   }
   
-  public Type getType(Node node) {
+  public Type getType(Node node, scala.collection.immutable.Map<String, Type> additionalTypes) {
     if (types.containsKey(node)) {
       return types.get(node);
     } else {
-      return typeProvider.get(node);
+      return typeProvider.getType(node, additionalTypes);
     }
   }
   

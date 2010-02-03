@@ -45,13 +45,13 @@ public class CallResolver extends DepthFirstAdapter {
     }
     
     // Get the type of the content
-    Type contentType = typeResolver.getType(node.getContentType());
+    Type contentType = typeResolver.getType(node.getContentType(), null);
     final MacroDefinition defn = new MacroDefinition(name, contentType, false);
 
     // Process all the arguments
     for (PArgDefn pargDefn : node.getArgDefn()) {
       AArgDefn argDefn = (AArgDefn)pargDefn;
-      Type type = typeResolver.getType(argDefn.getType());
+      Type type = typeResolver.getType(argDefn.getType(), null);
       String argumentName = argDefn.getIdentifier().getText();
       defn.addArgument(argumentName, type);
     }

@@ -56,6 +56,7 @@ import uk.co.colinhowe.glimpse.compiler.node.AView;
 import uk.co.colinhowe.glimpse.compiler.node.AWithGeneratorMacroInvoke;
 import uk.co.colinhowe.glimpse.compiler.node.AWithInitVarDefn;
 import uk.co.colinhowe.glimpse.compiler.node.AWithStringMacroInvoke;
+import uk.co.colinhowe.glimpse.compiler.node.Node;
 import uk.co.colinhowe.glimpse.compiler.node.PArgDefn;
 import uk.co.colinhowe.glimpse.compiler.node.PArgument;
 import uk.co.colinhowe.glimpse.compiler.node.PExpr;
@@ -1144,7 +1145,7 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V");
     
     // Put this variable and the type of it on to the scope
-    scopes.peek().add(varname, typeProvider.get(node));
+    scopes.peek().add(varname, typeProvider.getType(node, null));
   }
 
   @Override
@@ -1152,7 +1153,7 @@ public class ByteCodeProducer extends DepthFirstAdapter implements Opcodes {
     final String varname = node.getIdentifier().getText();
     
     // Put this variable and the type of it on to the scope
-    scopes.peek().add(varname, typeProvider.get(node));
+    scopes.peek().add(varname, typeProvider.getType(node, null)); //, JavaConversions.asMap(new HashMap())));
   }
 
   @Override

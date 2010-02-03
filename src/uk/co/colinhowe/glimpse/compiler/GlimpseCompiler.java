@@ -33,7 +33,6 @@ public class GlimpseCompiler {
       Start ast = intermediate.ast;
     
       ast.apply(lineNumberProvider);
-      ast.apply(typeProvider);
       
       MacroDefinitionFinder finder = new MacroDefinitionFinder(lineNumberProvider, typeProvider, macroProvider);
       ast.apply(finder);

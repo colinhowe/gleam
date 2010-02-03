@@ -9,13 +9,13 @@ import uk.co.colinhowe.glimpse.compiler.typing.Type
 import uk.co.colinhowe.glimpse.compiler.node._
 import scala.collection.JavaConversions._
 
-class TypeProvider extends DepthFirstAdapter {
-  val types = scala.collection.mutable.Map[Node, Type]()
-  val genericsInScope = scala.collection.mutable.Map[String, Type]()
-
-  def get(node : Node) : Type = types(node)
+class TypeProvider {
   
-  def getType(node : Node) : Type = {
+  def getType(node : Node, additionalTypes : Map[String, Type] = Map()) : Type = {
+    // TODO Remove this once we have more written in Scala
+    println(node + " 1addtional types: " + additionalTypes)
+    val additionalTypesMap = if (additionalTypes == null) Map[String, Type]() else additionalTypes
+    
     node match {
       case _ : AFalseExpr | 
            _ : ATrueExpr  | 
@@ -32,27 +32,29 @@ class TypeProvider extends DepthFirstAdapter {
       
       case _ : AGeneratorType => new SimpleType(classOf[Generator])
       
-      case defn : AGenericDefn => null // new GenericType(defn.getIdentifier().getText(), classOf[Object]);
-      case qualified : AQualifiedType => getType(qualified)
+      case defn : AGenericDefn => new GenericType(defn.getIdentifier().getText(), classOf[Object]);
+      case qualified : AQualifiedType => getType(qualified, additionalTypesMap)
       case defn : AWithInitVarDefn => getType(defn.getType)
-      case compound : ACompoundType => getType(compound)
+      case compound : ACompoundType => getType(compound, additionalTypesMap)
       case _ => null
     }
   }
   
-  def getType(node : ACompoundType) : Type = {
+  private def getType(node : ACompoundType, additionalTypes : Map[String, Type]) : Type = {
     // TODO Make compound types reference a Type instead of a Class as the parent type
     val parentType = getType(node.getParenttype()).asInstanceOf[SimpleType]
-    val subTypes = node.getTypes().map(getType(_))
+    val subTypes = node.getTypes().map(getType(_, additionalTypes))
     new CompoundType(parentType.getClazz, subTypes)
   }
   
   
-  def getType(node : AQualifiedType) : Type = {
+  private def getType(node : AQualifiedType, additionalTypes : Map[String, Type]) : Type = {
     // Determine the full type
     var typeNode = node.getQualifiedType()
     var typeName = ""
     
+    println("addtional types: " + additionalTypes)
+      
     while (typeNode != null) {
       typeNode match {
         case simple : ASimpleQualifiedType =>
@@ -71,35 +73,12 @@ class TypeProvider extends DepthFirstAdapter {
     }
     
     // TODO Check if this is a generic type
-    if (genericsInScope.contains(typeName)) {
-      return genericsInScope(typeName)
+    if (additionalTypes.contains(typeName)) {
+      return additionalTypes(typeName)
     } else {
       val loader = this.getClass().getClassLoader()
       val clazz = loader.loadClass(typeName)
       return new SimpleType(clazz)
     }
-  }
-  
-  override def defaultOut(node : Node) {
-    val nodeType = getType(node)
-    if (nodeType != null) {
-      types.put(node, nodeType)
-    }
-  }
-  
-  override def inAGenericDefn(node : AGenericDefn) {
-    val nodeType = new GenericType(node.getIdentifier().getText(), classOf[Object])//getType(node)
-
-    // TODO This needs to be properly scoped
-    // Put this generic in scope
-    println("Generic in scope [" + node.getIdentifier().getText() + "]")
-    genericsInScope.put(node.getIdentifier().getText(), nodeType)
-    types.put(node, nodeType);
-  }
-  
-  override def outAMacroDefn(node : AMacroDefn) {
-    // Done with the macro - wipe the generics in scope
-    println("Clearing generics in scope")
-    genericsInScope.clear();
   }
 }

@@ -28,7 +28,7 @@ class TestCallResolver extends AssertionsForJUnit {
   def testSingleResolution = {
     val lineNumberProvider = mock(classOf[LineNumberProvider])
     val typeProvider = mock(classOf[TypeResolver])
-    when(typeProvider.getType(any())).thenReturn(new SimpleType(classOf[Integer]))
+    when(typeProvider.getType(any(), any())).thenReturn(new SimpleType(classOf[Integer]))
 
     val resolver = new CallResolver(lineNumberProvider, typeProvider)
     val macroDefn = new AMacroDefn()
@@ -59,7 +59,7 @@ class TestCallResolver extends AssertionsForJUnit {
     val lineNumberProvider = mock(classOf[LineNumberProvider])
     when(lineNumberProvider.getLineNumber(any())).thenReturn(2)
     val typeProvider = mock(classOf[TypeResolver])
-    when(typeProvider.getType(any())).thenReturn(new SimpleType(classOf[Integer]))
+    when(typeProvider.getType(any(), any())).thenReturn(new SimpleType(classOf[Integer]))
     val resolver = new CallResolver(lineNumberProvider, typeProvider)
 
     val macroDefn = new AMacroDefn()
