@@ -7,6 +7,7 @@ import java.io.StringReader;
 import java.util.LinkedList;
 import java.util.List;
 
+import scala.collection.JavaConversions;
 import uk.co.colinhowe.glimpse.CompilationError;
 import uk.co.colinhowe.glimpse.CompilationResult;
 import uk.co.colinhowe.glimpse.compiler.lexer.Lexer;
@@ -66,7 +67,7 @@ public class GlimpseCompiler {
       // Compile all the nodes down to java
       final ByteCodeProducer bcp = new ByteCodeProducer(viewname, lineNumberProvider, typeProvider, "temp/" + viewname + ".class");
       ast.apply(bcp);
-      errors.addAll(bcp.getErrors());
+      errors.addAll(JavaConversions.asList(bcp.errors()));
       
       // Output the errors
       for (CompilationError error : errors) {
