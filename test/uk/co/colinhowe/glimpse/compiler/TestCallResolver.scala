@@ -44,9 +44,9 @@ class TestCallResolver extends AssertionsForJUnit {
     resolver.outAMacroDefn(macroDefn)
     
     val macros = resolver.getMacrosWithName("p")
-    assert(1 === macros.size())
+    assert(1 === macros.size)
     
-    val macro = macros.iterator().next()
+    val macro = macros.iterator.next()
     assert("p" === macro.getName())
     
     val arguments = macro.getArguments()
@@ -77,9 +77,9 @@ class TestCallResolver extends AssertionsForJUnit {
     resolver.outAMacroDefn(macroDefn2)
     
     // The second definition of p should have resulted in an error
-    val errors = resolver.getErrors()
-    assert(1 === errors.size())
-    val error = errors.get(0).asInstanceOf[MultipleDefinitionError]
+    val errors = resolver.errors
+    assert(1 === errors.size)
+    val error = errors(0).asInstanceOf[MultipleDefinitionError]
     assert(2 === error.lineNumber)
     assert("p" === error.macroName)
     verify(lineNumberProvider).getLineNumber(any())
