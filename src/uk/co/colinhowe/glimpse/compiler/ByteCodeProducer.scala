@@ -36,7 +36,7 @@ import uk.co.colinhowe.glimpse.infrastructure.Scope
 class ByteCodeProducer(
     val viewname : String, 
     val lineNumberProvider : LineNumberProvider,
-    val typeProvider : TypeProvider, 
+    val typeResolver : TypeResolver, 
     val outputFileName : String
    ) extends DepthFirstAdapter {
   private val nodeInitMethodSignature = "(Ljava/util/List;Ljava/lang/String;Ljava/lang/Object;)V"
@@ -321,6 +321,30 @@ class ByteCodeProducer(
     }
   }
   
+  override def outAPropertyrefExpr(node : APropertyrefExpr) {
+    val path = node.getName.toString.trim.replaceAll(" ", ".")
+
+    val l0 = new Label()
+    val mv = methodVisitors.peek
+    mv.visitLabel(l0)
+    mv.visitTypeInsn(NEW, "uk/co/colinhowe/glimpse/PropertyReference")
+    mv.visitInsn(DUP)
+    
+    mv.visitLdcInsn(path)
+    
+    // Get the value of the property
+    mv.visitVarInsn(ALOAD, 1) // scope
+    mv.visitLdcInsn("$controller") // name, scope
+    
+    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
+    mv.visitTypeInsn(CHECKCAST, getTypeName(controllerType))
+    evaluateProperty(node.getName, controllerType)
+    
+    mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/glimpse/PropertyReference", "<init>", "(Ljava/lang/String;Ljava/lang/Object;)V")
+
+    // Property reference is left on the stack
+  }
+  
   override def outAPropertyExpr(node : APropertyExpr) {
     val mv = methodVisitors.peek()
     
@@ -328,22 +352,38 @@ class ByteCodeProducer(
     val l1 = new Label()
     mv.visitLabel(l1)
     
-    if (node.getName().isInstanceOf[ASimpleName]) {
-      val simpleName = node.getName().asInstanceOf[ASimpleName]
-      
-      val name = simpleName.getIdentifier().getText()
-      
-      if (macros.contains(name)) {
-        mv.visitMethodInsn(INVOKESTATIC, name, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
-        debug("simpleMacroExpr [" + simpleName.getIdentifier().getText() + "]")
-      } else {
+    node.getName() match {
+      case simpleName : ASimpleName =>
+        val name = simpleName.getIdentifier().getText()
+        
+        if (macros.contains(name)) {
+          mv.visitMethodInsn(INVOKESTATIC, name, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
+          debug("simpleMacroExpr [" + simpleName.getIdentifier().getText() + "]")
+        } else {
+          mv.visitVarInsn(ALOAD, 1) // scope
+          mv.visitLdcInsn(name) // name, scope
+          mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
+          debug("simpleExpr [" + simpleName.getIdentifier().getText() + "]")
+        }
+        
+      case qualifiedName : AQualifiedName =>
+        var node = qualifiedName
+        
+        val ownerName = node.getIdentifier().getText()
+        
         mv.visitVarInsn(ALOAD, 1) // scope
-        mv.visitLdcInsn(name) // name, scope
+        mv.visitLdcInsn(ownerName) // name, scope
         mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
-        debug("simpleExpr [" + simpleName.getIdentifier().getText() + "]")
-      }
-    } else {
-      throw new RuntimeException("Unsupported type of node");
+        debug("propertyExpr top-level [" + ownerName + "]")
+
+        // Cast as appropriate
+        val ownerType = typeResolver.getType(node.getIdentifier(), null)
+        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(ownerType.asInstanceOf[SimpleType].getClazz))
+        
+        evaluateProperty(node.getName(), ownerType)
+      
+      case _ =>
+        throw new RuntimeException("Unsupported type of node [" + node + "]")
     }
     
     // Leave the property on the stack for the next instruction to pick up
@@ -384,7 +424,7 @@ class ByteCodeProducer(
       returnClass = ownerType.asInstanceOf[SimpleType].clazz.getMethod(methodName).getReturnType()
       returnType = Type.getInternalName(returnClass)
     } else {
-      throw new IllegalArgumentException("Only support simple types")
+      throw new IllegalArgumentException("Only support simple types [" + ownerType + "]")
     }
     mv.visitMethodInsn(INVOKEVIRTUAL, getTypeName(ownerType), methodName, "()L" + returnType + ";")
     
@@ -987,13 +1027,13 @@ class ByteCodeProducer(
     mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
     
     // Put this variable and the type of it on to the scope
-    scopes.peek().add(varname, typeProvider.getType(node, null))
+    scopes.peek().add(varname, typeResolver.getType(node, null))
   }
 
   override def outANoInitVarDefn(node : ANoInitVarDefn) {
     // Put this variable and the type of it on to the scope
     val varname = node.getIdentifier().getText()
-    scopes.peek().add(varname, typeProvider.getType(node, null))
+    scopes.peek().add(varname, typeResolver.getType(node, null))
   }
 
   override def outAIncrementStmt(node : AIncrementStmt) {

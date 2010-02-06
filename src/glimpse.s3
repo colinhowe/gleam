@@ -37,6 +37,8 @@ Tokens
     
     controller_ref = 'c';
     
+    property_ref = '@c.';
+    
     dot = '.';
     bang = '!';
     
@@ -130,6 +132,7 @@ Productions
          | {false} false
          | {true} true
          | {invert} bang expr {-> New expr.invert(expr)}
+         | {propertyref} property_ref name {-> New expr.propertyref(name)}
          ;
           
     var_defn = 
@@ -237,6 +240,7 @@ Abstract Syntax Tree
       | {false} false
       | {true} true
       | {invert} expr
+      | {propertyref} name
       ;
       
     ifelse = expr codeblock else? ;

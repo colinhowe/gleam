@@ -6,7 +6,6 @@ import java.util.HashMap
 import java.util.Iterator
 import java.util.LinkedList
 import java.util.List
-import java.util.Map
 
 import scala.collection.JavaConversions
 import scala.collection.JavaConversions._
@@ -26,6 +25,7 @@ import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
 import uk.co.colinhowe.glimpse.compiler.typing.Type
 import uk.co.colinhowe.glimpse.infrastructure.Scope
 import uk.co.colinhowe.glimpse.MapUtil
+import uk.co.colinhowe.glimpse.PropertyReference
 
 
 class TypeChecker(
@@ -46,10 +46,14 @@ class TypeChecker(
       case _ : AIntType => new SimpleType(classOf[java.lang.Integer])
       case _ : AStringType => new SimpleType(classOf[java.lang.String])
       case _ : ABoolType => new SimpleType(classOf[java.lang.Boolean])
-      case _ => throw new IllegalArgumentException("Cannot handle type [" + ptype + "]")
+      case qualified : AQualifiedType => new SimpleType(this.getClass.getClassLoader.loadClass(nameToString(qualified)))
+      case _ => throw new IllegalArgumentException("Cannot handle type [" + ptype + " : " + ptype.getClass + "]")
     }
   }
   
+  def nameToString(node : AQualifiedType) : String = {
+    node.toString.trim.replaceAll(" ", ".")
+  }
   
   def getExpressionType(expr : PExpr) : Type = {
     expr match {
@@ -58,7 +62,8 @@ class TypeChecker(
       case _ : AFalseExpr | 
            _ : ATrueExpr 
              => new SimpleType(classOf[java.lang.Boolean])
-      case _ => throw new IllegalArgumentException("Cannot handle expression[" + expr + "]")
+      case expr : AControllerPropExpr => typeResolver.getType(expr, Map[String, Type]())
+      case _ => throw new IllegalArgumentException("Cannot handle expression[" + expr + ":" + expr.getClass + "]")
     }
   }
 
@@ -255,6 +260,10 @@ class TypeChecker(
     }
   }
   
+  override def outAPropertyrefExpr(node : APropertyrefExpr) {
+    typeResolver.addType(node, new SimpleType(classOf[PropertyReference[_]]))
+  }
+  
   override def outAPropertyExpr(node : APropertyExpr) {
     // Get the type from the variable
     // TODO Move this in to the resolver?
@@ -271,6 +280,18 @@ class TypeChecker(
             node, 
             scope.get(pname.asInstanceOf[ASimpleName].getIdentifier().getText()).asInstanceOf[Type])
       }
+    } else if (pname.isInstanceOf[AQualifiedName]) {
+      val qualifiedName = pname.asInstanceOf[AQualifiedName]
+      val ownerType = scope.get(qualifiedName.getIdentifier().getText()).asInstanceOf[Type]
+      typeResolver.addType(
+          qualifiedName.getIdentifier(), 
+          ownerType)
+      
+      val returnType = evaluateCompoundProperty(qualifiedName.getName(), ownerType.asInstanceOf[SimpleType].clazz)
+      println("Compound return type [" + returnType + "]")
+      typeResolver.addType(
+          node, 
+          returnType)
     }
   }
   
@@ -278,9 +299,9 @@ class TypeChecker(
     s.substring(0, 1).toUpperCase() + s.substring(1)
   }
   
-  override def outAControllerPropExpr(node : AControllerPropExpr) { 
-    var nameNode = node.getName()
-    var currentType = controllerClazz
+  private def evaluateCompoundProperty(nameNode_ : PName, ownerClazz : Class[_]) : Type = {
+    var nameNode = nameNode_
+    var currentType = ownerClazz
     var returnType : Type = null
     while (nameNode != null) {
       var methodName : String = null
@@ -302,11 +323,17 @@ class TypeChecker(
         }
         returnType = new CompoundType(p.getRawType().asInstanceOf[Class[_]], JavaConversions.asList(innerTypes))
       } else {
-        returnType = new SimpleType(currentType)
+        returnType = new SimpleType(getter.getReturnType())
       }
       currentType = getter.getReturnType()
     }
+    
     // TODO Only set currentType on last iteration
+    return returnType
+  }
+  
+  override def outAControllerPropExpr(node : AControllerPropExpr) { 
+    val returnType = evaluateCompoundProperty(node.getName(), controllerClazz)
     typeResolver.addType(node, returnType)
   }
   

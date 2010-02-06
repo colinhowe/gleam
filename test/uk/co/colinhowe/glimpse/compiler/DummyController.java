@@ -6,14 +6,6 @@ import java.util.List;
 public class DummyController {
   private String name = "Name of the controller";
   
-  public static class CompoundProperty {
-    private String inner = "Inner property";
-
-    public String getInner() {
-      return inner;
-    }
-  }
-  
   private CompoundProperty compound = new CompoundProperty();
   
   private List<String> names = new LinkedList<String>();

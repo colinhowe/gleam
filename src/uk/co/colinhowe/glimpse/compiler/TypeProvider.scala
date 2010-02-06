@@ -68,8 +68,10 @@ class TypeProvider {
     
     // Overrides for known types
     // TODO Imports
-    if (typeName.equals("string")) {
-      typeName = "java.lang.string"
+    typeName = typeName match {
+      case "string" => "java.lang.string"
+      case "ref" => "uk.co.colinhowe.glimpse.PropertyReference"
+      case _ => typeName
     }
     
     // TODO Check if this is a generic type

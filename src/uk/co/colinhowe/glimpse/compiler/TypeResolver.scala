@@ -1,4 +1,5 @@
 package uk.co.colinhowe.glimpse.compiler
+import uk.co.colinhowe.glimpse.compiler.node.AQualifiedName
 
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
 import uk.co.colinhowe.glimpse.compiler.node.APropertyExpr
@@ -27,18 +28,22 @@ class TypeResolver(
   
   
   override def outAPropertyExpr(node : APropertyExpr) {
-    if (node.getName().isInstanceOf[ASimpleName]) {
-      val simpleName = node.getName().asInstanceOf[ASimpleName]
+    node.getName() match {
+      case simpleName : ASimpleName =>
+        val simpleName = node.getName().asInstanceOf[ASimpleName]
+        
+        val name = simpleName.getIdentifier().getText()
+        
+        if (macroProvider.get(name).size() > 0) {
+          this.types.put(node, macroProvider.get(name).iterator.next())
+        } else {
+          // TODO Get the type out
+        }
       
-      val name = simpleName.getIdentifier().getText()
+      case qualifiedName : AQualifiedName =>
       
-      if (macroProvider.get(name).size() > 0) {
-        this.types.put(node, macroProvider.get(name).iterator.next())
-      } else {
-        // TODO Get the type out
-      }
-    } else {
-      throw new RuntimeException("Unsupported type of node")
+      case _ =>
+        throw new RuntimeException("Unsupported type of node [" + node + "]")
     }
   }
 }
