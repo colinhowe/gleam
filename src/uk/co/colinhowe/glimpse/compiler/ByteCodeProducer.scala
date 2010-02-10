@@ -1003,36 +1003,22 @@ class ByteCodeProducer(
     mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;")
   }
   
-  override def outAWithInitVarDefn(node : AWithInitVarDefn) {
+  override def outAVarDefn(node : AVarDefn) {
     val mv = methodVisitors.peek()
 
     val varname = node.getIdentifier().getText()
-    val l1 = new Label()
-    mv.visitLabel(l1)
-    mv.visitVarInsn(ALOAD, 1)
-    mv.visitInsn(SWAP) // Value will already be on the stack, so swap it with the scope
-    mv.visitLdcInsn(varname)
-    mv.visitInsn(SWAP) // value, name, scope
-
-    val t = node.getType()
-    if (t.isInstanceOf[AIntType]) {
-//      mv.visitLocalVariable("x", "I", null, l1, l2, 2)
-//      int i = Integer.parseInt(getStringFromExpr(node.getExpr()))
-//      mv.visitIntInsn(SIPUSH, i)
-//      mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;")
-    } else if (t.isInstanceOf[AGeneratorType]) {
-      throw new RuntimeException("Cannot declare a generator as a variable")
+    if (node.getExpr() != null) {
+      val l1 = new Label()
+      mv.visitLabel(l1)
+      mv.visitVarInsn(ALOAD, 1)
+      mv.visitInsn(SWAP) // Value will already be on the stack, so swap it with the scope
+      mv.visitLdcInsn(varname)
+      mv.visitInsn(SWAP) // value, name, scope
+  
+      mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
     }
-
-    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
     
     // Put this variable and the type of it on to the scope
-    scopes.peek().add(varname, typeResolver.getType(node, null))
-  }
-
-  override def outANoInitVarDefn(node : ANoInitVarDefn) {
-    // Put this variable and the type of it on to the scope
-    val varname = node.getIdentifier().getText()
     scopes.peek().add(varname, typeResolver.getType(node, null))
   }
 

@@ -34,6 +34,15 @@ class TypeChecker(
     val typeResolver : TypeResolver
   ) extends DepthFirstAdapter {
   
+  /*
+   * TODO I think this could all be made a lot tidier
+   * 
+   * op(!, expects=boolean, returns=boolean)
+   * op(++, expects=integer, returns=integer)
+   * op(propertyReference, returns=typeOf(property))
+   */
+  
+  
   val errors = scala.collection.mutable.Buffer[CompilationError]()
   val genericsInScope = scala.collection.mutable.Map[String,Type]()
   
@@ -62,6 +71,8 @@ class TypeChecker(
       case _ : AFalseExpr | 
            _ : ATrueExpr 
              => new SimpleType(classOf[java.lang.Boolean])
+      case _ : AInvertExpr => new SimpleType(classOf[java.lang.Boolean])
+      case _ : APropertyExpr => typeResolver.getType(expr, Map[String, Type]())
       case expr : AControllerPropExpr => typeResolver.getType(expr, Map[String, Type]())
       case _ => throw new IllegalArgumentException("Cannot handle expression[" + expr + ":" + expr.getClass + "]")
     }
@@ -104,32 +115,11 @@ class TypeChecker(
     }
   }
   
-  override def outAVarDefnStmt(node : AVarDefnStmt) {
-    // Get the type of the LHS
-    var varType : Type = null
-    var varName : String = ""
-    
-    if (node.getVarDefn().isInstanceOf[AWithInitVarDefn]) {
-      val defn = node.getVarDefn().asInstanceOf[AWithInitVarDefn]
-      varType = getQualifiedType(defn.getType())
-      varName = defn.getIdentifier().getText()
-      
-      // Check the RHS type
-      val rhsType = getExpressionType(defn.getExpr())
-
-      // Check if the types are compatible
-      if (!areTypesCompatible(varType, rhsType)) {
-        errors += new TypeCheckError(
-            lineNumberProvider.getLineNumber(defn), varType, rhsType)
-      }
-      
-      // Add the variable and the type of it to the current scope
-    } else {
-      val defn = node.getVarDefn().asInstanceOf[ANoInitVarDefn]
-      varType = getQualifiedType(defn.getType())
-      varName = defn.getIdentifier().getText()
-    }
-    scope.add(varName, varType)
+  override def outAVarDefn(node: AVarDefn) {
+    // Get the RHS type
+    val rhsType = getExpressionType(node.getExpr())
+    val varName = node.getIdentifier().getText()
+    scope.add(varName, rhsType)
   }
   
   implicit def toImmutableMap[K, V](mutable : scala.collection.Map[K, V]) = scala.collection.immutable.Map[K, V]() ++ mutable
@@ -361,6 +351,16 @@ class TypeChecker(
   }
   
   
+  override def outAInvertExpr(node : AInvertExpr) {
+    // Get the type of each side
+    val exprType = getExpressionType(node.getExpr())
+    val boolType = new SimpleType(classOf[java.lang.Boolean])
+    if (!areTypesCompatible(boolType, exprType)) {
+      errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), boolType, exprType))
+    }
+  }
+  
+  
   override def outAAssignmentStmt(node : AAssignmentStmt) {
     // This could be a dynamic macro assignment
     val destinationVariable = node.getIdentifier().getText()
@@ -376,6 +376,14 @@ class TypeChecker(
               macroDefinition.getName()))
         }
       } 
+    } else {
+      // Get the type of each side
+      val lhsType = scope.get(destinationVariable).asInstanceOf[Type]
+      val rhsType = getExpressionType(node.getExpr())
+      
+      if (!areTypesCompatible(lhsType, rhsType)) {
+        errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), lhsType, rhsType))
+      }
     }
   }
   

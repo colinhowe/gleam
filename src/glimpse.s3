@@ -30,6 +30,8 @@ Tokens
     false = 'false';
     true = 'true';
     
+    var = 'var';
+    
     controller_token = 'controller';
     
     if = 'if';
@@ -136,16 +138,18 @@ Productions
          ;
           
     var_defn = 
-        {no_init} type identifier
-      | {with_init} type identifier equals expr {-> New var_defn.with_init(type, identifier, expr)};
-        
+        var identifier var_defn_init {-> New var_defn(identifier, var_defn_init.expr)} ;
+    
+    var_defn_init {-> expr} = equals expr {-> expr};
+    	
+    
     macro_defn = 
-      macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with [content_type]:type [content_name]:identifier [gen_args]:arg_defns? generator 
+      macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with [content_name]:identifier colon [content_type]:type [gen_args]:arg_defns? generator 
       {-> New macro_defn(name, [generic_defns.generic_defn], [macro_args.arg_defn], content_type, content_name, generator)}
       ;
       
     dynamic_macro_defn = 
-      dynamic macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with [content_type]:type [content_name]:identifier [gen_args]:arg_defns? 
+      dynamic macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with [content_name]:identifier colon [content_type]:type [gen_args]:arg_defns? 
       {-> New dynamic_macro_defn(name, [generic_defns.generic_defn], [macro_args.arg_defn], content_type, content_name)}
       ;
       
@@ -176,7 +180,7 @@ Productions
       | {multiple} arg_defns2 comma arg_defn {-> [arg_defns2.arg_defn, arg_defn]}
       ;
 
-    arg_defn = [type]:type [name]:identifier {-> New arg_defn(type, name) }; 
+    arg_defn = [name]:identifier colon [type]:type {-> New arg_defn(type, name) }; 
     
     generator = lbrace gen_args? stmt+ rbrace {-> New generator([gen_args.arg_defn], [stmt])};
     
@@ -228,8 +232,7 @@ Abstract Syntax Tree
     codeblock = stmt+ ;
          
     var_defn = 
-        {no_init} type identifier
-      | {with_init} type identifier expr;
+      identifier expr?;
       
     expr = 
         {string} string

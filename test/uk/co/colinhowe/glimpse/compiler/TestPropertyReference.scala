@@ -9,7 +9,7 @@ class TestPropertyReference extends CompilerTest {
     """
     controller uk.co.colinhowe.glimpse.compiler.DummyController
     
-    macro field(ref p) with string s {
+    macro field(p : ref) with s : string {
       node span p.path 
       node span p.value
     }

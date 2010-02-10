@@ -19,6 +19,12 @@ abstract trait TypeCheckerTest extends CompilerTest {
       val actualError = errors(0)
       assertEquals(expectedError, actualError)
     }
+    
+    def failsWith(expectedErrors : List[CompilationError]) : Unit = {
+      System.out.println("Expected: " + expectedErrors)
+      val actualErrors = runTypeChecker(new CompilationSet(List(source), null))
+      assertEquals(expectedErrors, actualErrors)
+    }
   }
   
   implicit def failsWith(source : String) = FailsWith(source)

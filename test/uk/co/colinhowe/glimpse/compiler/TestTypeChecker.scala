@@ -16,10 +16,10 @@ class TestTypeChecker extends TypeCheckerTest {
   @Test
   def assignStringToIntFails  = {   
     """    
-    int x = "a"
+    var x = 1    x = "a"
     """ failsWith
     TypeCheckError(
-        line = 2, 
+        line = 3, 
         expectedType = new SimpleType(classOf[Integer]), 
         actualType = new SimpleType(classOf[String]))
   }
@@ -27,10 +27,10 @@ class TestTypeChecker extends TypeCheckerTest {
   @Test
   def assignIntToStringFails  = {
     """    
-    string x = 1
+    var x = "a"    x = 1
     """ failsWith
     TypeCheckError(
-        line = 2, 
+        line = 3, 
         expectedType = new SimpleType(classOf[String]), 
         actualType = new SimpleType(classOf[Integer]))
   }
@@ -39,7 +39,7 @@ class TestTypeChecker extends TypeCheckerTest {
   @Test
   def assignStringToStringSuceeds = {   
     """
-    string x = "a"
+    var x = "a"
     """ succeeds
   }
   
@@ -47,7 +47,7 @@ class TestTypeChecker extends TypeCheckerTest {
   @Test
   def assignIntToIntSuceeds = {   
     """
-    int x = 1
+    var x = 1
     """ succeeds
   }
   
@@ -55,7 +55,7 @@ class TestTypeChecker extends TypeCheckerTest {
   @Test
   def invalidArgumentToMacro = {   
     """
-    macro p(int v) with string s { node p s }
+    macro p(v : int) with s : string { node p s }
     p(v: "1") "1"
     """ failsWith
     TypeCheckError(
@@ -68,7 +68,7 @@ class TestTypeChecker extends TypeCheckerTest {
   @Test
   def validCallToMacro = {
     """
-    macro p(int v) with string s { node p s }
+    macro p(v : int) with s : string { node p s }
     p(v: 1) "1"
     """ succeeds
   }
@@ -77,7 +77,7 @@ class TestTypeChecker extends TypeCheckerTest {
   @Test
   def invalidValueToMacro = {   
     """
-    macro p(int v) with string s { node p s }
+    macro p(v : int) with s : string { node p s }
     p(v: 1) {
       node div "hi"
     }
@@ -86,5 +86,5 @@ class TestTypeChecker extends TypeCheckerTest {
         line = 3, 
         expectedType = new SimpleType(classOf[String]), 
         actualType = new SimpleType(classOf[Generator]))  }  
-  @Test  def incrementOnString = {     """    string x = "1"    x++    node h1 x    """ failsWith    TypeCheckError(        line = 3,         expectedType = new SimpleType(classOf[Integer]),         actualType = new SimpleType(classOf[String]))  }
+  @Test  def incrementOnString = {     """    var x = "1"    x++    node h1 x    """ failsWith    TypeCheckError(        line = 3,         expectedType = new SimpleType(classOf[Integer]),         actualType = new SimpleType(classOf[String]))  }
 }

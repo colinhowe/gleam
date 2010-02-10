@@ -15,7 +15,7 @@ class TestGeneratorEnvironments extends CompilerTest {
   @Test
   def basicChanges = {   
     """
-    int x = 4
+    var x = 4
     node div {
       x++
     }
@@ -27,12 +27,12 @@ class TestGeneratorEnvironments extends CompilerTest {
   @Test
   def changesInMacroInvokation = {   
     """
-    macro div with generator g {
+    macro div with g : generator {
       node div {
         include g
       }   
     }
-    int x = 4
+    var x = 4
     div {
       x++
     }
@@ -44,11 +44,11 @@ class TestGeneratorEnvironments extends CompilerTest {
   @Test
   def macroArgumentsSafe = {   
     """
-    macro p(int value) with string s {
+    macro p(value : int) with s : string {
       value++
       node p(value: value) s
     }
-    int y = 10
+    var y = 10
     p(value: y) "hi"
     p(value: y) "hi2"
     """ compilesTo 
@@ -58,12 +58,12 @@ class TestGeneratorEnvironments extends CompilerTest {
   @Test
   def generatorArgumentsSafe = {   
     """
-    macro p with generator g(int value) {
-      int x = 4
+    macro p with g : generator(value : int) {
+      var x = 4
       include g(value: x) 
       node p x
     }
-    p { int value =>
+    p { value : int =>
       value++
     }
     """ compilesTo 
@@ -73,10 +73,10 @@ class TestGeneratorEnvironments extends CompilerTest {
   @Test
   def singleGeneratorArgument = {   
     """
-    macro p with generator g(int value) {
+    macro p with g : generator(value : int) {
       include g(v1: 1) 
     }
-    p { int v1 =>
+    p { v1 : int =>
       node p v1
     }
     """ compilesTo 
@@ -87,10 +87,10 @@ class TestGeneratorEnvironments extends CompilerTest {
   @Test
   def generatorArguments = {   
     """
-    macro p with generator g(int value) {
+    macro p with g : generator(value : int) {
       include g(v1: 1, v2: 2) 
     }
-    p { int v1, int v2 =>
+    p { v1 : int, v2 : int =>
       node p v1
       node p v2
     }
@@ -101,11 +101,11 @@ class TestGeneratorEnvironments extends CompilerTest {
   @Test
   def cannotBindOutsideMacroGenerator = {   
     """
-    macro p with generator g {
+    macro p with g : generator {
       node p "hi"
       y++
     }
-    int y = 4
+    var y = 4
     """ errors classOf[IdentifierNotFoundError]
     // TODO Should be a compile failure y cannot be found
   }

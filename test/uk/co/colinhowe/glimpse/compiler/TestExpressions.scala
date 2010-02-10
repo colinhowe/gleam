@@ -14,7 +14,7 @@ class TestExpressions extends CompilerTest {
   @Test
   def intDeclaration = {   
     """    
-    int x = 1
+    var x = 1
     node h1 x
     """ compilesTo 
     <view><h1>1</h1></view>
@@ -23,7 +23,7 @@ class TestExpressions extends CompilerTest {
   @Test
   def increment = { 
     """
-    int x = 1
+    var x = 1
     x++
     node h1 x
     """ compilesTo 
@@ -33,7 +33,7 @@ class TestExpressions extends CompilerTest {
   @Test
   def variableReassignment = {   
     """    
-    int x = 1
+    var x = 1
     x = 4
     node h1 x
     """ compilesTo 

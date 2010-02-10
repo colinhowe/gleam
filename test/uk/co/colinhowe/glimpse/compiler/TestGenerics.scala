@@ -14,7 +14,7 @@ class TestGenerics extends CompilerTest {
   @Test
   def simpleGenerics = {   
     """
-    macro p<T>(T value) with string s {
+    macro p<T>(value : T) with s : string {
       node p(value: value) s
     }
 
@@ -29,13 +29,13 @@ class TestGenerics extends CompilerTest {
     """
     controller uk.co.colinhowe.glimpse.compiler.DummyController
     
-    macro result_set<T>(java.util.List<T> list) with generator g(T row) {
+    macro result_set<T>(list : java.util.List<T>) with g : generator(row : T) {
       for (T t in list) {
         include g(row: t)
       }
     }
 
-    result_set(list: c.names) { string row =>
+    result_set(list: c.names) { row : string =>
       node p row
     }
     """ controller(new DummyController) compilesTo 
@@ -47,13 +47,13 @@ class TestGenerics extends CompilerTest {
     """
     controller uk.co.colinhowe.glimpse.compiler.DummyController
     
-    macro result_set<T>(java.util.List<T> list) with generator g(T row) {
+    macro result_set<T>(list : java.util.List<T>) with g : generator(row : T) {
       for (T t in list) {
         include g(row: t)
       }
     }
 
-    result_set(list: c.ages) { int row =>
+    result_set(list: c.ages) { row : int =>
       node p row
     }
     """ controller(new DummyController) compilesTo 

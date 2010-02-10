@@ -16,8 +16,8 @@ class TestDynamicMacro extends TypeCheckerTest {
   def noArguments = {  
     
     """
-    dynamic macro dynamo with generator g 
-    macro div with generator g {
+    dynamic macro dynamo with g : generator 
+    macro div with g : generator {
       node div {
         include g
       }   
@@ -38,8 +38,8 @@ class TestDynamicMacro extends TypeCheckerTest {
   @Test
   def arguments = {   
     """
-    dynamic macro dynamo(int value) with string s 
-    macro p(int value) with string s {
+    dynamic macro dynamo(value : int) with s : string 
+    macro p(value : int) with s : string {
       node p(value: value) s   
     }
     
@@ -54,8 +54,8 @@ class TestDynamicMacro extends TypeCheckerTest {
   @Test
   def valueNameMismatchOk = {   
     """
-    dynamic macro dynamo with string str
-    macro p with string s {
+    dynamic macro dynamo with str : string
+    macro p with s : string {
       node p s
     }
     
@@ -70,8 +70,8 @@ class TestDynamicMacro extends TypeCheckerTest {
   @Test
   def valueMismatch = {   
     """
-    dynamic macro dynamo with generator g 
-    macro p with string s {
+    dynamic macro dynamo with g : generator 
+    macro p with s : string {
       node p s   
     }
     
@@ -89,8 +89,8 @@ class TestDynamicMacro extends TypeCheckerTest {
   @Test
   def argumentMismatch = {   
     """
-    dynamic macro dynamo(int value) with string s 
-    macro p with string s {
+    dynamic macro dynamo(value : int) with s : string 
+    macro p with s : string {
       node p s   
     }
     

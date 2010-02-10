@@ -14,7 +14,7 @@ class TestMultipleArgumentMacro extends CompilerTest {
   @Test
   def nameArgument = {   
     """
-    macro p(string name) with string s {
+    macro p(name : string) with s : string {
       node p(name: name) s
     }
     p(name: "div1") "hi"

@@ -34,7 +34,6 @@ class TypeProvider {
       
       case defn : AGenericDefn => new GenericType(defn.getIdentifier().getText(), classOf[Object]);
       case qualified : AQualifiedType => getType(qualified, additionalTypesMap)
-      case defn : AWithInitVarDefn => getType(defn.getType)
       case compound : ACompoundType => getType(compound, additionalTypesMap)
       case _ => null
     }

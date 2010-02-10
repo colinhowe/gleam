@@ -15,7 +15,7 @@ class TestPropertyExpressions extends CompilerTest {
   def compound = {   
     """
     controller uk.co.colinhowe.glimpse.compiler.DummyController
-    uk.co.colinhowe.glimpse.compiler.CompoundProperty compound = c.compound
+    var compound = c.compound
     node h1 compound.inner
     """ controller new DummyController() compilesTo 
     <view><h1>Inner property</h1></view>

@@ -14,7 +14,7 @@ class TestMultipleFiles extends CompilerTest {
   @Test
   def twoFiles = {   
     """
-    macro div with generator g {
+    macro div with g : generator {
       node div {
         include g
       }   
