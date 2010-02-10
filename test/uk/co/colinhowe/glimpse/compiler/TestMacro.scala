@@ -66,4 +66,16 @@ class TestMacro extends CompilerTest {
     """ compilesTo 
     <view><div value="4"><span>hi</span></div></view>
   }
+  
+  @Test
+  def macroCallWithPropertyAsValue = {   
+    """
+    macro p(value : int) with s : string {
+      node p(value: value) s
+    }
+    var hiString = "hi"
+    p(value: 4) hiString
+    """ compilesTo 
+    <view><p value="4">hi</p></view>
+  }
 }

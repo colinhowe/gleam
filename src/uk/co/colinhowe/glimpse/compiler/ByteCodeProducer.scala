@@ -1083,7 +1083,7 @@ class ByteCodeProducer(
   }
 
   override def outAMacroStmt(node : AMacroStmt) {
-    val invocation = node.getMacroInvoke()
+    val invocation = node.getMacroInvoke().asInstanceOf[AMacroInvoke]
     val mv = methodVisitors.peek()
     
     // The arguments will be on the stack already.
@@ -1097,11 +1097,7 @@ class ByteCodeProducer(
     // args, macro value, arg
     mv.visitTypeInsn(CHECKCAST, "java/util/Map") // args, macro value, arg
 
-    val args = invocation match {
-      case invocation : AWithStringMacroInvoke => invocation.getArguments()
-      case invocation : AWithGeneratorMacroInvoke => invocation.getArguments()
-      case _ => throw new RuntimeException("Unsupported")
-    }
+    val args = invocation.getArguments()
     
     for (pargument <- args) {
       val argument = pargument.asInstanceOf[AArgument]
@@ -1126,11 +1122,7 @@ class ByteCodeProducer(
       mv.visitInsn(SWAP) // args, macro value
     }
 
-    val macroName = invocation match {
-      case invocation : AWithStringMacroInvoke => invocation.getIdentifier().getText()
-      case invocation : AWithGeneratorMacroInvoke => invocation.getIdentifier().getText()
-      case _ => throw new IllegalArgumentException("Unexpected invocation type [" + invocation + "]")
-    }
+    val macroName = invocation.getIdentifier().getText()
     
     // Stack: args, value (string)
     mv.visitInsn(SWAP) // value, args

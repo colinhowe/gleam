@@ -73,6 +73,7 @@ class TypeChecker(
              => new SimpleType(classOf[java.lang.Boolean])
       case _ : AInvertExpr => new SimpleType(classOf[java.lang.Boolean])
       case _ : APropertyExpr => typeResolver.getType(expr, Map[String, Type]())
+      case _ : AGeneratorExpr => new SimpleType(classOf[Generator])
       case expr : AControllerPropExpr => typeResolver.getType(expr, Map[String, Type]())
       case _ => throw new IllegalArgumentException("Cannot handle expression[" + expr + ":" + expr.getClass + "]")
     }
@@ -176,21 +177,12 @@ class TypeChecker(
   
   override def outAMacroStmt(node : AMacroStmt) {
     // Find the macro
-    val invocation = node.getMacroInvoke
+    val invocation = node.getMacroInvoke.asInstanceOf[AMacroInvoke]
 
     // Check the arguments are type-safe
-    var arguments : List[PArgument] = null
-    var macroName : String = null
-    var actualValueType : Type = null
-    if (invocation.isInstanceOf[AWithStringMacroInvoke]) {
-      arguments = invocation.asInstanceOf[AWithStringMacroInvoke].getArguments()
-      macroName = invocation.asInstanceOf[AWithStringMacroInvoke].getIdentifier().getText()
-      actualValueType = new SimpleType(classOf[java.lang.String])
-    } else {
-      arguments = invocation.asInstanceOf[AWithGeneratorMacroInvoke].getArguments()
-      macroName = invocation.asInstanceOf[AWithGeneratorMacroInvoke].getIdentifier().getText()
-      actualValueType = new SimpleType(classOf[Generator])
-    }
+    val arguments = invocation.getArguments()
+    val macroName = invocation.getIdentifier.getText
+    val actualValueType = getExpressionType(invocation.getExpr())
     
     // TODO Make this handle multiple types of the same macro
     val macrosWithName = macroProvider.get(macroName).iterator()

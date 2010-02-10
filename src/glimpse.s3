@@ -163,9 +163,7 @@ Productions
     generic_defn = identifier {-> New generic_defn(identifier) };
       
     macro_invoke = 
-        {with_generator} identifier opt_args? generator {-> New macro_invoke.with_generator(identifier, [opt_args.argument], generator)}
-      | {with_string} identifier opt_args? string {-> New macro_invoke.with_string(identifier, [opt_args.argument], string)}
-      ;
+      identifier opt_args? expr {-> New macro_invoke(identifier, [opt_args.argument], expr)} ;
     
     include_a = include [the_include]:identifier opt_args? {-> New include_a(the_include, [opt_args.argument])};
 
@@ -274,8 +272,7 @@ Abstract Syntax Tree
     
     dynamic_macro_defn = [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* [content_type]:type [content_name]:identifier;
 
-    macro_invoke = {with_generator} identifier [arguments]:argument* generator 
-                 | {with_string} identifier [arguments]:argument* string;
+    macro_invoke = identifier [arguments]:argument* expr;
     
     include_a = [the_include]:identifier  [arguments]:argument*;
     
