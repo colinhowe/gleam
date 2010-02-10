@@ -70,15 +70,20 @@ class ByteCodeProducer(
     // Assume boolean on the stack that can be cast to a bool
     val start = new Label()
     mv.visitLabel(start)
+    mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean")
     mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z")
     
     // Jump to the end if the expression is false
     val elseLabel = new Label()
+    val endLabel = new Label()
     mv.visitJumpInsn(IFEQ, elseLabel)
 
     // Add in the code block for truth
     if(node.getCodeblock() != null) {
       node.getCodeblock().apply(this)
+      
+      // Jump to the end of the if/else expression
+      mv.visitJumpInsn(GOTO, endLabel)
     }
     
     // The else block begins now
@@ -86,6 +91,7 @@ class ByteCodeProducer(
     if(node.getElse() != null) {
       node.getElse().apply(this)
     }
+    mv.visitLabel(endLabel)
   }
   
   override def outAFalseExpr(node : AFalseExpr) {

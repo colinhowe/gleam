@@ -25,7 +25,7 @@ class TestIf extends TypeCheckerTest {
   }
   
   @Test
-  def ifElse = {   
+  def ifElseWithIfFalse = {   
     """
     if (false) {
       node h1 false
@@ -37,4 +37,30 @@ class TestIf extends TypeCheckerTest {
     <view><h1>else</h1><h1>true</h1></view>
   }
   
+  @Test
+  def ifElseWithIfTrue = {   
+    """
+    if (true) {
+      node h1 "true"
+    } else {
+      node h1 "else"
+    }
+    node h1 true
+    """ compilesTo 
+    <view><h1>true</h1><h1>true</h1></view>
+  }
+  
+  @Test
+  def ifWithVariable = {   
+    """
+    var even = false
+    if (even) {
+      node h1 false
+    } else {
+      node h1 "else"
+    }
+    node h1 true
+    """ compilesTo 
+    <view><h1>else</h1><h1>true</h1></view>
+  }
 }
