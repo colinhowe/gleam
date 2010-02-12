@@ -53,6 +53,7 @@ class ByteCodeProducer(
   private var controllerType : uk.co.colinhowe.glimpse.compiler.typing.Type = null
   
   private val scopes = new Stack[Scope]()
+  private val imports = scala.collection.mutable.Map[String, Class[_]]()
 
   // Put the first class writer onto the stack of writers
   classWriters.push(classWriter);
@@ -609,8 +610,8 @@ class ByteCodeProducer(
     debug("controller has type [" + className + "]")
     
     // Load the controller class
-    val clazz = this.getClass().getClassLoader().loadClass(className)
-    controllerType = new SimpleType(clazz)
+    val clazzName = nameToStringForwards(node.getName())
+    controllerType = new SimpleType(getTypeByName(clazzName))
   }
 
   
@@ -1261,4 +1262,34 @@ class ByteCodeProducer(
       mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/Node", "setAttribute", "(Ljava/lang/String;Ljava/lang/Object;)V")
     }
   }
+
+  // TODO Move this out into a type name resolver
+  override def outAImport(node : AImport) {
+    val qualifiedName = nameToStringForwards(node.getName())
+    val clazzName = nameToClazzName(node.getName())
+    
+    imports(clazzName) = this.getClass().getClassLoader().loadClass(qualifiedName)
+  }
+  
+  def nameToStringForwards(name : PName) : String = {
+    name.toString().trim().replaceAll(" ", ".")
+  }
+  
+  def getTypeByName(clazzName : String) : Class[_] = {
+    // Check to see if there is an import for this class name
+    // We don't have to worry about periods as they won't be in the set of
+    // imports anyway
+    imports.get(clazzName) match {
+      case Some(clazz) => clazz
+      case None => this.getClass().getClassLoader().loadClass(clazzName)
+    }
+  }
+  
+  def nameToClazzName(node : PName) : String = {
+    node match {
+      case node : AQualifiedName => nameToClazzName(node.getName)
+      case node : ASimpleName => node.getIdentifier.getText
+    }
+  }
+  
 }
