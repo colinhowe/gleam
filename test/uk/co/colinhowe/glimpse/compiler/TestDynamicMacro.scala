@@ -14,7 +14,6 @@ class TestDynamicMacro extends TypeCheckerTest {
   
   @Test
   def noArguments = {  
-    
     """
     dynamic macro dynamo with g : generator 
     macro div with g : generator {

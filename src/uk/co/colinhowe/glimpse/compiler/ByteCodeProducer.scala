@@ -183,16 +183,12 @@ class ByteCodeProducer(
     // Get the name of the macro
     val macroName = node.getName().getText()
     
-    cw.visit(V1_6, ACC_SUPER, macroName, null, "java/lang/Object", Array[String]("uk/co/colinhowe/glimpse/Macro"))
+    cw.visit(V1_6, ACC_SUPER, macroName, null, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", Array[String]())
 
     // Instance field for the macro
     var fv = cw.visitField(ACC_PRIVATE + ACC_STATIC, "instance", "Luk/co/colinhowe/glimpse/Macro;", null, null)
     fv.visitEnd()
     
-    // Instance field for the macro that will be invoked at run-time
-    fv = cw.visitField(ACC_PUBLIC + ACC_STATIC, "toInvoke", "Luk/co/colinhowe/glimpse/Macro;", null, null)
-    fv.visitEnd()
-
     // Static constructor
     {
       val mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null)
@@ -235,7 +231,7 @@ class ByteCodeProducer(
       val l0 = new Label()
       mv.visitLabel(l0)
       mv.visitVarInsn(ALOAD, 0)
-      mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V")
+      mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", "<init>", "()V")
       mv.visitInsn(RETURN)
   
       val l3 = new Label()
@@ -245,26 +241,26 @@ class ByteCodeProducer(
       mv.visitEnd()
     } 
     
-    // Invoke method - just calls through to the target macro
-    {
-      val mv = cw.visitMethod(ACC_PUBLIC, 
-          "invoke", 
-          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;",
-          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;Ljava/lang/Object;)Ljava/util/List<Luk/co/colinhowe/glimpse/Node;>;", null);
-      mv.visitCode()
-
-      mv.visitFieldInsn(GETSTATIC, macroName, "toInvoke", "Luk/co/colinhowe/glimpse/Macro;") // target
-      mv.visitVarInsn(ALOAD, 1) // scope, target
-      mv.visitVarInsn(ALOAD, 2) // args, scope, target
-      mv.visitVarInsn(ALOAD, 3) // value, args, scope, target
-      mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Macro", "invoke",
-          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;")
-
-      mv.visitInsn(ARETURN)
-      
-      mv.visitMaxs(4, 7)
-      mv.visitEnd()
-    }
+//    // Invoke method - just calls through to the target macro
+//    {
+//      val mv = cw.visitMethod(ACC_PUBLIC, 
+//          "invoke", 
+//          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;",
+//          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;Ljava/lang/Object;)Ljava/util/List<Luk/co/colinhowe/glimpse/Node;>;", null);
+//      mv.visitCode()
+//
+//      mv.visitFieldInsn(GETSTATIC, macroName, "toInvoke", "Luk/co/colinhowe/glimpse/Macro;") // target
+//      mv.visitVarInsn(ALOAD, 1) // scope, target
+//      mv.visitVarInsn(ALOAD, 2) // args, scope, target
+//      mv.visitVarInsn(ALOAD, 3) // value, args, scope, target
+//      mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Macro", "invoke",
+//          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;")
+//
+//      mv.visitInsn(ARETURN)
+//      
+//      mv.visitMaxs(4, 7)
+//      mv.visitEnd()
+//    }
     
     cw.visitEnd()
     
@@ -1064,7 +1060,10 @@ class ByteCodeProducer(
     
     if (dynamicMacros.contains(destinationVariable)) {
       debug("setting dynamic macro [" + destinationVariable + "]")
-      mv.visitFieldInsn(PUTSTATIC, destinationVariable, "toInvoke", "Luk/co/colinhowe/glimpse/Macro;")
+      mv.visitMethodInsn(INVOKESTATIC, destinationVariable, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
+      mv.visitTypeInsn(CHECKCAST, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro")
+      mv.visitInsn(SWAP)
+      mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", "setToInvoke", "(Luk/co/colinhowe/glimpse/Macro;)V")
     } else {
       // The value will be sitting on the stack
       mv.visitVarInsn(ALOAD, 1) // scope, value
