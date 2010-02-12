@@ -31,7 +31,8 @@ import uk.co.colinhowe.glimpse.PropertyReference
 class TypeChecker(
     val lineNumberProvider : LineNumberProvider,
     val macroProvider : MacroDefinitionProvider,
-    val typeResolver : TypeResolver
+    val typeResolver : TypeResolver,
+    val typeNameResolver : TypeNameResolver
   ) extends DepthFirstAdapter {
   
   /*
@@ -43,7 +44,6 @@ class TypeChecker(
    */
   val errors = scala.collection.mutable.Buffer[CompilationError]()
   val genericsInScope = scala.collection.mutable.Map[String,Type]()
-  val imports = scala.collection.mutable.Map[String, Class[_]]()
   
   var scope : Scope = new Scope(null, false)
   var typeOnStack : Type = null
@@ -323,27 +323,14 @@ class TypeChecker(
     controllerClazz = getTypeByName(clazzName)
   }
   
-  override def outAImport(node : AImport) {
-    val qualifiedName = nameToString(node.getName())
-    val clazzName = nameToClazzName(node.getName())
-    
-    imports(clazzName) = this.getClass().getClassLoader().loadClass(qualifiedName)
-  }
   
   def getTypeByName(clazzName : String) : Class[_] = {
     // Check to see if there is an import for this class name
     // We don't have to worry about periods as they won't be in the set of
     // imports anyway
-    imports.get(clazzName) match {
+    typeNameResolver.getClassByName(clazzName) match {
       case Some(clazz) => clazz
       case None => this.getClass().getClassLoader().loadClass(clazzName)
-    }
-  }
-  
-  def nameToClazzName(node : PName) : String = {
-    node match {
-      case node : AQualifiedName => nameToClazzName(node.getName)
-      case node : ASimpleName => node.getIdentifier.getText
     }
   }
   

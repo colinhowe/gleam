@@ -55,7 +55,8 @@ class GlimpseCompiler {
       val errors = scala.collection.mutable.Buffer[CompilationError]() ++ intermediate.errors
       
       // Run the type checker
-      val typeChecker = new TypeChecker(lineNumberProvider, macroProvider, typeResolver)
+      val typeNameResolver = new TypeNameResolver(ast)
+      val typeChecker = new TypeChecker(lineNumberProvider, macroProvider, typeResolver, typeNameResolver)
       ast.apply(typeChecker)
       errors ++ typeChecker.errors
       

@@ -239,28 +239,7 @@ class ByteCodeProducer(
       mv.visitLocalVariable("this", "L" + macroName + ";", null, l0, l3, 0)
       mv.visitMaxs(0, 0)
       mv.visitEnd()
-    } 
-    
-//    // Invoke method - just calls through to the target macro
-//    {
-//      val mv = cw.visitMethod(ACC_PUBLIC, 
-//          "invoke", 
-//          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;",
-//          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;Ljava/lang/Object;)Ljava/util/List<Luk/co/colinhowe/glimpse/Node;>;", null);
-//      mv.visitCode()
-//
-//      mv.visitFieldInsn(GETSTATIC, macroName, "toInvoke", "Luk/co/colinhowe/glimpse/Macro;") // target
-//      mv.visitVarInsn(ALOAD, 1) // scope, target
-//      mv.visitVarInsn(ALOAD, 2) // args, scope, target
-//      mv.visitVarInsn(ALOAD, 3) // value, args, scope, target
-//      mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Macro", "invoke",
-//          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;")
-//
-//      mv.visitInsn(ARETURN)
-//      
-//      mv.visitMaxs(4, 7)
-//      mv.visitEnd()
-//    }
+    }
     
     cw.visitEnd()
     
