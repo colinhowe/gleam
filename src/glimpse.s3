@@ -26,6 +26,7 @@ Tokens
     type_bool = 'bool';
     type_string = 'string';
     type_generator = 'generator';
+    timport = 'import';
     
     false = 'false';
     true = 'true';
@@ -78,7 +79,7 @@ Ignored Tokens
     multi_line_comment;
     
 Productions 
-    view = controller? defn* stmt* ;
+    view = import* controller? defn* stmt* ;
     
     defn = 
         {m} macro_defn 
@@ -119,6 +120,7 @@ Productions
         {simple} identifier
       | {compound} identifier dot qualified_type {-> New qualified_type.compound(identifier, qualified_type) };
          
+    import = timport name {-> New import(name) };
          
     types {-> type* } = 
             {singular} type {-> [type] }
@@ -198,7 +200,7 @@ Productions
     //string_literal = string;
                      
 Abstract Syntax Tree
-    view = controller? defn* stmt+;
+    view = import* controller? defn* stmt+;
     
     defn =
         {m} macro_defn
@@ -259,6 +261,8 @@ Abstract Syntax Tree
     qualified_type = 
       {simple} identifier
     | {compound} identifier qualified_type;
+      
+    import = name;
       
     node_create = 
       [id]:identifier [arguments]:argument* [expr]:expr 
