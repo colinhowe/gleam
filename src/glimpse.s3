@@ -114,14 +114,9 @@ Productions
          | {generator} type_generator
          | {int} type_int
          | {bool} type_bool
-         | {qualified} qualified_type 
+         | {qualified} name  {-> New type.qualified([name.identifier])}
          | {compound} type lt types gt {-> New type.compound(type, [types.type]) }
          ;
-         
-    qualified_type =
-        {simple} identifier
-      | {compound} qualified_type dot identifier  {-> New qualified_type.compound(qualified_type, identifier) }
-      ;
          
     import = timport import_type {-> New import(import_type) };
     
@@ -257,14 +252,10 @@ Abstract Syntax Tree
      | {generator} type_generator
      | {int} type_int
      | {bool} type_bool
-     | {qualified} qualified_type
+     | {qualified} identifier*
      | {compound} [parenttype]:type [types]:type*
      ;     
      
-    qualified_type = 
-      {simple} identifier
-    | {compound} qualified_type identifier;
-      
     import = import_type;
     
     import_type =

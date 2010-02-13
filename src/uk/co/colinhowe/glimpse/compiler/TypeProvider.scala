@@ -7,6 +7,7 @@ import uk.co.colinhowe.glimpse.compiler.typing.GenericType
 import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
 import uk.co.colinhowe.glimpse.compiler.typing.Type
 import uk.co.colinhowe.glimpse.compiler.node._
+import uk.co.colinhowe.glimpse.compiler.IdentifierConverter._
 import scala.collection.JavaConversions._
 
 class TypeProvider {
@@ -48,29 +49,11 @@ class TypeProvider {
   
   
   private def getType(node : AQualifiedType, typeNameResolver : TypeNameResolver, additionalTypes : Map[String, Type]) : Type = {
-    // Determine the full type
-    var typeNode = node.getQualifiedType()
-    var typeName = ""
-    
-    println("addtional types: " + additionalTypes)
-      
-    while (typeNode != null) {
-      typeNode match {
-        case simple : ASimpleQualifiedType =>
-          typeName = simple.getIdentifier().getText() + typeName
-          typeNode = null
-        case compound : ACompoundQualifiedType =>
-          typeName = "." + compound.getIdentifier().getText() + typeName
-          typeNode = compound.getQualifiedType()
-      }
-    }
-    
-    // Overrides for known types
-    // TODO Imports
-    typeName = typeName match {
-      case "string" => "java.lang.string"
+    // Check for known overrides
+    val typeName = identifierListToString(node.getIdentifier) match {
+      case "string" => "java.lang.String"
       case "ref" => "uk.co.colinhowe.glimpse.PropertyReference"
-      case _ => typeName
+      case s => s
     }
     
     // TODO Check if this is a generic type
