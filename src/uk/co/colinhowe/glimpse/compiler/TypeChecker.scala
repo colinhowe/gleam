@@ -26,8 +26,8 @@ import uk.co.colinhowe.glimpse.compiler.typing.Type
 import uk.co.colinhowe.glimpse.infrastructure.Scope
 import uk.co.colinhowe.glimpse.MapUtil
 import uk.co.colinhowe.glimpse.PropertyReference
-
-
+import uk.co.colinhowe.glimpse.compiler.IdentifierConverter._
+ 
 class TypeChecker(
     val lineNumberProvider : LineNumberProvider,
     val macroProvider : MacroDefinitionProvider,
@@ -248,31 +248,31 @@ class TypeChecker(
   override def outAPropertyExpr(node : APropertyExpr) {
     // Get the type from the variable
     // TODO Move this in to the resolver?
-    val pname = node.getName()
-    if (pname.isInstanceOf[ASimpleName]) {
+    val name = identifierListToString(node.getIdentifier)
+    
       // TODO Make this handle multiple types of the same macro
-      val macrosWithName = macroProvider.get(pname.asInstanceOf[ASimpleName].getIdentifier().getText()).iterator()
-      if (macrosWithName.hasNext()) {
-        typeResolver.addType(
-            node, 
-            macrosWithName.next()) 
-      } else {
-        typeResolver.addType(
-            node, 
-            scope.get(pname.asInstanceOf[ASimpleName].getIdentifier().getText()).asInstanceOf[Type])
-      }
-    } else if (pname.isInstanceOf[AQualifiedName]) {
-      val qualifiedName = pname.asInstanceOf[AQualifiedName]
-      val ownerType = scope.get(qualifiedName.getIdentifier().getText()).asInstanceOf[Type]
-      typeResolver.addType(
-          qualifiedName.getIdentifier(), 
-          ownerType)
-      
-      val returnType = evaluateCompoundProperty(qualifiedName.getName(), ownerType.asInstanceOf[SimpleType].clazz)
-      println("Compound return type [" + returnType + "]")
+    val macrosWithName = macroProvider.get(name).iterator()
+    if (macrosWithName.hasNext()) {
       typeResolver.addType(
           node, 
-          returnType)
+          macrosWithName.next()) 
+    } else {
+      if (node.getIdentifier.size == 1) {
+        typeResolver.addType(
+            node, 
+            scope.get(name).asInstanceOf[Type])
+      } else {
+        val ownerType = scope.get(node.getIdentifier.head.getText).asInstanceOf[Type]
+        typeResolver.addType(
+            node.getIdentifier.head, 
+            ownerType)
+        
+        val returnType = evaluateCompoundProperty(node.getIdentifier.tail, ownerType.asInstanceOf[SimpleType].clazz)
+        println("Compound return type [" + returnType + "]")
+        typeResolver.addType(
+            node, 
+            returnType)
+      }
     }
   }
   
@@ -280,19 +280,11 @@ class TypeChecker(
     s.substring(0, 1).toUpperCase() + s.substring(1)
   }
   
-  private def evaluateCompoundProperty(nameNode_ : PName, ownerClazz : Class[_]) : Type = {
-    var nameNode = nameNode_
+  private def evaluateCompoundProperty(identifiers : List[TIdentifier], ownerClazz : Class[_]) : Type = {
     var currentType = ownerClazz
     var returnType : Type = null
-    while (nameNode != null) {
-      var methodName : String = null
-      if (nameNode.isInstanceOf[AQualifiedName]) {
-        methodName = "get" + capitalise(nameNode.asInstanceOf[AQualifiedName].getIdentifier().getText())
-        nameNode = nameNode.asInstanceOf[AQualifiedName].getName()
-      } else {
-        methodName = "get" + capitalise(nameNode.asInstanceOf[ASimpleName].getIdentifier().getText())
-        nameNode = null
-      }
+    for (identifier <- identifiers) {
+      val methodName = "get" + capitalise(identifier.getText())
       val getter = currentType.getMethod(methodName)
       val t = getter.getGenericReturnType()
       
@@ -314,12 +306,12 @@ class TypeChecker(
   }
   
   override def outAControllerPropExpr(node : AControllerPropExpr) { 
-    val returnType = evaluateCompoundProperty(node.getName(), controllerClazz)
+    val returnType = evaluateCompoundProperty(node.getIdentifier, controllerClazz)
     typeResolver.addType(node, returnType)
   }
   
   override def outAController(node : AController) {
-    val clazzName = nameToString(node.getName())
+    val clazzName = identifierListToString(node.getIdentifier)
     controllerClazz = getTypeByName(clazzName)
   }
   
@@ -332,24 +324,6 @@ class TypeChecker(
       case Some(clazz) => clazz
       case None => this.getClass().getClassLoader().loadClass(clazzName)
     }
-  }
-  
-  
-  def nameToString(node : PName) : String = {
-    // Chunk the name down
-    var nameNode = node
-    var name = ""
-    
-    while (nameNode != null) {
-      if (nameNode.isInstanceOf[AQualifiedName]) {
-        name = name + nameNode.asInstanceOf[AQualifiedName].getIdentifier().getText() + "."
-        nameNode = nameNode.asInstanceOf[AQualifiedName].getName()
-      } else {
-        name = name + nameNode.asInstanceOf[ASimpleName].getIdentifier().getText()
-        nameNode = null
-      }
-    }
-    return name
   }
   
   

@@ -5,14 +5,6 @@ package uk.co.colinhowe.glimpse.compiler
 
 import java.io.File
 import java.io.FileOutputStream
-import java.util.ArrayList
-import java.util.HashMap
-import java.util.HashSet
-import java.util.LinkedList
-import java.util.List
-import java.util.Map
-import java.util.Set
-import java.util.Stack
 
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.FieldVisitor
@@ -24,36 +16,37 @@ import org.objectweb.asm.Type
 import scala.Tuple2
 import scala.collection.JavaConversions
 import scala.collection.JavaConversions._
+import scala.collection.mutable.{ Stack => MStack }
 import uk.co.colinhowe.glimpse.CompilationError
 import uk.co.colinhowe.glimpse.DynamicMacroMismatchError
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
 import uk.co.colinhowe.glimpse.compiler.node._
 import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
 import uk.co.colinhowe.glimpse.infrastructure.Scope
-
+import uk.co.colinhowe.glimpse.compiler.IdentifierConverter._
 
 
 class ByteCodeProducer(
     val viewname : String, 
     val lineNumberProvider : LineNumberProvider,
     val typeResolver : TypeResolver, 
-    val outputFileName : String
+    val outputFileName : String,
+    val typeNameResolver : TypeNameResolver
    ) extends DepthFirstAdapter {
   private val nodeInitMethodSignature = "(Ljava/util/List;Ljava/lang/String;Ljava/lang/Object;)V"
   
   private var generatorCount : Int = 0
   private val generatorIds = scala.collection.mutable.Map[AGenerator, Integer]()
-  private val methodVisitors = new Stack[MethodVisitor]()
-  private val labels = new Stack[Label]()
-  private val generatorNames = new Stack[String]()
-  private val classWriters = new Stack[ClassWriter]()
+  private val methodVisitors = new MStack[MethodVisitor]()
+  private val labels = new MStack[Label]()
+  private val generatorNames = new MStack[String]()
+  private val classWriters = new MStack[ClassWriter]()
   private val classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS)
   private val dynamicMacros = scala.collection.mutable.Set[String]()
   private val macros = scala.collection.mutable.Set[String]()
   private var controllerType : uk.co.colinhowe.glimpse.compiler.typing.Type = null
   
-  private val scopes = new Stack[Scope]()
-  private val imports = scala.collection.mutable.Map[String, Class[_]]()
+  private val scopes = new MStack[Scope]()
 
   // Put the first class writer onto the stack of writers
   classWriters.push(classWriter);
@@ -61,7 +54,7 @@ class ByteCodeProducer(
   val errors = scala.collection.mutable.Buffer[CompilationError]()
   
   override def caseAIfelse(node : AIfelse) {
-    val mv = methodVisitors.peek()
+    val mv = methodVisitors.head
 
     // Calculate the expression
     if(node.getExpr() != null) {
@@ -96,7 +89,7 @@ class ByteCodeProducer(
   }
   
   override def outAFalseExpr(node : AFalseExpr) {
-    val mv = methodVisitors.peek()
+    val mv = methodVisitors.head
 
     // Up-cast to a boolean
     // we don't like leave primitive types on the stack
@@ -108,7 +101,7 @@ class ByteCodeProducer(
   }
   
   override def outATrueExpr(node : ATrueExpr) {
-    val mv = methodVisitors.peek()
+    val mv = methodVisitors.head
 
     // Up-cast to a boolean
     // we don't like leave primitive types on the stack
@@ -133,7 +126,7 @@ class ByteCodeProducer(
     }
 
     // The iterable should be on the top of the stack
-    val mv = methodVisitors.peek()
+    val mv = methodVisitors.head
     mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "iterator", "()Ljava/util/Iterator;")
 
     val l2 = new Label()
@@ -265,8 +258,8 @@ class ByteCodeProducer(
   override def outAView(node : AView) {
     if (node.getStmt().size() > 0) {
       // Return the list of nodes
-      val mv = methodVisitors.peek()
-      val l0 = labels.peek()
+      val mv = methodVisitors.head
+      val l0 = labels.head
       
       val l2 = new Label()
       mv.visitLabel(l2)
@@ -284,7 +277,7 @@ class ByteCodeProducer(
       mv.visitMaxs(0, 0)
       mv.visitEnd()
       
-      classWriters.peek().visitEnd()
+      classWriters.head.visitEnd()
       
       scopes.pop()
       
@@ -304,10 +297,10 @@ class ByteCodeProducer(
   }
   
   override def outAPropertyrefExpr(node : APropertyrefExpr) {
-    val path = node.getName.toString.trim.replaceAll(" ", ".")
+    val path = IdentifierConverter.identifierListToString(node.getIdentifier())
 
     val l0 = new Label()
-    val mv = methodVisitors.peek
+    val mv = methodVisitors.head
     mv.visitLabel(l0)
     mv.visitTypeInsn(NEW, "uk/co/colinhowe/glimpse/PropertyReference")
     mv.visitInsn(DUP)
@@ -320,7 +313,7 @@ class ByteCodeProducer(
     
     mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
     mv.visitTypeInsn(CHECKCAST, getTypeName(controllerType))
-    evaluateProperty(node.getName, controllerType)
+    evaluateProperty(node.getIdentifier(), controllerType)
     
     mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/glimpse/PropertyReference", "<init>", "(Ljava/lang/String;Ljava/lang/Object;)V")
 
@@ -328,51 +321,39 @@ class ByteCodeProducer(
   }
   
   override def outAPropertyExpr(node : APropertyExpr) {
-    val mv = methodVisitors.peek()
+    val mv = methodVisitors.head
     
     // Get the value from the scope
     val l1 = new Label()
     mv.visitLabel(l1)
     
-    node.getName() match {
-      case simpleName : ASimpleName =>
-        val name = simpleName.getIdentifier().getText()
-        
-        if (macros.contains(name)) {
-          mv.visitMethodInsn(INVOKESTATIC, name, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
-          debug("simpleMacroExpr [" + simpleName.getIdentifier().getText() + "]")
-        } else {
-          mv.visitVarInsn(ALOAD, 1) // scope
-          mv.visitLdcInsn(name) // name, scope
-          mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
-          debug("simpleExpr [" + simpleName.getIdentifier().getText() + "]")
-        }
-        
-      case qualifiedName : AQualifiedName =>
-        var node = qualifiedName
-        
-        val ownerName = node.getIdentifier().getText()
-        
-        mv.visitVarInsn(ALOAD, 1) // scope
-        mv.visitLdcInsn(ownerName) // name, scope
-        mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
-        debug("propertyExpr top-level [" + ownerName + "]")
+    val name = IdentifierConverter.identifierListToString(node.getIdentifier)
 
+    if (macros.contains(name)) {
+      mv.visitMethodInsn(INVOKESTATIC, name, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
+      debug("simpleMacroExpr [" + name + "]")
+    } else {
+      
+      mv.visitVarInsn(ALOAD, 1) // scope
+      mv.visitLdcInsn(node.getIdentifier.head.getText) // name, scope
+      mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
+      debug("fromScope [" + node.getIdentifier() + "]")
+
+        
+      if (node.getIdentifier().size() > 1) {
         // Cast as appropriate
-        val ownerType = typeResolver.getType(node.getIdentifier(), null)
+        val ownerType = typeResolver.getType(node.getIdentifier.head, null)
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(ownerType.asInstanceOf[SimpleType].getClazz))
         
-        evaluateProperty(node.getName(), ownerType)
-      
-      case _ =>
-        throw new RuntimeException("Unsupported type of node [" + node + "]")
+        evaluateProperty(node.getIdentifier.tail, ownerType)
+      }
     }
     
     // Leave the property on the stack for the next instruction to pick up
   }
   
   override def outAControllerPropExpr(node : AControllerPropExpr) {
-    val mv = methodVisitors.peek()
+    val mv = methodVisitors.head
     
     // Get the value from the scope
     val l1 = new Label()
@@ -385,18 +366,14 @@ class ByteCodeProducer(
     
     mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
     mv.visitTypeInsn(CHECKCAST, getTypeName(controllerType))
-    evaluateProperty(node.getName(), controllerType)
+    evaluateProperty(node.getIdentifier(), controllerType)
   }
   
-  def evaluateProperty(node : PName, ownerType : uk.co.colinhowe.glimpse.compiler.typing.Type) {
-    val mv = methodVisitors.peek()
+  def evaluateProperty(identifiers : Iterable[TIdentifier], ownerType : uk.co.colinhowe.glimpse.compiler.typing.Type) {
+    val mv = methodVisitors.head
     
     // The controller will be on the stack
-    val name = node match {
-      case node : ASimpleName => node.getIdentifier().getText()
-      case node : AQualifiedName => node.getIdentifier().getText()
-      case _ => throw new RuntimeException("Type does not exist")
-    }
+    val name = identifiers.head.getText
     
     /// Determine the method return type
     var methodName = "get" + capitalise(name)
@@ -411,8 +388,8 @@ class ByteCodeProducer(
     mv.visitMethodInsn(INVOKEVIRTUAL, getTypeName(ownerType), methodName, "()L" + returnType + ";")
     
     // Recurse if needed
-    if (node.isInstanceOf[AQualifiedName]) {
-      evaluateProperty(node.asInstanceOf[AQualifiedName].getName(), new SimpleType(returnClass));
+    if (identifiers.size > 1) {
+      evaluateProperty(identifiers.tail, new SimpleType(returnClass))
     }
   }
   
@@ -431,7 +408,7 @@ class ByteCodeProducer(
   override def inAView(node : AView) {
     // Output a view class only if the view contains something that isn't a macro definition
     if (node.getStmt().size() > 0) {
-      val classWriter = classWriters.peek()
+      val classWriter = classWriters.head
       classWriter.visit(V1_6, ACC_PUBLIC + ACC_SUPER, viewname, null, "uk/co/colinhowe/glimpse/View", Array[String]())
   
       // TODO Move this next to initialisation if possible
@@ -441,7 +418,7 @@ class ByteCodeProducer(
   
       // Create a scope for the view
       val scope = new Scope(null, false)
-      scopes.add(scope)
+      scopes.push(scope)
       
       // Constructor
       {
@@ -513,27 +490,8 @@ class ByteCodeProducer(
     other.substring(0, 1).toUpperCase() + other.substring(1)
   }
   
-  def nameToString(node : PName) = processName(node, (s : String) => s)
-  def nameToStringWithGets(node : PName) = processName(node, ".get" + upperFirst(_) + "()")
-
-  def processName(node : PName, mapper : String => String) = {
-      // Chunk the name down
-    var nameNode = node
-    var name = ""
-    
-    while (nameNode != null) {
-      nameNode match {
-        case node : AQualifiedName =>
-          name = "." + mapper(node.getIdentifier().getText()) + name
-          nameNode = node.getName()
-        case node : ASimpleName =>
-          name = mapper(node.getIdentifier().getText()) + name
-          nameNode = null
-      }
-    }
-    name
-  }
-
+  def nameToStringWithGets(identifiers : List[TIdentifier]) = 
+    IdentifierConverter.identifierListToString(identifiers, ".get" + upperFirst(_) + "()")
   
   def getStringFromExpr(expr : PExpr) = {
     expr match {
@@ -568,39 +526,38 @@ class ByteCodeProducer(
     }
     
     // Put the text onto the stack
-    val mv = methodVisitors.peek()
+    val mv = methodVisitors.head
     mv.visitLdcInsn(node.getText())
     
     debug("string [" + node.getText() + "]")
   }
   
   private def debug(debugText : String) {
-    System.out.println("[debug:" + methodVisitors.peek() + "] " + debugText)
+    System.out.println("[debug:" + methodVisitors.head + "] " + debugText)
   }
 
 
   override def outAController(node : AController) {
     // The controller will be in register 3... put it on the environment
-    val mv = methodVisitors.peek()
+    val mv = methodVisitors.head
     mv.visitVarInsn(ALOAD, 1)
     mv.visitLdcInsn("$controller")
     mv.visitVarInsn(ALOAD, 3)
     mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
     
-    val className = node.getName().toString().trim().replaceAll(" ", ".")
+    val className = identifierListToString(node.getIdentifier)
     debug("controller has type [" + className + "]")
     
     // Load the controller class
-    val clazzName = nameToStringForwards(node.getName())
-    controllerType = new SimpleType(getTypeByName(clazzName))
+    controllerType = new SimpleType(getTypeByName(className))
   }
 
   
   override def inAMacroDefn(node : AMacroDefn) {
     
     // Create a scope for this macro
-    val scope = new Scope(if(scopes.empty()) null else scopes.peek(), true)
-    scopes.add(scope)
+    val scope = new Scope(if(scopes.isEmpty) null else scopes.head, true)
+    scopes.push(scope)
     
     // TODO Macros really should be ripped out into their own ASTs and processed separately
     
@@ -794,7 +751,7 @@ class ByteCodeProducer(
   }
   
   override def outAIncludeStmt(node : AIncludeStmt) {
-    val mv = methodVisitors.peek()
+    val mv = methodVisitors.head
     
     val include = node.getIncludeA().asInstanceOf[AIncludeA]
 
@@ -857,10 +814,10 @@ class ByteCodeProducer(
   override def inAGenerator(node : AGenerator) {
     
     // Create a scope for this generator
-    val scope = new Scope(scopes.peek(), false)
-    scopes.add(scope)
+    val scope = new Scope(scopes.head, false)
+    scopes.push(scope)
     
-    val outerClassWriter = classWriters.peek()
+    val outerClassWriter = classWriters.head
     
     // Get the ID for the generator
     val id = generatorCount
@@ -965,7 +922,7 @@ class ByteCodeProducer(
     outputClass(cw, generatorIdentifier)
     
     // Create an instance of the generator
-    mv = methodVisitors.peek()
+    mv = methodVisitors.head
     mv.visitTypeInsn(NEW, generatorIdentifier)
     mv.visitInsn(DUP) // generator, generator, args
     mv.visitInsn(ACONST_NULL) // null, generator, generator, args
@@ -977,7 +934,7 @@ class ByteCodeProducer(
 
   override def outAInvertExpr(node : AInvertExpr) {
     // Assume that a Boolean is on the stack
-    val mv = methodVisitors.peek()
+    val mv = methodVisitors.head
     mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean")
     mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z")
     mv.visitLdcInsn(1)
@@ -986,7 +943,7 @@ class ByteCodeProducer(
   }
   
   override def outAVarDefn(node : AVarDefn) {
-    val mv = methodVisitors.peek()
+    val mv = methodVisitors.head
 
     val varname = node.getIdentifier().getText()
     if (node.getExpr() != null) {
@@ -1001,13 +958,13 @@ class ByteCodeProducer(
     }
     
     // Put this variable and the type of it on to the scope
-    scopes.peek().add(varname, typeResolver.getType(node, null))
+    scopes.head.add(varname, typeResolver.getType(node, null))
   }
 
   override def outAIncrementStmt(node : AIncrementStmt) {
     
     // Get the value from the scope
-    val mv = methodVisitors.peek()
+    val mv = methodVisitors.head
     mv.visitVarInsn(ALOAD, 1) //scope
     mv.visitInsn(DUP) // scope, scope
     mv.visitLdcInsn(node.getIdentifier().getText()) // name, scope, scope
@@ -1032,7 +989,7 @@ class ByteCodeProducer(
 
   
   override def outAAssignmentStmt(node : AAssignmentStmt) {
-    val mv = methodVisitors.peek()
+    val mv = methodVisitors.head
     
     // This could be a dynamic macro assignment
     val destinationVariable = node.getIdentifier().getText()
@@ -1055,7 +1012,7 @@ class ByteCodeProducer(
   }
   
   override def outAConstantExpr(node : AConstantExpr) {
-    val mv = methodVisitors.peek()
+    val mv = methodVisitors.head
     val i = Integer.valueOf(node.getNumber().getText())
     mv.visitLdcInsn(i)
 
@@ -1069,7 +1026,7 @@ class ByteCodeProducer(
 
   override def outAMacroStmt(node : AMacroStmt) {
     val invocation = node.getMacroInvoke().asInstanceOf[AMacroInvoke]
-    val mv = methodVisitors.peek()
+    val mv = methodVisitors.head
     
     // The arguments will be on the stack already.
     // The stack will look like:
@@ -1142,7 +1099,7 @@ class ByteCodeProducer(
    */
   override def outANodeCreate(node : ANodeCreate) {
     val id = node.getId().getText()
-    val mv = methodVisitors.peek()
+    val mv = methodVisitors.head
     
     // Start creating the node
     // Load up the node list ready for adding the node to
@@ -1247,33 +1204,13 @@ class ByteCodeProducer(
     }
   }
 
-  // TODO Move this out into a type name resolver
-  override def outAImport(node : AImport) {
-    val qualifiedName = nameToStringForwards(node.getName())
-    val clazzName = nameToClazzName(node.getName())
-    
-    imports(clazzName) = this.getClass().getClassLoader().loadClass(qualifiedName)
-  }
-  
-  def nameToStringForwards(name : PName) : String = {
-    name.toString().trim().replaceAll(" ", ".")
-  }
-  
   def getTypeByName(clazzName : String) : Class[_] = {
     // Check to see if there is an import for this class name
     // We don't have to worry about periods as they won't be in the set of
     // imports anyway
-    imports.get(clazzName) match {
+    typeNameResolver.getClassByName(clazzName) match {
       case Some(clazz) => clazz
       case None => this.getClass().getClassLoader().loadClass(clazzName)
     }
   }
-  
-  def nameToClazzName(node : PName) : String = {
-    node match {
-      case node : AQualifiedName => nameToClazzName(node.getName)
-      case node : ASimpleName => node.getIdentifier.getText
-    }
-  }
-  
 }

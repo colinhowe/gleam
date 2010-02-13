@@ -57,10 +57,10 @@ class TypeProvider {
     while (typeNode != null) {
       typeNode match {
         case simple : ASimpleQualifiedType =>
-          typeName += simple.getIdentifier().getText()
+          typeName = simple.getIdentifier().getText() + typeName
           typeNode = null
         case compound : ACompoundQualifiedType =>
-          typeName += compound.getIdentifier().getText() + "."
+          typeName = "." + compound.getIdentifier().getText() + typeName
           typeNode = compound.getQualifiedType()
       }
     }

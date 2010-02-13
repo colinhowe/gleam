@@ -73,6 +73,8 @@ Tokens
     single_line_comment = '//' [[all - cr] - lf]*;
     multi_line_comment = '/*' (all)* '*/';
     
+    asterix = '*';
+    
 Ignored Tokens
     whitespace,
     single_line_comment,
@@ -85,12 +87,12 @@ Productions
         {m} macro_defn 
       | {d} dynamic_macro_defn;
     
-    name = 
-        {simple} identifier
-      | {qualified} identifier dot name {-> New name.qualified(identifier, name)}
+    name {-> identifier*} = 
+        {simple} identifier {-> [identifier]}
+      | {qualified} name dot identifier {-> [name.identifier, identifier]}
       ;
     
-    controller = controller_token name {-> New controller(name)};
+    controller = controller_token name {-> New controller([name.identifier])};
     
     stmt = {node} node_create
          | {macro} macro_invoke
@@ -118,9 +120,15 @@ Productions
          
     qualified_type =
         {simple} identifier
-      | {compound} identifier dot qualified_type {-> New qualified_type.compound(identifier, qualified_type) };
+      | {compound} qualified_type dot identifier  {-> New qualified_type.compound(qualified_type, identifier) }
+      ;
          
-    import = timport name {-> New import(name) };
+    import = timport import_type {-> New import(import_type) };
+    
+    import_type =
+        {single} name {-> New import_type.single([name.identifier])}
+      | {wildcard} name dot asterix {-> New import_type.wildcard([name.identifier])}
+      ;
          
     types {-> type* } = 
             {singular} type {-> [type] }
@@ -131,12 +139,12 @@ Productions
            {string} string
          | {generator} generator
          | {constant} number
-         | {property} name
-         | {controller_prop} controller_ref dot name {-> New expr.controller_prop(name)}
+         | {property} name {-> New expr.property([name.identifier])}
+         | {controller_prop} controller_ref dot name {-> New expr.controller_prop([name.identifier])}
          | {false} false
          | {true} true
          | {invert} bang expr {-> New expr.invert(expr)}
-         | {propertyref} property_ref name {-> New expr.propertyref(name)}
+         | {propertyref} property_ref name {-> New expr.propertyref([name.identifier])}
          ;
           
     var_defn = 
@@ -206,12 +214,7 @@ Abstract Syntax Tree
         {m} macro_defn
       | {d} dynamic_macro_defn ;
     
-    controller = name;
-    
-    name = 
-      {simple} identifier |
-      {qualified} identifier name
-      ;
+    controller = identifier*;
     
     arg_defn = type identifier;
     
@@ -238,12 +241,12 @@ Abstract Syntax Tree
         {string} string
       | {generator} generator
       | {constant} number
-      | {property} name
-      | {controller_prop} name
+      | {property} identifier*
+      | {controller_prop} identifier*
       | {false} false
       | {true} true
       | {invert} expr
-      | {propertyref} name
+      | {propertyref} identifier*
       ;
       
     ifelse = expr codeblock else? ;
@@ -260,9 +263,14 @@ Abstract Syntax Tree
      
     qualified_type = 
       {simple} identifier
-    | {compound} identifier qualified_type;
+    | {compound} qualified_type identifier;
       
-    import = name;
+    import = import_type;
+    
+    import_type =
+        {single} identifier*
+      | {wildcard} identifier*
+      ;
       
     node_create = 
       [id]:identifier [arguments]:argument* [expr]:expr 

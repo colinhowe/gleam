@@ -61,7 +61,7 @@ class GlimpseCompiler {
       errors ++ typeChecker.errors
       
       // Compile all the nodes down to java
-      val bcp = new ByteCodeProducer(viewname, lineNumberProvider, typeResolver, "temp/" + viewname + ".class")
+      val bcp = new ByteCodeProducer(viewname, lineNumberProvider, typeResolver, "temp/" + viewname + ".class", typeNameResolver)
       ast.apply(bcp)
       errors ++ bcp.errors
       

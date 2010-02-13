@@ -1,11 +1,8 @@
 package uk.co.colinhowe.glimpse.compiler
-import uk.co.colinhowe.glimpse.compiler.node.AQualifiedName
-
-import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
-import uk.co.colinhowe.glimpse.compiler.node.APropertyExpr
-import uk.co.colinhowe.glimpse.compiler.node.ASimpleName
-import uk.co.colinhowe.glimpse.compiler.node.Node
+import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
+import uk.co.colinhowe.glimpse.compiler.node._
 import uk.co.colinhowe.glimpse.compiler.typing.Type
+import scala.collection.JavaConversions._
 
 class TypeResolver(
     val typeProvider : TypeProvider, 
@@ -28,22 +25,11 @@ class TypeResolver(
   
   
   override def outAPropertyExpr(node : APropertyExpr) {
-    node.getName() match {
-      case simpleName : ASimpleName =>
-        val simpleName = node.getName().asInstanceOf[ASimpleName]
-        
-        val name = simpleName.getIdentifier().getText()
-        
-        if (macroProvider.get(name).size() > 0) {
-          this.types.put(node, macroProvider.get(name).iterator.next())
-        } else {
-          // TODO Get the type out
-        }
-      
-      case qualifiedName : AQualifiedName =>
-      
-      case _ =>
-        throw new RuntimeException("Unsupported type of node [" + node + "]")
+    val name = IdentifierConverter.identifierListToString(node.getIdentifier)
+    if (macroProvider.get(name).size() > 0) {
+      this.types.put(node, macroProvider.get(name).iterator.next())
+    } else {
+      // TODO Get the type out
     }
   }
 }
