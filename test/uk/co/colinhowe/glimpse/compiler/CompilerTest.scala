@@ -103,8 +103,7 @@ abstract trait CompilerTest {
         errors = error.asInstanceOf[CompilationError] :: errors
       }
     }
-    assertEquals("Got errors", 0, errors.size)
-  }
+        if (errors.size > 0) {      assertEquals("Got errors [" + errors + "]", 0, errors.size)    }  }
  
   def printXml(nodes : List[Node]) : String = {
     nodes.foldLeft("") { (acc, node) =>

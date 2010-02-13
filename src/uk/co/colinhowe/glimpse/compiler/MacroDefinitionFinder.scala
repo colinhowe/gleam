@@ -16,7 +16,8 @@ import scala.collection.JavaConversions._
 class MacroDefinitionFinder(
     val lineNumberProvider : LineNumberProvider,
     val typeProvider : TypeProvider,
-    val macroProvider : MacroDefinitionProvider)
+    val macroProvider : MacroDefinitionProvider,
+    val typeNameResolver : TypeNameResolver)
   extends DepthFirstAdapter {
   
   val errors = ListBuffer[CompilationError]()
@@ -35,14 +36,14 @@ class MacroDefinitionFinder(
     }
     
     // Get the type of the content
-    val contentType = typeProvider.getType(node.getContentType(), Map[String, Type]() ++ genericsInScope)
+    val contentType = typeProvider.getType(node.getContentType(), typeNameResolver, Map[String, Type]() ++ genericsInScope)
     val defn = new MacroDefinition(name, contentType, false)
 
     // Process all the arguments
     for (pargDefn <- node.getArgDefn()) {
       val argDefn = pargDefn.asInstanceOf[AArgDefn]
       println("generics: " + genericsInScope)
-      val argType = typeProvider.getType(argDefn.getType(), Map[String, Type]() ++ genericsInScope)
+      val argType = typeProvider.getType(argDefn.getType(), typeNameResolver, Map[String, Type]() ++ genericsInScope)
       val argumentName = argDefn.getIdentifier().getText()
       defn.addArgument(argumentName, argType)
     }
@@ -65,14 +66,14 @@ class MacroDefinitionFinder(
     }
     
     // Get the type of the content
-    val contentType = typeProvider.getType(node.getContentType())
+    val contentType = typeProvider.getType(node.getContentType(), typeNameResolver)
     val defn = new MacroDefinition(name, contentType, true)
 
     // Process all the arguments
     val args = scala.collection.mutable.Set[Tuple2[String, String]]();
     for (pargDefn <- node.getArgDefn()) {
       val argDefn = pargDefn.asInstanceOf[AArgDefn]
-      val argType = typeProvider.getType(argDefn.getType())
+      val argType = typeProvider.getType(argDefn.getType(), typeNameResolver)
       val argumentName = argDefn.getIdentifier().getText()
       defn.addArgument(argumentName, argType)
     }
@@ -86,7 +87,7 @@ class MacroDefinitionFinder(
   }
   
   override def inAGenericDefn(node : AGenericDefn) {
-    val nodeType = typeProvider.getType(node)
+    val nodeType = typeProvider.getType(node, typeNameResolver)
 
     // Put this generic in scope
     System.out.println("Put generic["+node.getIdentifier.getText+"] in scope")

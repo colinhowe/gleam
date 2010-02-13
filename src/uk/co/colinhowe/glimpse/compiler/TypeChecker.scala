@@ -71,9 +71,9 @@ class TypeChecker(
            _ : ATrueExpr 
              => new SimpleType(classOf[java.lang.Boolean])
       case _ : AInvertExpr => new SimpleType(classOf[java.lang.Boolean])
-      case _ : APropertyExpr => typeResolver.getType(expr, Map[String, Type]())
+      case _ : APropertyExpr => typeResolver.getType(expr, typeNameResolver, Map[String, Type]())
       case _ : AGeneratorExpr => new SimpleType(classOf[Generator])
-      case expr : AControllerPropExpr => typeResolver.getType(expr, Map[String, Type]())
+      case expr : AControllerPropExpr => typeResolver.getType(expr, typeNameResolver, Map[String, Type]())
       case _ => throw new IllegalArgumentException("Cannot handle expression[" + expr + ":" + expr.getClass + "]")
     }
   }
@@ -99,7 +99,7 @@ class TypeChecker(
       return sdt.clazz.isAssignableFrom(cdt.clazz)
     }
     
-    return destinationType.equals(sourceType)
+    return sourceType.canBeAssignedTo(destinationType)
   }
   
   override def outAIncrementStmt(node : AIncrementStmt) {
@@ -128,7 +128,7 @@ class TypeChecker(
     scope = new Scope(scope, scope.isMacroScope)
     for (parg <- node.getArgDefn) {
       val arg = parg.asInstanceOf[AArgDefn]
-      scope.add(arg.getIdentifier().getText(), typeResolver.getType(arg.getType(), genericsInScope))
+      scope.add(arg.getIdentifier().getText(), typeResolver.getType(arg.getType(), typeNameResolver, genericsInScope))
     }
   }
   
@@ -138,7 +138,7 @@ class TypeChecker(
   
   override def inAForloop(node : AForloop) {
     scope = new Scope(scope, scope.isMacroScope)
-    scope.add(node.getIdentifier().getText(), typeResolver.getType(node.getType(), genericsInScope))
+    scope.add(node.getIdentifier().getText(), typeResolver.getType(node.getType(), typeNameResolver, genericsInScope))
   }
   
   override def outAForloop(node : AForloop) {
@@ -150,7 +150,7 @@ class TypeChecker(
     
     for (pdefn <- node.getGenericDefn()) {
       val defn = pdefn.asInstanceOf[AGenericDefn]
-      val nodeType = typeResolver.getType(defn, genericsInScope)
+      val nodeType = typeResolver.getType(defn, typeNameResolver, genericsInScope)
 
       // Put this generic in scope
       System.out.println("Put generic["+defn.getIdentifier().getText()+"] in scope")
@@ -159,10 +159,10 @@ class TypeChecker(
     
     for (parg <- node.getArgDefn()) {
       val arg = parg.asInstanceOf[AArgDefn]
-      scope.add(arg.getIdentifier().getText(), typeResolver.getType(arg.getType(), genericsInScope))
+      scope.add(arg.getIdentifier().getText(), typeResolver.getType(arg.getType(), typeNameResolver, genericsInScope))
     }
     
-    scope.add(node.getContentName().getText(), typeResolver.getType(node.getContentType(), genericsInScope))
+    scope.add(node.getContentName().getText(), typeResolver.getType(node.getContentType(), typeNameResolver, genericsInScope))
   }
   
   override def outAMacroDefn(node : AMacroDefn) {
@@ -201,7 +201,7 @@ class TypeChecker(
     for (pargument <- arguments) {
       // Get the type of the argument in the call
       val argument = pargument.asInstanceOf[AArgument]
-      val callType = typeResolver.getType(argument.getExpr(), genericsInScope)
+      val callType = typeResolver.getType(argument.getExpr(), typeNameResolver, genericsInScope)
       
       // Get the type of the argument as defined in the macro
       var defnType = macroDefinition.getArguments().get(argument.getIdentifier().getText())
@@ -346,7 +346,7 @@ class TypeChecker(
       val macroDefinition = macroProvider.get(destinationVariable).iterator().next()
       
       if (macroDefinition != null && macroDefinition.isDynamic()) {
-        if (!areTypesCompatible(macroDefinition, typeResolver.getType(node.getExpr(), genericsInScope))) {
+        if (!areTypesCompatible(macroDefinition, typeResolver.getType(node.getExpr(), typeNameResolver, genericsInScope))) {
           errors.add(new DynamicMacroMismatchError(
               lineNumberProvider.getLineNumber(node), 
               macroDefinition.getName()))

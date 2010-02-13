@@ -29,4 +29,17 @@ class TestImport extends CompilerTest {
     """ controller(new DummyController) compilesTo
     <view><h1>Name of the controller</h1></view>
   }
+  
+  @Test
+  def importForMacroParameter = {   
+    """
+    import java.lang.Object
+    
+    macro p(o : Object) with s : string {
+      node p s
+    }
+    p(o : "object") "hi"
+    """ compilesTo
+    <view><p>hi</p></view>
+  }
 } 

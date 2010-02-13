@@ -11,7 +11,7 @@ import scala.collection.JavaConversions._
 
 class TypeProvider {
   
-  def getType(node : Node, additionalTypes : Map[String, Type] = Map()) : Type = {
+  def getType(node : Node, typeNameResolver : TypeNameResolver, additionalTypes : Map[String, Type] = Map()) : Type = {
     // TODO Remove this once we have more written in Scala
     println(node + " 1addtional types: " + additionalTypes)
     val additionalTypesMap = if (additionalTypes == null) Map[String, Type]() else additionalTypes
@@ -33,21 +33,21 @@ class TypeProvider {
       case _ : AGeneratorType => new SimpleType(classOf[Generator])
       
       case defn : AGenericDefn => new GenericType(defn.getIdentifier().getText(), classOf[Object]);
-      case qualified : AQualifiedType => getType(qualified, additionalTypesMap)
-      case compound : ACompoundType => getType(compound, additionalTypesMap)
+      case qualified : AQualifiedType => getType(qualified, typeNameResolver, additionalTypesMap)
+      case compound : ACompoundType => getType(compound, typeNameResolver, additionalTypesMap)
       case _ => null
     }
   }
   
-  private def getType(node : ACompoundType, additionalTypes : Map[String, Type]) : Type = {
+  private def getType(node : ACompoundType, typeNameResolver : TypeNameResolver, additionalTypes : Map[String, Type]) : Type = {
     // TODO Make compound types reference a Type instead of a Class as the parent type
-    val parentType = getType(node.getParenttype()).asInstanceOf[SimpleType]
-    val subTypes = node.getTypes().map(getType(_, additionalTypes))
+    val parentType = getType(node.getParenttype(), typeNameResolver).asInstanceOf[SimpleType]
+    val subTypes = node.getTypes().map(getType(_, typeNameResolver, additionalTypes))
     new CompoundType(parentType.getClazz, subTypes)
   }
   
   
-  private def getType(node : AQualifiedType, additionalTypes : Map[String, Type]) : Type = {
+  private def getType(node : AQualifiedType, typeNameResolver : TypeNameResolver, additionalTypes : Map[String, Type]) : Type = {
     // Determine the full type
     var typeNode = node.getQualifiedType()
     var typeName = ""
@@ -77,9 +77,10 @@ class TypeProvider {
     if (additionalTypes.contains(typeName)) {
       return additionalTypes(typeName)
     } else {
-      val loader = this.getClass().getClassLoader()
-      val clazz = loader.loadClass(typeName)
-      return new SimpleType(clazz)
+      return typeNameResolver.getClassByName(typeName) match {
+        case Some(clazz) => new SimpleType(clazz)
+        case None => new SimpleType(this.getClass().getClassLoader().loadClass(typeName))
+      }
     }
   }
 }

@@ -30,10 +30,11 @@ class GlimpseCompiler {
     
     for (intermediate <- intermediates) {
       val ast = intermediate.ast
-    
+      val typeNameResolver = new TypeNameResolver(ast)
+
       ast.apply(lineNumberProvider)
       
-      val finder = new MacroDefinitionFinder(lineNumberProvider, typeProvider, macroProvider)
+      val finder = new MacroDefinitionFinder(lineNumberProvider, typeProvider, macroProvider, typeNameResolver)
       ast.apply(finder)
       intermediate.errors ++ finder.errors
 

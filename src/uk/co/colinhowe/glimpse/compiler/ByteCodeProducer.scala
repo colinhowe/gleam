@@ -342,7 +342,7 @@ class ByteCodeProducer(
         
       if (node.getIdentifier().size() > 1) {
         // Cast as appropriate
-        val ownerType = typeResolver.getType(node.getIdentifier.head, null)
+        val ownerType = typeResolver.getType(node.getIdentifier.head, typeNameResolver, null)
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(ownerType.asInstanceOf[SimpleType].getClazz))
         
         evaluateProperty(node.getIdentifier.tail, ownerType)
@@ -958,7 +958,7 @@ class ByteCodeProducer(
     }
     
     // Put this variable and the type of it on to the scope
-    scopes.head.add(varname, typeResolver.getType(node, null))
+    scopes.head.add(varname, typeResolver.getType(node, typeNameResolver, null))
   }
 
   override def outAIncrementStmt(node : AIncrementStmt) {
@@ -1017,7 +1017,7 @@ class ByteCodeProducer(
     mv.visitLdcInsn(i)
 
     // Up-cast to an Integer
-    // we don't like leave primitive types on the stack
+    // we don't like leaving primitive types on the stack
     // This is inefficient but it simplifies implementation
     mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;")
     

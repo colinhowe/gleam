@@ -12,7 +12,8 @@ import scala.collection.JavaConversions._
 
 class CallResolver(
     val lineNumberProvider : LineNumberProvider, 
-    val typeResolver : TypeResolver
+    val typeResolver : TypeResolver,
+    typeNameResolver : TypeNameResolver
   ) extends DepthFirstAdapter {
   
   val errors = scala.collection.mutable.Buffer[CompilationError]()
@@ -30,13 +31,13 @@ class CallResolver(
     }
     
     // Get the type of the content
-    val contentType = typeResolver.getType(node.getContentType(), null)
+    val contentType = typeResolver.getType(node.getContentType(), typeNameResolver, null)
     val defn = new MacroDefinition(name, contentType, false)
 
     // Process all the arguments
     for (pargDefn <- node.getArgDefn()) {
       val argDefn = pargDefn.asInstanceOf[AArgDefn]
-      val t = typeResolver.getType(argDefn.getType(), null)
+      val t = typeResolver.getType(argDefn.getType(), typeNameResolver, null)
       val argumentName = argDefn.getIdentifier().getText()
       defn.addArgument(argumentName, t)
     }
