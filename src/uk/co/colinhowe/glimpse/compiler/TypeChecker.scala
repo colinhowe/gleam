@@ -46,23 +46,8 @@ class TypeChecker(
   val genericsInScope = scala.collection.mutable.Map[String,Type]()
   
   var scope : Scope = new Scope(null, false)
-  var typeOnStack : Type = null
   var controllerClazz : Class[_] = null
-
-  def getQualifiedType(ptype : PType) : Type = {
-    ptype match {
-      case _ : AIntType => new SimpleType(classOf[java.lang.Integer])
-      case _ : AStringType => new SimpleType(classOf[java.lang.String])
-      case _ : ABoolType => new SimpleType(classOf[java.lang.Boolean])
-      case qualified : AQualifiedType => new SimpleType(this.getClass.getClassLoader.loadClass(nameToString(qualified)))
-      case _ => throw new IllegalArgumentException("Cannot handle type [" + ptype + " : " + ptype.getClass + "]")
-    }
-  }
-  
-  def nameToString(node : AQualifiedType) : String = {
-    node.toString.trim.replaceAll(" ", ".")
-  }
-  
+    
   def getExpressionType(expr : PExpr) : Type = {
     expr match {
       case _ : AStringExpr => new SimpleType(classOf[java.lang.String])
@@ -361,9 +346,5 @@ class TypeChecker(
         errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), lhsType, rhsType))
       }
     }
-  }
-  
-  def getErrors : java.util.Collection[_ <: CompilationError] = {
-    JavaConversions.asList(errors)
   }
 }

@@ -23,10 +23,6 @@ class MacroDefinitionFinder(
   val errors = ListBuffer[CompilationError]()
   val genericsInScope = scala.collection.mutable.Map[String, Type]()
 
-  def errorsAsJavaList() : java.util.List[CompilationError] = {
-    errors
-  }
-  
   override def outAMacroDefn(node : AMacroDefn) = {
     // Get the name of the macro
     val name = node.getName().getText()

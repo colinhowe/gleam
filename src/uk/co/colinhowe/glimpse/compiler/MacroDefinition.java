@@ -44,4 +44,9 @@ public class MacroDefinition extends Type {
   public boolean areCompatible(MacroDefinition other) {
     return other.arguments.equals(arguments) && other.valueType.equals(valueType);
   }
+
+  @Override
+  public boolean canBeAssignedTo(Type assignee) {
+    throw new UnsupportedOperationException("Not implemented");
+  }
 }

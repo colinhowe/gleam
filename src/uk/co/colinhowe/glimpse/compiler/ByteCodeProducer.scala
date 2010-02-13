@@ -484,23 +484,6 @@ class ByteCodeProducer(
     }
   }
   
-  
-  
-  def upperFirst(other : String) = {
-    other.substring(0, 1).toUpperCase() + other.substring(1)
-  }
-  
-  def nameToStringWithGets(identifiers : List[TIdentifier]) = 
-    IdentifierConverter.identifierListToString(identifiers, ".get" + upperFirst(_) + "()")
-  
-  def getStringFromExpr(expr : PExpr) = {
-    expr match {
-      case expr : AConstantExpr => expr.getNumber().getText()
-      case _ => "0"
-    }
-  }
-  
-
   override def caseTString(node : TString) {
     
     val sep = "\"\""
