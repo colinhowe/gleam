@@ -34,6 +34,12 @@ class ClassPathResolver(paths : Array[String]) {
     return currentPackage.classes.contains(className)
   }
   
+  def getAllClassesInPackage(packageName : String) : List[String] = {
+    val tokens = packageName.split("\\.")
+    val p = tokens.foldLeft(defaultPackage)(_.subPackages(_))
+    p.classes.toList
+  }
+  
   private def processPaths(paths : Array[String]) {
     for (path <- paths) {
       processPath(path)

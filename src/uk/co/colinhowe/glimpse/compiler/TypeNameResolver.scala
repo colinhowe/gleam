@@ -4,7 +4,7 @@ import uk.co.colinhowe.glimpse.compiler.node._
 import scala.collection.JavaConversions._
 import uk.co.colinhowe.glimpse.compiler.IdentifierConverter._
 
-class TypeNameResolver(start : Start) {
+class TypeNameResolver(start : Start, classPathResolver : ClassPathResolver) {
   
   val imports = findImports(start)
   
@@ -21,6 +21,11 @@ class TypeNameResolver(start : Start) {
           val className = single.getIdentifier.last.getText
           imports(className) = this.getClass().getClassLoader().loadClass(qualifiedName)
         case wildcard : AWildcardImportType =>
+          val packageName = identifierListToString(wildcard.getIdentifier)
+          val classesInPackage = classPathResolver.getAllClassesInPackage(packageName)
+          for (className <- classesInPackage) {
+            imports(className) = this.getClass().getClassLoader().loadClass(packageName + "." + className)          
+          }
       }
     }
     

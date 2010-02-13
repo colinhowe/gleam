@@ -27,10 +27,11 @@ class GlimpseCompiler {
     val typeProvider = new TypeProvider()
     val macroProvider = new MacroDefinitionProvider()
     val typeResolver = new TypeResolver(typeProvider, macroProvider)
+    val classPathResolver = new ClassPathResolver(classPaths.toArray)
     
     for (intermediate <- intermediates) {
       val ast = intermediate.ast
-      val typeNameResolver = new TypeNameResolver(ast)
+      val typeNameResolver = new TypeNameResolver(ast, classPathResolver)
 
       ast.apply(lineNumberProvider)
       
@@ -56,7 +57,7 @@ class GlimpseCompiler {
       val errors = scala.collection.mutable.Buffer[CompilationError]() ++ intermediate.errors
       
       // Run the type checker
-      val typeNameResolver = new TypeNameResolver(ast)
+      val typeNameResolver = new TypeNameResolver(ast, classPathResolver)
       val typeChecker = new TypeChecker(lineNumberProvider, macroProvider, typeResolver, typeNameResolver)
       ast.apply(typeChecker)
       errors ++ typeChecker.errors

@@ -66,7 +66,7 @@ abstract trait CompilerTest {
       compilationUnits += compilationUnit
     }
     
-    return new GlimpseCompiler().compile(compilationUnits)
+    return new GlimpseCompiler().compile(compilationUnits, scala.collection.mutable.Buffer[String]("bin"))
   }
   
   def checkCompilation(compilationSet : CompilationSet, expectedResult : scala.xml.Elem) {
