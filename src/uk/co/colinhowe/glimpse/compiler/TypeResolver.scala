@@ -15,7 +15,7 @@ class TypeResolver(
     types.put(node, t)
   }
   
-  def getType(node : Node, typeNameResolver : TypeNameResolver, additionalTypes : Map[String, Type]) = {
+  def getType(node : Node, typeNameResolver : TypeNameResolver, additionalTypes : Map[String, Type] = Map()) = {
     if (types.contains(node)) {
       types(node)
     } else {

@@ -13,10 +13,6 @@ import scala.collection.JavaConversions._
 class TypeProvider {
   
   def getType(node : Node, typeNameResolver : TypeNameResolver, additionalTypes : Map[String, Type] = Map()) : Type = {
-    // TODO Remove this once we have more written in Scala
-    println(node + " 1addtional types: " + additionalTypes)
-    val additionalTypesMap = if (additionalTypes == null) Map[String, Type]() else additionalTypes
-    
     node match {
       case _ : AFalseExpr | 
            _ : ATrueExpr  | 
@@ -34,8 +30,8 @@ class TypeProvider {
       case _ : AGeneratorType => new SimpleType(classOf[Generator])
       
       case defn : AGenericDefn => new GenericType(defn.getIdentifier().getText(), classOf[Object]);
-      case qualified : AQualifiedType => getType(qualified, typeNameResolver, additionalTypesMap)
-      case compound : ACompoundType => getType(compound, typeNameResolver, additionalTypesMap)
+      case qualified : AQualifiedType => getType(qualified, typeNameResolver, additionalTypes)
+      case compound : ACompoundType => getType(compound, typeNameResolver, additionalTypes)
       case _ => null
     }
   }

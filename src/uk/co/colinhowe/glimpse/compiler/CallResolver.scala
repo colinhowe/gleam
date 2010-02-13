@@ -31,13 +31,13 @@ class CallResolver(
     }
     
     // Get the type of the content
-    val contentType = typeResolver.getType(node.getContentType(), typeNameResolver, null)
+    val contentType = typeResolver.getType(node.getContentType(), typeNameResolver)
     val defn = new MacroDefinition(name, contentType, false)
 
     // Process all the arguments
     for (pargDefn <- node.getArgDefn()) {
       val argDefn = pargDefn.asInstanceOf[AArgDefn]
-      val t = typeResolver.getType(argDefn.getType(), typeNameResolver, null)
+      val t = typeResolver.getType(argDefn.getType(), typeNameResolver)
       val argumentName = argDefn.getIdentifier().getText()
       defn.addArgument(argumentName, t)
     }

@@ -342,7 +342,7 @@ class ByteCodeProducer(
         
       if (node.getIdentifier().size() > 1) {
         // Cast as appropriate
-        val ownerType = typeResolver.getType(node.getIdentifier.head, typeNameResolver, null)
+        val ownerType = typeResolver.getType(node.getIdentifier.head, typeNameResolver)
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(ownerType.asInstanceOf[SimpleType].getClazz))
         
         evaluateProperty(node.getIdentifier.tail, ownerType)
@@ -941,7 +941,7 @@ class ByteCodeProducer(
     }
     
     // Put this variable and the type of it on to the scope
-    scopes.head.add(varname, typeResolver.getType(node, typeNameResolver, null))
+    scopes.head.add(varname, typeResolver.getType(node, typeNameResolver))
   }
 
   override def outAIncrementStmt(node : AIncrementStmt) {

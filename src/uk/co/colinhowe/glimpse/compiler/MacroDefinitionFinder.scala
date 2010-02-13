@@ -32,14 +32,14 @@ class MacroDefinitionFinder(
     }
     
     // Get the type of the content
-    val contentType = typeProvider.getType(node.getContentType(), typeNameResolver, Map[String, Type]() ++ genericsInScope)
+    val contentType = typeProvider.getType(node.getContentType(), typeNameResolver, genericsInScope.toMap)
     val defn = new MacroDefinition(name, contentType, false)
 
     // Process all the arguments
     for (pargDefn <- node.getArgDefn()) {
       val argDefn = pargDefn.asInstanceOf[AArgDefn]
       println("generics: " + genericsInScope)
-      val argType = typeProvider.getType(argDefn.getType(), typeNameResolver, Map[String, Type]() ++ genericsInScope)
+      val argType = typeProvider.getType(argDefn.getType(), typeNameResolver, genericsInScope.toMap)
       val argumentName = argDefn.getIdentifier().getText()
       defn.addArgument(argumentName, argType)
     }

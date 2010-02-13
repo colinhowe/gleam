@@ -56,9 +56,9 @@ class TypeChecker(
            _ : ATrueExpr 
              => new SimpleType(classOf[java.lang.Boolean])
       case _ : AInvertExpr => new SimpleType(classOf[java.lang.Boolean])
-      case _ : APropertyExpr => typeResolver.getType(expr, typeNameResolver, Map[String, Type]())
+      case _ : APropertyExpr => typeResolver.getType(expr, typeNameResolver)
       case _ : AGeneratorExpr => new SimpleType(classOf[Generator])
-      case expr : AControllerPropExpr => typeResolver.getType(expr, typeNameResolver, Map[String, Type]())
+      case expr : AControllerPropExpr => typeResolver.getType(expr, typeNameResolver)
       case _ => throw new IllegalArgumentException("Cannot handle expression[" + expr + ":" + expr.getClass + "]")
     }
   }
