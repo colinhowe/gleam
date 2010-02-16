@@ -583,6 +583,7 @@ class ByteCodeProducer(
     }
     
     cw.visit(V1_6, ACC_SUPER, macroName, null, "java/lang/Object", Array[String]("uk/co/colinhowe/glimpse/Macro"))
+    cw.visitSource(sourcename, null)
 
     // Instance field for the macro
     val fv = cw.visitField(ACC_PRIVATE + ACC_STATIC, "instance", "Luk/co/colinhowe/glimpse/Macro;", null, null)
@@ -812,6 +813,7 @@ class ByteCodeProducer(
     classWriters.push(innerClassWriter)
 
     innerClassWriter.visit(V1_6, ACC_SUPER, viewname + "$" + generatorName, null, "java/lang/Object", Array[String]("uk/co/colinhowe/glimpse/Generator"))
+    innerClassWriter.visitSource(sourcename, null)
     innerClassWriter.visitInnerClass(viewname + "$" + generatorName, viewname, generatorName, ACC_PRIVATE + ACC_STATIC)
 
     generatorIds.put(node, id)
@@ -988,6 +990,7 @@ class ByteCodeProducer(
     //   macro value, arg, arg, ...
     
     // Put all the arguments into a map
+    val l0 = startLabel(node)
     mv.visitTypeInsn(NEW, "java/util/HashMap") // args, macro value, arg
     mv.visitInsn(DUP) // args, args, macro value, arg
     mv.visitMethodInsn(INVOKESPECIAL, "java/util/HashMap", "<init>", "()V")
@@ -1063,9 +1066,7 @@ class ByteCodeProducer(
     // Start creating the node
     // Load up the node list ready for adding the node to
     // Create the node on the stack ready for setting properties on it
-    val l1 = new Label()
-    mv.visitLabel(l1)
-//    mv.visitVarInsn(ALOAD, 2) // list, value
+    val l1 = startLabel(node)
       
     mv.visitTypeInsn(NEW, "uk/co/colinhowe/glimpse/Node") // node, value
     mv.visitInsn(DUP_X1) // node, value, node
