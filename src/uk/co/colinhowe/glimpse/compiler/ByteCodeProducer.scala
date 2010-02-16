@@ -31,7 +31,8 @@ class ByteCodeProducer(
     val lineNumberProvider : LineNumberProvider,
     val typeResolver : TypeResolver, 
     val outputFileName : String,
-    val typeNameResolver : TypeNameResolver
+    val typeNameResolver : TypeNameResolver,
+    val sourcename : String
    ) extends DepthFirstAdapter {
   private val nodeInitMethodSignature = "(Ljava/util/List;Ljava/lang/String;Ljava/lang/Object;)V"
   
@@ -53,25 +54,62 @@ class ByteCodeProducer(
   
   val errors = scala.collection.mutable.Buffer[CompilationError]()
   
+  var trailingLabel : Label = null
+  
+  private def startLabel(node : Node) : Label = {
+    val label = new Label()
+    println("Starting label [" + label + "]")
+    val mv = methodVisitors.head
+    if (node != null) {
+      println("Visiting label as part of start [" + label + "]")
+      mv.visitLabel(label)
+      mv.visitLineNumber(lineNumberProvider.getLineNumber(node), label)
+      trailingLabel = null
+    }
+    label
+  }
+  
+  private def startOrContinueLabel(node : Node) : Label = {
+    val label = if (trailingLabel != null) trailingLabel else new Label()
+    println("Starting/continuing label [" + label + "]")
+    val mv = methodVisitors.head
+    if (label != trailingLabel) {
+      println("Visiting label as part of startOrContinue [" + label + "]")
+      mv.visitLabel(label)
+      mv.visitLineNumber(lineNumberProvider.getLineNumber(node), label)
+    } else {
+      mv.visitLineNumber(lineNumberProvider.getLineNumber(node), label)
+    }
+    trailingLabel = null
+    label
+  }
+
+  
+  private def visitLabel(label : Label) {
+    println("Visiting label [" + label + "]")
+    val mv = methodVisitors.head
+    mv.visitLabel(label)
+    trailingLabel = label
+  }
+  
   override def caseAIfelse(node : AIfelse) {
     val mv = methodVisitors.head
 
     // Calculate the expression
+    val start = startOrContinueLabel(node)
     if(node.getExpr() != null) {
       node.getExpr().apply(this)
     }
 
     // Assume boolean on the stack that can be cast to a bool
-    val start = new Label()
-    mv.visitLabel(start)
     mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean")
     mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z")
     
     // Jump to the end if the expression is false
-    val elseLabel = new Label()
-    val endLabel = new Label()
+    val endLabel = startLabel(null)
+    val elseLabel = if (node.getElse() != null) startLabel(null) else endLabel
     mv.visitJumpInsn(IFEQ, elseLabel)
-
+    
     // Add in the code block for truth
     if(node.getCodeblock() != null) {
       node.getCodeblock().apply(this)
@@ -81,11 +119,11 @@ class ByteCodeProducer(
     }
     
     // The else block begins now
-    mv.visitLabel(elseLabel)
     if(node.getElse() != null) {
+      visitLabel(elseLabel)
       node.getElse().apply(this)
     }
-    mv.visitLabel(endLabel)
+    visitLabel(endLabel)
   }
   
   private def putBooleanOnStack(integerLoadInstruction : Int) {
@@ -375,7 +413,9 @@ class ByteCodeProducer(
     if (node.getStmt().size() > 0) {
       val classWriter = classWriters.head
       classWriter.visit(V1_6, ACC_PUBLIC + ACC_SUPER, viewname, null, "uk/co/colinhowe/glimpse/View", Array[String]())
-  
+      // TODO Check up on relative paths
+      classWriter.visitSource(sourcename, null)
+      
       // TODO Move this next to initialisation if possible
       val fv = classWriter.visitField(
           ACC_PRIVATE, "globalScope", Type.getDescriptor(classOf[Scope]), null, null)
@@ -915,6 +955,8 @@ class ByteCodeProducer(
       mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", "setToInvoke", "(Luk/co/colinhowe/glimpse/Macro;)V")
     } else {
       // The value will be sitting on the stack
+      val l0 = startOrContinueLabel(node)
+      mv.visitLineNumber(lineNumberProvider.getLineNumber(node), l0)
       mv.visitVarInsn(ALOAD, 1) // scope, value
       mv.visitInsn(SWAP) // value, scope
   

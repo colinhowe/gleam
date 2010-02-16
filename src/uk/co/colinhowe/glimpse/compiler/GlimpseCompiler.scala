@@ -63,7 +63,7 @@ class GlimpseCompiler {
       errors ++ typeChecker.errors
       
       // Compile all the nodes down to java
-      val bcp = new ByteCodeProducer(viewname, lineNumberProvider, typeResolver, "temp/" + viewname + ".class", typeNameResolver)
+      val bcp = new ByteCodeProducer(viewname, lineNumberProvider, typeResolver, "temp/" + viewname + ".class", typeNameResolver, intermediate.sourcename)
       ast.apply(bcp)
       errors ++ bcp.errors
       
@@ -101,7 +101,7 @@ class GlimpseCompiler {
       val parser = new Parser(lexer)
       val ast = parser.parse()
       
-      intermediates.add(new IntermediateResult(ast, unit.getViewName()))
+      intermediates.add(new IntermediateResult(ast, unit.getViewName(), unit.getSourceName))
     }
 
     // Compile the programs
