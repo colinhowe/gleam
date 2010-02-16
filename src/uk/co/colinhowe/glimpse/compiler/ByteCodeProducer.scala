@@ -721,7 +721,7 @@ class ByteCodeProducer(
 
       // generator
       mv.visitVarInsn(ALOAD, 4) // scope, generator
-      mv.visitMethodInsn(INVOKEVIRTUAL, generatorIdentifier, "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
+      mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Generator", "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
       // nodes
   
       mv.visitInsn(ARETURN)
@@ -814,10 +814,48 @@ class ByteCodeProducer(
 
     innerClassWriter.visit(V1_6, ACC_SUPER, viewname + "$" + generatorName, null, "java/lang/Object", Array[String]("uk/co/colinhowe/glimpse/Generator"))
     innerClassWriter.visitSource(sourcename, null)
-    innerClassWriter.visitInnerClass(viewname + "$" + generatorName, viewname, generatorName, ACC_PRIVATE + ACC_STATIC)
-
+    val fullClassName = viewname + "$" + generatorName
+    innerClassWriter.visitInnerClass(fullClassName, viewname, generatorName, ACC_PRIVATE + ACC_STATIC)
+ 
     generatorIds.put(node, id)
 
+    // Instance field for the generator
+    val fv = innerClassWriter.visitField(ACC_PRIVATE + ACC_STATIC, "instance", "Luk/co/colinhowe/glimpse/Generator;", null, null)
+    fv.visitEnd()
+    
+    // Static constructor
+    {
+      val mv = innerClassWriter.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null)
+      mv.visitCode()
+
+      // Initialise the instance
+      val l0 = new Label()
+      mv.visitLabel(l0)
+      mv.visitTypeInsn(NEW, fullClassName)
+      mv.visitInsn(DUP)
+      mv.visitMethodInsn(INVOKESPECIAL, fullClassName, "<init>", "()V")
+      mv.visitFieldInsn(PUTSTATIC, fullClassName, "instance", "Luk/co/colinhowe/glimpse/Generator;")
+      
+      val l1 = new Label()
+      mv.visitLabel(l1)
+      mv.visitInsn(RETURN)
+      mv.visitMaxs(0, 0)
+      mv.visitEnd(); 
+    }
+    
+    // getInstance method
+    {
+      val mv = innerClassWriter.visitMethod(ACC_STATIC | ACC_PUBLIC, "getInstance", "()Luk/co/colinhowe/glimpse/Generator;", null, null)
+      mv.visitCode()
+
+      val l1 = new Label()
+      mv.visitLabel(l1)
+      mv.visitFieldInsn(GETSTATIC, fullClassName, "instance", "Luk/co/colinhowe/glimpse/Generator;")
+      mv.visitInsn(ARETURN)
+      mv.visitMaxs(0, 0)
+      mv.visitEnd(); 
+    } 
+    
     defaultConstructor(innerClassWriter, viewname + "$" + generatorName)
     
     // Inner constructor
@@ -886,12 +924,13 @@ class ByteCodeProducer(
     val generatorIdentifier = viewname + "$" + generatorName
     outputClass(cw, generatorIdentifier)
     
-    // Create an instance of the generator
+    // Get the instance of the generator
     mv = methodVisitors.head
-    mv.visitTypeInsn(NEW, generatorIdentifier)
-    mv.visitInsn(DUP) // generator, generator, args
-    mv.visitInsn(ACONST_NULL) // null, generator, generator, args
-    mv.visitMethodInsn(INVOKESPECIAL, generatorIdentifier, "<init>", "(L" + generatorIdentifier + ";)V")
+    mv.visitMethodInsn(INVOKESTATIC, generatorIdentifier, "getInstance", "()Luk/co/colinhowe/glimpse/Generator;") // macro, value, args
+//    mv.visitTypeInsn(NEW, generatorIdentifier)
+//    mv.visitInsn(DUP) // generator, generator, args
+//    mv.visitInsn(ACONST_NULL) // null, generator, generator, args
+//    mv.visitMethodInsn(INVOKESPECIAL, generatorIdentifier, "<init>", "(L" + generatorIdentifier + ";)V")
     // generator, args    
     
     debug("generator [" + generatorIdentifier + "]")
@@ -1027,6 +1066,7 @@ class ByteCodeProducer(
     // Stack: args, value (string)
     mv.visitInsn(SWAP) // value, args
 
+    // TODO Move this to the start of the invocation so that it is on top of the stack to start
     debug("macro invokation [" + macroName + "]")
     mv.visitMethodInsn(INVOKESTATIC, macroName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // macro, value, args
     
@@ -1081,7 +1121,7 @@ class ByteCodeProducer(
 
       // Stack: generator, node, node
       mv.visitVarInsn(ALOAD, 1) // scope, generator, node, node
-      mv.visitMethodInsn(INVOKEVIRTUAL, generatorIdentifier, "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
+      mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Generator", "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
       // nodes, node, node
       mv.visitLdcInsn(id);  // id, nodes, node, node
       mv.visitInsn(ACONST_NULL) // null, id, nodes, node, node
