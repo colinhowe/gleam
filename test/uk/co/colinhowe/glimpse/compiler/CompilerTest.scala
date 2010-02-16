@@ -61,7 +61,7 @@ abstract trait CompilerTest {
     val compilationUnits = scala.collection.mutable.ListBuffer[CompilationUnit]()
     var i = 0
     for (source <- compilationSet.sources) {
-      val compilationUnit = new CompilationUnit("view" + i, source)
+      val compilationUnit = new CompilationUnit("view" + i, source, "nosource")
       i = i + 1
       compilationUnits += compilationUnit
     }
@@ -85,8 +85,8 @@ abstract trait CompilerTest {
     val cls1 = loader1.loadClass("view0")
     
     val view = cls1.newInstance().asInstanceOf[View]
-    val nodes = view.getClass().getMethods()(0).invoke(view, compilationSet.controller).asInstanceOf[java.util.List[Node]]
-
+    val invokeMethod = view.getClass().getMethods()(0)
+    val nodes = invokeMethod.invoke(view, compilationSet.controller).asInstanceOf[java.util.List[Node]]    
     val scalaNodes = List.fromArray(nodes.toArray).asInstanceOf[List[Node]]
     
     // Print the nodes and check them out

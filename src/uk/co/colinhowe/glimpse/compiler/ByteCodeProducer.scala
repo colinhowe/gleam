@@ -31,7 +31,8 @@ class ByteCodeProducer(
     val lineNumberProvider : LineNumberProvider,
     val typeResolver : TypeResolver, 
     val outputFileName : String,
-    val typeNameResolver : TypeNameResolver
+    val typeNameResolver : TypeNameResolver,
+    val sourcename : String
    ) extends DepthFirstAdapter {
   private val nodeInitMethodSignature = "(Ljava/util/List;Ljava/lang/String;Ljava/lang/Object;)V"
   
@@ -53,25 +54,62 @@ class ByteCodeProducer(
   
   val errors = scala.collection.mutable.Buffer[CompilationError]()
   
+  var trailingLabel : Label = null
+  
+  private def startLabel(node : Node) : Label = {
+    val label = new Label()
+    println("Starting label [" + label + "]")
+    val mv = methodVisitors.head
+    if (node != null) {
+      println("Visiting label as part of start [" + label + "]")
+      mv.visitLabel(label)
+      mv.visitLineNumber(lineNumberProvider.getLineNumber(node), label)
+      trailingLabel = null
+    }
+    label
+  }
+  
+  private def startOrContinueLabel(node : Node) : Label = {
+    val label = if (trailingLabel != null) trailingLabel else new Label()
+    println("Starting/continuing label [" + label + "]")
+    val mv = methodVisitors.head
+    if (label != trailingLabel) {
+      println("Visiting label as part of startOrContinue [" + label + "]")
+      mv.visitLabel(label)
+      mv.visitLineNumber(lineNumberProvider.getLineNumber(node), label)
+    } else {
+      mv.visitLineNumber(lineNumberProvider.getLineNumber(node), label)
+    }
+    trailingLabel = null
+    label
+  }
+
+  
+  private def visitLabel(label : Label) {
+    println("Visiting label [" + label + "]")
+    val mv = methodVisitors.head
+    mv.visitLabel(label)
+    trailingLabel = label
+  }
+  
   override def caseAIfelse(node : AIfelse) {
     val mv = methodVisitors.head
 
     // Calculate the expression
+    val start = startOrContinueLabel(node)
     if(node.getExpr() != null) {
       node.getExpr().apply(this)
     }
 
     // Assume boolean on the stack that can be cast to a bool
-    val start = new Label()
-    mv.visitLabel(start)
     mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean")
     mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z")
     
     // Jump to the end if the expression is false
-    val elseLabel = new Label()
-    val endLabel = new Label()
+    val endLabel = startLabel(null)
+    val elseLabel = if (node.getElse() != null) startLabel(null) else endLabel
     mv.visitJumpInsn(IFEQ, elseLabel)
-
+    
     // Add in the code block for truth
     if(node.getCodeblock() != null) {
       node.getCodeblock().apply(this)
@@ -81,37 +119,26 @@ class ByteCodeProducer(
     }
     
     // The else block begins now
-    mv.visitLabel(elseLabel)
     if(node.getElse() != null) {
+      visitLabel(elseLabel)
       node.getElse().apply(this)
     }
-    mv.visitLabel(endLabel)
+    visitLabel(endLabel)
   }
   
-  override def outAFalseExpr(node : AFalseExpr) {
+  private def putBooleanOnStack(integerLoadInstruction : Int) {
     val mv = methodVisitors.head
 
     // Up-cast to a boolean
     // we don't like leave primitive types on the stack
     // This is inefficient but it simplifies implementation
-    mv.visitInsn(ICONST_0)
+    mv.visitInsn(integerLoadInstruction)
     mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;")
-    
-    debug("boolean [false]")
   }
   
-  override def outATrueExpr(node : ATrueExpr) {
-    val mv = methodVisitors.head
-
-    // Up-cast to a boolean
-    // we don't like leave primitive types on the stack
-    // This is inefficient but it simplifies implementation
-    mv.visitInsn(ICONST_1)
-    mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;")
-    
-    debug("boolean [true]")
-  }
+  override def outAFalseExpr(node : AFalseExpr) = putBooleanOnStack(ICONST_0)
   
+  override def outATrueExpr(node : ATrueExpr) = putBooleanOnStack(ICONST_1)
   
   override def caseAForloop(node : AForloop) {
     inAForloop(node)
@@ -215,24 +242,7 @@ class ByteCodeProducer(
       mv.visitEnd();
     } 
     
-    // Constructor
-    {
-      val mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null)
-      mv.visitCode()
-
-      // Initialise super class
-      val l0 = new Label()
-      mv.visitLabel(l0)
-      mv.visitVarInsn(ALOAD, 0)
-      mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", "<init>", "()V")
-      mv.visitInsn(RETURN)
-  
-      val l3 = new Label()
-      mv.visitLabel(l3)
-      mv.visitLocalVariable("this", "L" + macroName + ";", null, l0, l3, 0)
-      mv.visitMaxs(0, 0)
-      mv.visitEnd()
-    }
+    defaultConstructor(cw, macroName, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro")
     
     cw.visitEnd()
     
@@ -296,6 +306,13 @@ class ByteCodeProducer(
     }
   }
   
+  private def getFromScope(name : String) = {
+    val mv = methodVisitors.head
+    mv.visitVarInsn(ALOAD, 1) // scope
+    mv.visitLdcInsn(name) // name, scope
+    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
+  }
+  
   override def outAPropertyrefExpr(node : APropertyrefExpr) {
     val path = IdentifierConverter.identifierListToString(node.getIdentifier())
 
@@ -308,10 +325,7 @@ class ByteCodeProducer(
     mv.visitLdcInsn(path)
     
     // Get the value of the property
-    mv.visitVarInsn(ALOAD, 1) // scope
-    mv.visitLdcInsn("$controller") // name, scope
-    
-    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
+    getFromScope("$controller")
     mv.visitTypeInsn(CHECKCAST, getTypeName(controllerType))
     evaluateProperty(node.getIdentifier(), controllerType)
     
@@ -333,12 +347,7 @@ class ByteCodeProducer(
       mv.visitMethodInsn(INVOKESTATIC, name, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
       debug("simpleMacroExpr [" + name + "]")
     } else {
-      
-      mv.visitVarInsn(ALOAD, 1) // scope
-      mv.visitLdcInsn(node.getIdentifier.head.getText) // name, scope
-      mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
-      debug("fromScope [" + node.getIdentifier() + "]")
-
+      getFromScope(node.getIdentifier.head.getText)
         
       if (node.getIdentifier().size() > 1) {
         // Cast as appropriate
@@ -358,13 +367,7 @@ class ByteCodeProducer(
     // Get the value from the scope
     val l1 = new Label()
     mv.visitLabel(l1)
-    mv.visitVarInsn(ALOAD, 1) // scope
-    
-    val name = "$controller"
-    mv.visitLdcInsn(name) // name, scope
-    debug("controller")
-    
-    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
+    getFromScope("$controller")
     mv.visitTypeInsn(CHECKCAST, getTypeName(controllerType))
     evaluateProperty(node.getIdentifier(), controllerType)
   }
@@ -410,7 +413,9 @@ class ByteCodeProducer(
     if (node.getStmt().size() > 0) {
       val classWriter = classWriters.head
       classWriter.visit(V1_6, ACC_PUBLIC + ACC_SUPER, viewname, null, "uk/co/colinhowe/glimpse/View", Array[String]())
-  
+      // TODO Check up on relative paths
+      classWriter.visitSource(sourcename, null)
+      
       // TODO Move this next to initialisation if possible
       val fv = classWriter.visitField(
           ACC_PRIVATE, "globalScope", Type.getDescriptor(classOf[Scope]), null, null)
@@ -535,6 +540,24 @@ class ByteCodeProducer(
     controllerType = new SimpleType(getTypeByName(className))
   }
 
+  private def defaultConstructor(cw : ClassWriter, className : String, parentClass : String = "java/lang/Object") {
+    val mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null)
+    mv.visitCode()
+
+    // Initialise super class
+    val l0 = new Label()
+    mv.visitLabel(l0)
+    mv.visitVarInsn(ALOAD, 0)
+    mv.visitMethodInsn(INVOKESPECIAL, parentClass, "<init>", "()V")
+    mv.visitInsn(RETURN)
+
+    val l3 = new Label()
+    mv.visitLabel(l3)
+    mv.visitLocalVariable("this", "L" + className + ";", null, l0, l3, 0)
+    mv.visitMaxs(0, 0)
+    mv.visitEnd()
+  }
+  
   
   override def inAMacroDefn(node : AMacroDefn) {
     
@@ -598,25 +621,7 @@ class ByteCodeProducer(
       mv.visitEnd(); 
     } 
     
-    // Constructor
-    {
-      val mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null)
-      mv.visitCode()
-
-      // Initialise super class
-      val l0 = new Label()
-      mv.visitLabel(l0)
-      mv.visitVarInsn(ALOAD, 0)
-      mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V")
-      mv.visitInsn(RETURN)
-  
-      val l3 = new Label()
-      mv.visitLabel(l3)
-      mv.visitLocalVariable("this", "L" + macroName + ";", null, l0, l3, 0)
-      mv.visitMaxs(0, 0)
-      mv.visitEnd()
-    } 
-    
+    defaultConstructor(cw, macroName)
     
     // Invoke method
     {
@@ -637,7 +642,6 @@ class ByteCodeProducer(
       // 2 -> argument map
       // 3 -> content
       // 4 -> macro scope
-      
 
       // Create a scope for the macro
       val l0 = new Label()
@@ -700,7 +704,6 @@ class ByteCodeProducer(
       mv.visitLocalVariable("scope", "Luk/co/colinhowe/glimpse/infrastructure/Scope;", null, l1, l6, 4)
       mv.visitLocalVariable("entry", "Ljava/util/Map$Entry;", "Ljava/util/Map$Entry<Ljava/lang/String;Ljava/lang/Object;>;", l4, l2, 5)
     }
-    
   }
   
   
@@ -776,9 +779,7 @@ class ByteCodeProducer(
     // Pull the generator from the scope
     val l1 = new Label()
     mv.visitLabel(l1)
-    mv.visitVarInsn(ALOAD, 1) // scope
-    mv.visitLdcInsn(generatorArgumentName) // name, scope
-    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
+    getFromScope(generatorArgumentName)
     
     // The generator will be on the stack
     mv.visitTypeInsn(CHECKCAST, "uk/co/colinhowe/glimpse/Generator")
@@ -787,11 +788,7 @@ class ByteCodeProducer(
     mv.visitInsn(SWAP)
     mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Generator", "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
 
-    // Nodes now sit on the stack
-    mv.visitVarInsn(ALOAD, 2) // list, nodes
-    mv.visitInsn(SWAP)
-    mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "addAll", "(Ljava/util/Collection;)Z")
-    mv.visitInsn(POP)
+    addAllNodesFromStack
   }
 
   override def inAGenerator(node : AGenerator) {
@@ -819,24 +816,7 @@ class ByteCodeProducer(
 
     generatorIds.put(node, id)
 
-    // Constructor
-    {
-      val mv = innerClassWriter.visitMethod(ACC_PRIVATE, "<init>", "()V", null, null)
-      mv.visitCode()
-
-      // Initialise super class
-      val l0 = new Label()
-      mv.visitLabel(l0)
-      mv.visitVarInsn(ALOAD, 0)
-      mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V")
-      mv.visitInsn(RETURN)
-  
-      val l3 = new Label()
-      mv.visitLabel(l3)
-      mv.visitLocalVariable("this", "L" + viewname + "$" + generatorName + ";", null, l0, l3, 0)
-      mv.visitMaxs(0, 0)
-      mv.visitEnd()
-    } 
+    defaultConstructor(innerClassWriter, viewname + "$" + generatorName)
     
     // Inner constructor
     {
@@ -945,28 +925,18 @@ class ByteCodeProducer(
   }
 
   override def outAIncrementStmt(node : AIncrementStmt) {
-    
     // Get the value from the scope
     val mv = methodVisitors.head
-    mv.visitVarInsn(ALOAD, 1) //scope
-    mv.visitInsn(DUP) // scope, scope
-    mv.visitLdcInsn(node.getIdentifier().getText()) // name, scope, scope
-    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
-    // value, scope
+    mv.visitVarInsn(ALOAD, 1) // scope
+    mv.visitLdcInsn(node.getIdentifier().getText()) // name, scope
+    mv.visitTypeInsn(NEW, "java/lang/Integer") // Integer, name, scope
+    mv.visitInsn(DUP) // Integer, Integer, name, scope
+    getFromScope(node.getIdentifier().getText()) // value, Integer, Integer, name, scope
     mv.visitTypeInsn(CHECKCAST, "java/lang/Integer")
     mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Integer", "intValue", "()I")
-    mv.visitInsn(ICONST_1) // 1, value, scope
-    mv.visitInsn(IADD) // value+1, scope
-    mv.visitLdcInsn(node.getIdentifier().getText()) // name, value+1, scope
-    mv.visitInsn(SWAP) // value+1, name, scope
-    mv.visitTypeInsn(NEW, "java/lang/Integer") // i, value+1, name, scope
-    mv.visitInsn(DUP_X1) // i, value+1, i, name, scope
-    mv.visitInsn(SWAP) // value+1, i, i, name, scope
-    mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Integer", "<init>", "(I)V")
-    // i, name, scope
-
-    mv.visitTypeInsn(CHECKCAST, "java/lang/Integer")
-    
+    mv.visitInsn(ICONST_1) // 1, value, Integer, Integer, name, scope
+    mv.visitInsn(IADD) // value+1, Integer, Integer, name, scope
+    mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Integer", "<init>", "(I)V") // Integer, name, scope
     mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "replace", "(Ljava/lang/String;Ljava/lang/Object;)V")
   }
 
@@ -985,6 +955,8 @@ class ByteCodeProducer(
       mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", "setToInvoke", "(Luk/co/colinhowe/glimpse/Macro;)V")
     } else {
       // The value will be sitting on the stack
+      val l0 = startOrContinueLabel(node)
+      mv.visitLineNumber(lineNumberProvider.getLineNumber(node), l0)
       mv.visitVarInsn(ALOAD, 1) // scope, value
       mv.visitInsn(SWAP) // value, scope
   
@@ -1066,7 +1038,11 @@ class ByteCodeProducer(
     mv.visitTypeInsn(CHECKCAST, "java/lang/Object") // value, args, scope, macro
     mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Macro", "invoke", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;")
     
-    // nodes
+    addAllNodesFromStack
+}
+  
+  private def addAllNodesFromStack {
+    val mv = methodVisitors.head
     mv.visitVarInsn(ALOAD, 2) // list, nodes
     mv.visitInsn(SWAP) // nodes, list
     mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "addAll", "(Ljava/util/Collection;)Z")
@@ -1133,9 +1109,6 @@ class ByteCodeProducer(
       // The value is on the top of the stack
       val l2 = new Label()
       mv.visitLabel(l2)
-//      mv.visitTypeInsn(NEW, "uk/co/colinhowe/glimpse/Node")
-//      mv.visitInsn(DUP_X1) // node, value, node
-//      mv.visitInsn(SWAP) // value, node, node
       mv.visitInsn(ACONST_NULL) // null, value, node, node
       mv.visitInsn(SWAP) // value, null, node, node
       mv.visitLdcInsn(id) // id, value, null, node, node

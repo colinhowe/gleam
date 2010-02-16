@@ -40,7 +40,7 @@ When a variable is modified the top-most scope (with the variable) is affected
 
 /**
  * Variable class encapsulates the value of a variable. This allows for the Scope 
- * class to provide a clean way to retrieve a variable for either reading or writing.
+ * class to provide a clean way to retrieve a variable for either reading or writing. * TODO Kill this.
  */
 private class Variable(var value : Object)
 

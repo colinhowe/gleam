@@ -45,7 +45,7 @@ public class GlimpseRunner {
       
       // Compile the view
       List<CompilationUnit> units = new LinkedList<CompilationUnit>();
-      units.add(new CompilationUnit(viewname, lines.toString()));
+      units.add(new CompilationUnit(viewname, lines.toString(), filename));
       
       compiler.compile(units);
       
