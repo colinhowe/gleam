@@ -83,7 +83,6 @@ class TestGeneratorEnvironments extends CompilerTest {
     <view><p>1</p></view>
   }
   
-  // TODO This should error!
   @Test
   def generatorArguments = {   
     """

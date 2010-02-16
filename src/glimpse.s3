@@ -51,7 +51,7 @@ Tokens
     lt = '<';
     gt = '>';
     
-    string = '"' [[[all - '"'] - cr] - lf]* '"' | '""' all* '""';
+    string = '"' [[[all - '"'] - cr] - lf]* '"' | '""' (([all - '"']) | ('"' [all - '"']))* '""';
 
     colon = ':';
     

@@ -66,6 +66,19 @@ class TestSimpleNode extends CompilerTest {
   }
   
   @Test
+  def twoMultiLineStrings = {   
+    """
+    node h1 ""
+      title
+    ""
+    node h1 ""
+      title2
+    ""
+    """ compilesTo 
+    <view><h1>title</h1><h1>title2</h1></view>
+  }
+  
+  @Test
   def multiLineStringWithQuotes = {   
     """
     node h1 ""
