@@ -71,7 +71,10 @@ Tokens
     rightarrow = '=>';
     
     single_line_comment = '//' [[all - cr] - lf]*;
-    multi_line_comment = '/*' (all)* '*/';
+    multi_line_comment = 
+      '/*' ([all - '*'] 
+      | (all '*' [all - '/']))* '*/';
+      
     
     asterix = '*';
     
