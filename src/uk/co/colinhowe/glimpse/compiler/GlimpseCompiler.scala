@@ -28,6 +28,7 @@ class GlimpseCompiler {
     val macroProvider = new MacroDefinitionProvider()
     val typeResolver = new TypeResolver(typeProvider, macroProvider)
     val classPathResolver = new ClassPathResolver(classPaths.toArray)
+    val callResolver = new CallResolver(macroProvider)
     
     for (intermediate <- intermediates) {
       val ast = intermediate.ast
@@ -58,12 +59,19 @@ class GlimpseCompiler {
       
       // Run the type checker
       val typeNameResolver = new TypeNameResolver(ast, classPathResolver)
-      val typeChecker = new TypeChecker(lineNumberProvider, macroProvider, typeResolver, typeNameResolver)
+      val typeChecker = new TypeChecker(lineNumberProvider, macroProvider, typeResolver, typeNameResolver, callResolver)
       ast.apply(typeChecker)
       errors ++ typeChecker.errors
       
       // Compile all the nodes down to java
-      val bcp = new ByteCodeProducer(viewname, lineNumberProvider, typeResolver, "temp/" + viewname + ".class", typeNameResolver, intermediate.sourcename)
+      val bcp = new ByteCodeProducer(
+          viewname, 
+          lineNumberProvider, 
+          typeResolver, 
+          "temp/" + viewname + ".class", 
+          typeNameResolver, 
+          intermediate.sourcename,
+          callResolver)
       ast.apply(bcp)
       errors ++ bcp.errors
       

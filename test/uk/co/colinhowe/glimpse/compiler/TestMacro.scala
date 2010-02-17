@@ -78,4 +78,23 @@ class TestMacro extends CompilerTest {
     """ compilesTo 
     <view><p value="4">hi</p></view>
   }
+  
+  @Test
+  def macroWithOverloadedValue = {   
+    """
+    macro p with s : string {
+      node p s
+    }
+    macro p with g : generator {
+      node p {
+        include g
+      }
+    }
+    p "string"
+    p {
+      p "generator"
+    }
+    """ compilesTo 
+    <view><p>string</p><p><p>generator</p></p></view>
+  }
 }

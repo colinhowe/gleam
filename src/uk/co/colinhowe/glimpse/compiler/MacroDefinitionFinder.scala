@@ -27,10 +27,6 @@ class MacroDefinitionFinder(
     // Get the name of the macro
     val name = node.getName().getText()
     
-    if (macroProvider.get(name).size != 0) {
-      errors += new MultipleDefinitionError(lineNumberProvider.getLineNumber(node), name)
-    }
-    
     // Get the type of the content
     val contentType = typeProvider.getType(node.getContentType(), typeNameResolver, genericsInScope.toMap)
     val defn = new MacroDefinition(name, contentType, false)
@@ -44,7 +40,7 @@ class MacroDefinitionFinder(
       defn.addArgument(argumentName, argType)
     }
     
-    println("Found macro [" + defn.getName() + "]")
+    println("Found macro [" + defn.name + "]")
     macroProvider.add(defn)
 
     // Clear any generics in scope
@@ -74,7 +70,7 @@ class MacroDefinitionFinder(
       defn.addArgument(argumentName, argType)
     }
     
-    println("Found macro [" + defn.getName() + "]")
+    println("Found macro [" + defn.name + "]")
     macroProvider.add(defn)
 
     // Clear any generics in scope

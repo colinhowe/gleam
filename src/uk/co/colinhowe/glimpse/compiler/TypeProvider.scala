@@ -29,6 +29,8 @@ class TypeProvider {
       
       case _ : AGeneratorType => new SimpleType(classOf[Generator])
       
+      case _ : AGeneratorExpr => new SimpleType(classOf[Generator])
+      
       case defn : AGenericDefn => new GenericType(defn.getIdentifier().getText(), classOf[Object]);
       case qualified : AQualifiedType => getType(qualified, typeNameResolver, additionalTypes)
       case compound : ACompoundType => getType(compound, typeNameResolver, additionalTypes)

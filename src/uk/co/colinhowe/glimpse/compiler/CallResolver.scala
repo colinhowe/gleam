@@ -3,53 +3,41 @@ package uk.co.colinhowe.glimpse.compiler;
 import uk.co.colinhowe.glimpse.CompilationError
 import uk.co.colinhowe.glimpse.MultipleDefinitionError
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
-import uk.co.colinhowe.glimpse.compiler.node.AArgDefn
-import uk.co.colinhowe.glimpse.compiler.node.AMacroDefn
-import uk.co.colinhowe.glimpse.compiler.node.PArgDefn
 import uk.co.colinhowe.glimpse.compiler.typing.Type
 
 import scala.collection.JavaConversions._
 
-class CallResolver(
-    val lineNumberProvider : LineNumberProvider, 
-    val typeResolver : TypeResolver,
-    typeNameResolver : TypeNameResolver
-  ) extends DepthFirstAdapter {
-  
-  val errors = scala.collection.mutable.Buffer[CompilationError]()
-  val macros = scala.collection.mutable.Map[String, scala.collection.mutable.Set[MacroDefinition]]()
-  
-  override def outAMacroDefn(node : AMacroDefn) {
-    // Get the name of the macro
-    val name = node.getName().getText()
-    
-    if (!macros.contains(name)) {
-      macros.put(name, scala.collection.mutable.Set[MacroDefinition]())
+class CallResolver(provider : MacroDefinitionProvider) extends DepthFirstAdapter {
+  def getMatchingMacro(macroName : String, arguments : Map[String, Type], valueType : Type) : Option[MacroDefinition] = {
+    val definitions = provider.get(macroName)
+    val matchingDefinitions = definitions.filter(matches(_, arguments, valueType))
+    val iterator = matchingDefinitions.iterator
+    if (iterator.hasNext) {
+      Some(iterator.next)
     } else {
-      errors += new MultipleDefinitionError(
-          lineNumberProvider.getLineNumber(node), name)
+      None
     }
-    
-    // Get the type of the content
-    val contentType = typeResolver.getType(node.getContentType(), typeNameResolver)
-    val defn = new MacroDefinition(name, contentType, false)
-
-    // Process all the arguments
-    for (pargDefn <- node.getArgDefn()) {
-      val argDefn = pargDefn.asInstanceOf[AArgDefn]
-      val t = typeResolver.getType(argDefn.getType(), typeNameResolver)
-      val argumentName = argDefn.getIdentifier().getText()
-      defn.addArgument(argumentName, t)
-    }
-    
-    macros(name).add(defn)
   }
-
-  def getMacrosWithName(macroName : String) = {
-    if (macros.containsKey(macroName)) {
-      macros(macroName)
-    } else {
-      scala.collection.mutable.Set[MacroDefinition]()
+  
+  private def matches(definition : MacroDefinition, arguments : Map[String, Type], valueType : Type) : Boolean = {
+    if (!valueType.canBeAssignedTo(definition.valueType)) {
+      return false
     }
+    
+    // Check whether all the arguments exist on the definition
+    val invocationArgumentsExist = arguments.forall(invokationArg => 
+      definition.arguments.exists(argumentMatches(invokationArg, _))
+    )
+    if (!invocationArgumentsExist) {
+      return false
+    }
+    
+    // Check whether all the definition's arguments are satisfied
+    return definition.arguments.forall(arg => arguments.contains(arg._1))
+  }
+  
+  private def argumentMatches(invocationArg : (String, Type), macroArg : (String, Type)) : Boolean = {
+    invocationArg._1 == macroArg._1 &&
+    invocationArg._2.canBeAssignedTo(macroArg._2)
   }
 }
