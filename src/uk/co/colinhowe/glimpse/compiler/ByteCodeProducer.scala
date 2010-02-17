@@ -46,6 +46,7 @@ class ByteCodeProducer(
   private val dynamicMacros = scala.collection.mutable.Set[String]()
   private val macros = scala.collection.mutable.Set[String]()
   private var controllerType : uk.co.colinhowe.glimpse.compiler.typing.Type = null
+  private var inMacro = false
   
   private val scopes = new MStack[Scope]()
 
@@ -560,6 +561,7 @@ class ByteCodeProducer(
   
   
   override def inAMacroDefn(node : AMacroDefn) {
+    inMacro = true
     
     // Create a scope for this macro
     val scope = new Scope(if(scopes.isEmpty) null else scopes.head, true)
@@ -708,6 +710,8 @@ class ByteCodeProducer(
   
   
   override def outAMacroDefn(node : AMacroDefn) {
+    inMacro = false
+
     // Remove the scope
     scopes.pop()
     
@@ -736,17 +740,36 @@ class ByteCodeProducer(
     outputClass(cw, macroName)
   }
   
+  private def beginScope(store : Boolean = true) {
+    // TODO Limit starting scopes to only those things that _need_ new scopes
+    // If no new variables are created then a new scope isn't needed
+    val mv = methodVisitors.head
+    mv.visitTypeInsn(NEW, Type.getInternalName(classOf[Scope]))
+    mv.visitInsn(DUP)
+    mv.visitVarInsn(ALOAD, 1)
+    mv.visitInsn(if (inMacro) ICONST_1 else ICONST_0)
+    mv.visitMethodInsn(INVOKESPECIAL, Type.getInternalName(classOf[Scope]), "<init>", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Z)V"); 
+    if (store) {
+      mv.visitInsn(DUP)
+      mv.visitVarInsn(ASTORE, 1)
+    }
+    
+    val scope = new Scope(scopes.head, false)
+    scopes.push(scope)
+  }
+  
+  private def endScope {
+    scopes.pop
+  }
+  
   override def outAIncludeStmt(node : AIncludeStmt) {
     val mv = methodVisitors.head
     
     val include = node.getIncludeA().asInstanceOf[AIncludeA]
 
-    // Create a new scope for the generator
-    mv.visitTypeInsn(NEW, Type.getInternalName(classOf[Scope]))
-    mv.visitInsn(DUP)
-    mv.visitVarInsn(ALOAD, 1)
-    mv.visitInsn(ICONST_0)
-    mv.visitMethodInsn(INVOKESPECIAL, Type.getInternalName(classOf[Scope]), "<init>", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Z)V"); 
+    inMacro = false
+    beginScope(false)
+    inMacro = true
     
     // Populate the scope with any arguments
     // The arguments will be on the stack like so: scope, name, value, name, value
@@ -773,7 +796,7 @@ class ByteCodeProducer(
       mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
     }
     // Ends with the scope at the top of the stack
-
+    
     val generatorArgumentName = include.getTheInclude().getText()
     
     // Pull the generator from the scope
@@ -789,6 +812,8 @@ class ByteCodeProducer(
     mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Generator", "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
 
     addAllNodesFromStack
+    
+    endScope
   }
 
   override def inAGenerator(node : AGenerator) {
@@ -849,6 +874,8 @@ class ByteCodeProducer(
       // TODO Stuff goes here
       methodVisitors.push(mv)
       labels.push(l1)
+
+      beginScope()
     }
   }
 

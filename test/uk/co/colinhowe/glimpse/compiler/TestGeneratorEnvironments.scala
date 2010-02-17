@@ -108,4 +108,17 @@ class TestGeneratorEnvironments extends CompilerTest {
     """ errors classOf[IdentifierNotFoundError]
     // TODO Should be a compile failure y cannot be found
   }
+  
+  @Test
+  def variableHiding = {   
+    """
+    var x = 4
+    node div {
+      var x = 2
+      node p x
+    }
+    node p x
+    """ compilesTo 
+    <view><div><p>2</p></div><p>4</p></view>
+  }
 }
