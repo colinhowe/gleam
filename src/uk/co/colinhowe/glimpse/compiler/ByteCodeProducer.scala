@@ -16,7 +16,7 @@ import org.objectweb.asm.Type
 import scala.Tuple2
 import scala.collection.JavaConversions
 import scala.collection.JavaConversions._
-import scala.collection.mutable.{ Stack => MStack }
+import scala.collection.mutable.{ Stack => MStack, Set => MSet }
 import uk.co.colinhowe.glimpse.CompilationError
 import uk.co.colinhowe.glimpse.DynamicMacroMismatchError
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
@@ -53,9 +53,11 @@ class ByteCodeProducer(
   classWriters.push(classWriter);
   
   val errors = scala.collection.mutable.Buffer[CompilationError]()
+  val labelsWithLines = MSet[Label]()
+  val trailingLabels = new MStack[Option[Label]]()
   
-  var trailingLabel : Label = null
-  
+  // TODO Refactor out into a seperate class
+  // TODO write some tests for this 
   private def startLabel(node : Node) : Label = {
     val label = new Label()
     println("Starting label [" + label + "]")
@@ -63,24 +65,34 @@ class ByteCodeProducer(
     if (node != null) {
       println("Visiting label as part of start [" + label + "]")
       mv.visitLabel(label)
-      mv.visitLineNumber(lineNumberProvider.getLineNumber(node), label)
-      trailingLabel = null
+      setLineNumber(mv, label, lineNumberProvider.getLineNumber(node))
+      labelsWithLines.add(label)
+      trailingLabels.pop
+      trailingLabels.push(None)
     }
     label
   }
   
+  private def setLineNumber(mv : MethodVisitor, label : Label, line : Int) {
+    if (!labelsWithLines.contains(label)) {
+      mv.visitLineNumber(line, label)
+      labelsWithLines.add(label)
+    }
+  }
+  
   private def startOrContinueLabel(node : Node) : Label = {
-    val label = if (trailingLabel != null) trailingLabel else new Label()
+    val (label, continued) = trailingLabels.pop match {
+      case Some(label) => (label, true)
+      case _ => (new Label(), false)
+    }
     println("Starting/continuing label [" + label + "]")
     val mv = methodVisitors.head
-    if (label != trailingLabel) {
+    if (!continued) {
       println("Visiting label as part of startOrContinue [" + label + "]")
       mv.visitLabel(label)
-      mv.visitLineNumber(lineNumberProvider.getLineNumber(node), label)
-    } else {
-      mv.visitLineNumber(lineNumberProvider.getLineNumber(node), label)
     }
-    trailingLabel = null
+    setLineNumber(mv, label, lineNumberProvider.getLineNumber(node))
+    trailingLabels.push(None)
     label
   }
 
@@ -89,7 +101,8 @@ class ByteCodeProducer(
     println("Visiting label [" + label + "]")
     val mv = methodVisitors.head
     mv.visitLabel(label)
-    trailingLabel = label
+    trailingLabels.pop
+    trailingLabels.push(Some(label))
   }
   
   override def caseAIfelse(node : AIfelse) {
@@ -141,6 +154,7 @@ class ByteCodeProducer(
   override def outATrueExpr(node : ATrueExpr) = putBooleanOnStack(ICONST_1)
   
   override def caseAForloop(node : AForloop) {
+    val mv = methodVisitors.head
     inAForloop(node)
     if (node.getType() != null) {
       node.getType().apply(this)
@@ -148,19 +162,22 @@ class ByteCodeProducer(
     if (node.getIdentifier() != null) {
       node.getIdentifier().apply(this)
     }
+    
+//    setLineNumber(mv, startOrContinueLabel(node), lineNumberProvider.getLineNumber(node))
     if (node.getExpr() != null) {
       node.getExpr().apply(this)
     }
 
     // The iterable should be on the top of the stack
-    val mv = methodVisitors.head
     mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "iterator", "()Ljava/util/Iterator;")
 
     val l2 = new Label()
+    setLineNumber(mv, l2, lineNumberProvider.getLineNumber(node))
     mv.visitJumpInsn(GOTO, l2)
 
     val l3 = new Label()
     mv.visitLabel(l3)
+    setLineNumber(mv, l3, lineNumberProvider.getLineNumber(node))
 
     mv.visitInsn(DUP) // iterator, iterator
     mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Iterator", "next", "()Ljava/lang/Object;") // object, iterator
@@ -267,6 +284,8 @@ class ByteCodeProducer(
   
   override def outAView(node : AView) {
     if (node.getStmt().size() > 0) {
+      trailingLabels.pop
+      
       // Return the list of nodes
       val mv = methodVisitors.head
       val l0 = labels.head
@@ -411,6 +430,8 @@ class ByteCodeProducer(
   override def inAView(node : AView) {
     // Output a view class only if the view contains something that isn't a macro definition
     if (node.getStmt().size() > 0) {
+      trailingLabels.push(None)
+      
       val classWriter = classWriters.head
       classWriter.visit(V1_6, ACC_PUBLIC + ACC_SUPER, viewname, null, "uk/co/colinhowe/glimpse/View", Array[String]())
       // TODO Check up on relative paths
@@ -743,6 +764,7 @@ class ByteCodeProducer(
     val include = node.getIncludeA().asInstanceOf[AIncludeA]
 
     // Create a new scope for the generator
+//    startOrContinueLabel(node)
     mv.visitTypeInsn(NEW, Type.getInternalName(classOf[Scope]))
     mv.visitInsn(DUP)
     mv.visitVarInsn(ALOAD, 1)
@@ -793,6 +815,7 @@ class ByteCodeProducer(
   }
 
   override def inAGenerator(node : AGenerator) {
+    trailingLabels.push(None)
     
     // Create a scope for this generator
     val scope = new Scope(scopes.head, false)
@@ -894,7 +917,8 @@ class ByteCodeProducer(
 
   override def outAGenerator(node : AGenerator) {
     scopes.pop()
-    
+    trailingLabels.pop
+
     // Return the list of nodes
     var mv = methodVisitors.pop()
     val l0 = labels.pop()
@@ -951,8 +975,9 @@ class ByteCodeProducer(
 
     val varname = node.getIdentifier().getText()
     if (node.getExpr() != null) {
-      val l1 = new Label()
-      mv.visitLabel(l1)
+      val l0 = startOrContinueLabel(node)
+      setLineNumber(mv, l0, lineNumberProvider.getLineNumber(node))
+      mv.visitLabel(l0)
       mv.visitVarInsn(ALOAD, 1)
       mv.visitInsn(SWAP) // Value will already be on the stack, so swap it with the scope
       mv.visitLdcInsn(varname)
@@ -968,6 +993,7 @@ class ByteCodeProducer(
   override def outAIncrementStmt(node : AIncrementStmt) {
     // Get the value from the scope
     val mv = methodVisitors.head
+//    setLineNumber(mv, startOrContinueLabel(node), lineNumberProvider.getLineNumber(node))
     mv.visitVarInsn(ALOAD, 1) // scope
     mv.visitLdcInsn(node.getIdentifier().getText()) // name, scope
     mv.visitTypeInsn(NEW, "java/lang/Integer") // Integer, name, scope
@@ -980,7 +1006,7 @@ class ByteCodeProducer(
     mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Integer", "<init>", "(I)V") // Integer, name, scope
     mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "replace", "(Ljava/lang/String;Ljava/lang/Object;)V")
   }
-
+  
   
   override def outAAssignmentStmt(node : AAssignmentStmt) {
     val mv = methodVisitors.head
@@ -988,6 +1014,7 @@ class ByteCodeProducer(
     // This could be a dynamic macro assignment
     val destinationVariable = node.getIdentifier().getText()
     
+    startOrContinueLabel(node)
     if (dynamicMacros.contains(destinationVariable)) {
       debug("setting dynamic macro [" + destinationVariable + "]")
       mv.visitMethodInsn(INVOKESTATIC, destinationVariable, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
@@ -996,8 +1023,6 @@ class ByteCodeProducer(
       mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", "setToInvoke", "(Luk/co/colinhowe/glimpse/Macro;)V")
     } else {
       // The value will be sitting on the stack
-      val l0 = startOrContinueLabel(node)
-      mv.visitLineNumber(lineNumberProvider.getLineNumber(node), l0)
       mv.visitVarInsn(ALOAD, 1) // scope, value
       mv.visitInsn(SWAP) // value, scope
   
@@ -1029,7 +1054,7 @@ class ByteCodeProducer(
     //   macro value, arg, arg, ...
     
     // Put all the arguments into a map
-    val l0 = startLabel(node)
+//    val l0 = startLabel(node)
     mv.visitTypeInsn(NEW, "java/util/HashMap") // args, macro value, arg
     mv.visitInsn(DUP) // args, args, macro value, arg
     mv.visitMethodInsn(INVOKESPECIAL, "java/util/HashMap", "<init>", "()V")

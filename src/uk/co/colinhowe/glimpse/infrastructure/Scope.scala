@@ -46,7 +46,7 @@ private class Variable(var value : Object)
 
 class Scope(val parentScope : Scope, val isMacroScope : Boolean) {
 
-  private val variables = new HashMap[String, Variable]
+  private val variables = new java.util.HashMap[String, Variable]()
   
   /**
    * Adds the given variable to the current scope.
@@ -100,13 +100,13 @@ class Scope(val parentScope : Scope, val isMacroScope : Boolean) {
       throw new IdentifierNotFoundException(variableName)
     }
 
-    if (!variables.contains(variableName)) {
+    if (!variables.containsKey(variableName)) {
       if (parentScope != null) {
         return parentScope.get(variableName, firstScopeWasMacro)
       } else {
         throw new IdentifierNotFoundException(variableName)
       }
     }
-    return variables.get(variableName).get
+    return variables.get(variableName)
   }
 }
