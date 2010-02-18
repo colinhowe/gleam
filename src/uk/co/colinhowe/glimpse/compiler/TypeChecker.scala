@@ -2,13 +2,10 @@ package uk.co.colinhowe.glimpse.compiler
 import uk.co.colinhowe.glimpse.IdentifierNotFoundException
 
 import java.lang.reflect.Method
-import java.util.HashMap
-import java.util.Iterator
-import java.util.LinkedList
-import java.util.List
 
 import scala.collection.JavaConversions
 import scala.collection.JavaConversions._
+import scala.collection.mutable.{ Map => MMap }
 import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl
 import uk.co.colinhowe.glimpse.CompilationError
 import uk.co.colinhowe.glimpse.DynamicMacroMismatchError
@@ -32,7 +29,8 @@ class TypeChecker(
     val lineNumberProvider : LineNumberProvider,
     val macroProvider : MacroDefinitionProvider,
     val typeResolver : TypeResolver,
-    val typeNameResolver : TypeNameResolver
+    val typeNameResolver : TypeNameResolver,
+    val callResolver : CallResolver
   ) extends DepthFirstAdapter {
   
   /*
@@ -160,7 +158,6 @@ class TypeChecker(
   
   
   override def outAMacroStmt(node : AMacroStmt) {
-    // Find the macro
     val invocation = node.getMacroInvoke.asInstanceOf[AMacroInvoke]
 
     // Check the arguments are type-safe
@@ -168,20 +165,19 @@ class TypeChecker(
     val macroName = invocation.getIdentifier.getText
     val actualValueType = getExpressionType(invocation.getExpr())
     
-    // TODO Make this handle multiple types of the same macro
-    val macrosWithName = macroProvider.get(macroName).iterator()
-    if (!macrosWithName.hasNext()) {
-      throw new IllegalArgumentException("Macro with name [" + macroName + "] not found")
+    // Find the macro
+    val argTypes = MMap[String, Type]()
+    for (parg <- arguments) {
+     val arg = parg.asInstanceOf[AArgument]
+      val argName = arg.getIdentifier().getText()
+      argTypes(argName) = typeResolver.getType(arg.getExpr, typeNameResolver)
     }
-    val macroDefinition = macrosWithName.next() 
-    
-    if (!areTypesCompatible(macroDefinition.getValueType(), actualValueType)) {
-      errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), macroDefinition.getValueType(), actualValueType))
-    }
+
+    val macroDefinition = callResolver.getMatchingMacro(
+      macroName, argTypes.toMap, typeResolver.getType(invocation.getExpr, typeNameResolver)).get
     
     // Build a map of bound generics
     val genericBindings = scala.collection.mutable.Map[GenericType, Type]()
-    
     
     for (pargument <- arguments) {
       // Get the type of the argument in the call
@@ -189,7 +185,7 @@ class TypeChecker(
       val callType = typeResolver.getType(argument.getExpr(), typeNameResolver, genericsInScope)
       
       // Get the type of the argument as defined in the macro
-      var defnType = macroDefinition.getArguments().get(argument.getIdentifier().getText())
+      var defnType = macroDefinition.arguments(argument.getIdentifier().getText())
       defnType = bind(genericBindings, defnType, callType)
       
       // Check if this type or any subtypes has been bound already
@@ -236,8 +232,8 @@ class TypeChecker(
     val name = identifierListToString(node.getIdentifier)
     
       // TODO Make this handle multiple types of the same macro
-    val macrosWithName = macroProvider.get(name).iterator()
-    if (macrosWithName.hasNext()) {
+    val macrosWithName = macroProvider.get(name).iterator
+    if (macrosWithName.hasNext) {
       typeResolver.addType(
           node, 
           macrosWithName.next()) 
@@ -265,7 +261,7 @@ class TypeChecker(
     s.substring(0, 1).toUpperCase() + s.substring(1)
   }
   
-  private def evaluateCompoundProperty(identifiers : List[TIdentifier], ownerClazz : Class[_]) : Type = {
+  private def evaluateCompoundProperty(identifiers : Iterable[TIdentifier], ownerClazz : Class[_]) : Type = {
     var currentType = ownerClazz
     var returnType : Type = null
     for (identifier <- identifiers) {
@@ -327,14 +323,14 @@ class TypeChecker(
     val destinationVariable = node.getIdentifier().getText()
     
     // TODO Cope with overloading
-    if (macroProvider.get(destinationVariable).size() > 0) {
-      val macroDefinition = macroProvider.get(destinationVariable).iterator().next()
+    if (macroProvider.get(destinationVariable).size > 0) {
+      val macroDefinition = macroProvider.get(destinationVariable).iterator.next()
       
-      if (macroDefinition != null && macroDefinition.isDynamic()) {
+      if (macroDefinition != null && macroDefinition.isDynamic) {
         if (!areTypesCompatible(macroDefinition, typeResolver.getType(node.getExpr(), typeNameResolver, genericsInScope))) {
           errors.add(new DynamicMacroMismatchError(
               lineNumberProvider.getLineNumber(node), 
-              macroDefinition.getName()))
+              macroDefinition.name))
         }
       } 
     } else {

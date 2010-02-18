@@ -32,11 +32,23 @@ class TestComments extends CompilerTest {
   }
   
   @Test
+  def multipleMultiLineComments = {   
+    """
+    /*
+     */
+    node p "a"
+    /*
+     */
+    node p "b"
+    """ compilesTo 
+    <view><p>a</p><p>b</p></view>
+  }
+  
+  @Test
   def multiLineCommentInMultiLineComment = {   
     """
     /*
-     /* Inner one! */
-     */
+     /* The start of this comment is ignored.. so we only end once */
     node p "c"
     """ compilesTo 
     <view><p>c</p></view>

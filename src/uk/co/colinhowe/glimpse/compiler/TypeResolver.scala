@@ -26,7 +26,7 @@ class TypeResolver(
   
   override def outAPropertyExpr(node : APropertyExpr) {
     val name = IdentifierConverter.identifierListToString(node.getIdentifier)
-    if (macroProvider.get(name).size() > 0) {
+    if (macroProvider.get(name).size > 0) {
       this.types.put(node, macroProvider.get(name).iterator.next())
     } else {
       // TODO Get the type out
