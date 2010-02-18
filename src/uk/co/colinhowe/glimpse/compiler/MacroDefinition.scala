@@ -2,8 +2,20 @@ package uk.co.colinhowe.glimpse.compiler
 
 import uk.co.colinhowe.glimpse.compiler.typing.Type
 
-class MacroDefinition(val name : String, val valueType : Type, val isDynamic : Boolean) extends Type {
+case class MacroDefinition(val name : String, val valueType : Type, val isDynamic : Boolean) extends Type {
+  // TODO Make arguments part of the constructor
   val arguments = scala.collection.mutable.Map[String, Type]()
+  
+  override def equals(o : Any) : Boolean = {
+    o match {
+      case defn : MacroDefinition => 
+        defn.name == name &&
+        defn.valueType == valueType &&
+        defn.isDynamic == isDynamic &&
+        defn.arguments == arguments
+      case _ => false
+    }
+  }
   
   /**
    * The class name is built up from the name plus a hash of:

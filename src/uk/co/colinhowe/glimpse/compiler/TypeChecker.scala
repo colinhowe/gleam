@@ -11,6 +11,7 @@ import uk.co.colinhowe.glimpse.CompilationError
 import uk.co.colinhowe.glimpse.DynamicMacroMismatchError
 import uk.co.colinhowe.glimpse.Generator
 import uk.co.colinhowe.glimpse.IdentifierNotFoundError
+import uk.co.colinhowe.glimpse.MacroNotFoundError
 import uk.co.colinhowe.glimpse.IdentifierNotFoundException
 import uk.co.colinhowe.glimpse.MapUtil
 import uk.co.colinhowe.glimpse.TypeCheckError
@@ -173,29 +174,46 @@ class TypeChecker(
       argTypes(argName) = typeResolver.getType(arg.getExpr, typeNameResolver)
     }
 
-    val macroDefinition = callResolver.getMatchingMacro(
-      macroName, argTypes.toMap, typeResolver.getType(invocation.getExpr, typeNameResolver)).get
-    
-    // Build a map of bound generics
-    val genericBindings = scala.collection.mutable.Map[GenericType, Type]()
-    
-    for (pargument <- arguments) {
-      // Get the type of the argument in the call
-      val argument = pargument.asInstanceOf[AArgument]
-      val callType = typeResolver.getType(argument.getExpr(), typeNameResolver, genericsInScope)
-      
-      // Get the type of the argument as defined in the macro
-      var defnType = macroDefinition.arguments(argument.getIdentifier().getText())
-      defnType = bind(genericBindings, defnType, callType)
-      
-      // Check if this type or any subtypes has been bound already
-      if (defnType.isInstanceOf[GenericType] && !genericBindings.containsKey(defnType)) {
-        genericBindings(defnType.asInstanceOf[GenericType]) = callType
-      } else if (defnType.isInstanceOf[GenericType] && !areTypesCompatible(genericBindings.get(defnType), callType)) {
-        errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), defnType, callType))
-      } else if (!areTypesCompatible(defnType, callType)) {
-        errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), defnType, callType))
-      }
+    callResolver.getMatchingMacro(macroName, argTypes.toMap, typeResolver.getType(invocation.getExpr, typeNameResolver)) match {
+      case None =>
+        // We should throw up an error that there are no matching macros
+        val definitions = callResolver.getMacrosWithName(macroName)
+        
+        val callArgumentTypes = MMap[String, Type]()
+        for (pargument <- arguments) {
+          // Get the type of the argument in the call
+          val argument = pargument.asInstanceOf[AArgument]
+          val callType = typeResolver.getType(argument.getExpr(), typeNameResolver, genericsInScope)
+          callArgumentTypes(argument.getIdentifier.getText) = callType
+        }
+        
+        errors.add(new MacroNotFoundError(lineNumberProvider.getLineNumber(node), macroName, callArgumentTypes.toMap, actualValueType, definitions.toSet))
+        
+        // Remove this node
+        node.replaceBy(null)
+        
+      case Some(macroDefinition) =>
+        // Build a map of bound generics
+        val genericBindings = scala.collection.mutable.Map[GenericType, Type]()
+        
+        for (pargument <- arguments) {
+          // Get the type of the argument in the call
+          val argument = pargument.asInstanceOf[AArgument]
+          val callType = typeResolver.getType(argument.getExpr(), typeNameResolver, genericsInScope)
+          
+          // Get the type of the argument as defined in the macro
+          var defnType = macroDefinition.arguments(argument.getIdentifier().getText())
+          defnType = bind(genericBindings, defnType, callType)
+          
+          // Check if this type or any subtypes has been bound already
+          if (defnType.isInstanceOf[GenericType] && !genericBindings.containsKey(defnType)) {
+            genericBindings(defnType.asInstanceOf[GenericType]) = callType
+          } else if (defnType.isInstanceOf[GenericType] && !areTypesCompatible(genericBindings.get(defnType), callType)) {
+            errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), defnType, callType))
+          } else if (!areTypesCompatible(defnType, callType)) {
+            errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), defnType, callType))
+          }
+        }  
     }
   }
   

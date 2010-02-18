@@ -19,6 +19,8 @@ class CallResolver(provider : MacroDefinitionProvider) extends DepthFirstAdapter
     }
   }
   
+  def getMacrosWithName(macroName : String) = provider.get(macroName)
+  
   private def matches(definition : MacroDefinition, arguments : Map[String, Type], valueType : Type) : Boolean = {
     if (!valueType.canBeAssignedTo(definition.valueType)) {
       return false
