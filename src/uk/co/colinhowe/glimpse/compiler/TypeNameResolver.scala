@@ -5,7 +5,6 @@ import scala.collection.JavaConversions._
 import uk.co.colinhowe.glimpse.compiler.IdentifierConverter._
 
 class TypeNameResolver(start : Start, classPathResolver : ClassPathResolver) {
-  
   val imports = findImports(start)
   
   def getClassByName(name : String) : Option[Class[_]] = imports.get(name)

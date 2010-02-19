@@ -17,6 +17,10 @@ case class MacroDefinition(val name : String, val valueType : Type, val isDynami
     }
   }
   
+  override def toString : String = {
+    "MacroDefinition("+name+","+valueType+","+isDynamic+","+arguments+")"
+  }
+  
   /**
    * The class name is built up from the name plus a hash of:
    *  - the argument names and types

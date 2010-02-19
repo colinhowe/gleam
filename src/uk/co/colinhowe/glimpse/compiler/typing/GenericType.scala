@@ -9,7 +9,7 @@ macro x(List<generic T extends Thing> list) with generator(T item) {
   
 }
 */
-class GenericType(val typeId : String, val clazz : Class[_ <: Any]) extends Type {
+case class GenericType(val typeId : String, val clazz : Class[_ <: Any]) extends Type {
   def canBeAssignedTo(assignee : Type) : Boolean = {
     throw new UnsupportedOperationException("Not implemented")
   }

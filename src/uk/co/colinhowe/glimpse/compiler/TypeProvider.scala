@@ -31,7 +31,7 @@ class TypeProvider {
       
       case _ : AGeneratorExpr => new SimpleType(classOf[Generator])
       
-      case defn : AGenericDefn => new GenericType(defn.getIdentifier().getText(), classOf[Object]);
+      case defn : AGenericDefn => new GenericType(defn.getIdentifier().getText(), classOf[Object])
       case qualified : AQualifiedType => getType(qualified, typeNameResolver, additionalTypes)
       case compound : ACompoundType => getType(compound, typeNameResolver, additionalTypes)
       case _ => null
@@ -42,7 +42,7 @@ class TypeProvider {
     // TODO Make compound types reference a Type instead of a Class as the parent type
     val parentType = getType(node.getParenttype(), typeNameResolver).asInstanceOf[SimpleType]
     val subTypes = node.getTypes().map(getType(_, typeNameResolver, additionalTypes))
-    new CompoundType(parentType.getClazz, subTypes)
+    new CompoundType(parentType.getClazz, subTypes.toList)
   }
   
   

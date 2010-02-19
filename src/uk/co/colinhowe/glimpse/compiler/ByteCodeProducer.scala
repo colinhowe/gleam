@@ -3,6 +3,7 @@
  */
 package uk.co.colinhowe.glimpse.compiler
 
+import uk.co.colinhowe.glimpse.compiler.typing.GenericType
 import java.io.File
 import java.io.FileOutputStream
 
@@ -41,7 +42,16 @@ class ByteCodeProducer(
   
   private var generatorCount : Int = 0
   private val generatorIds = scala.collection.mutable.Map[AGenerator, Integer]()
-  private val methodVisitors = new MStack[MethodVisitor]()
+  private val methodVisitors = new MStack[MethodVisitor]() {
+    override def push(visitor : MethodVisitor) = {
+      println(">>> push")
+      super.push(visitor)
+    }
+    override def pop = {
+      println(">>> pop")
+      super.pop
+    }
+  }
   private val labels = new MStack[Label]()
   private val generatorNames = new MStack[String]()
   private val classWriters = new MStack[ClassWriter]()
@@ -434,6 +444,7 @@ class ByteCodeProducer(
   override def inAView(node : AView) {
     // Output a view class only if the view contains something that isn't a macro definition
     if (node.getStmt().size() > 0) {
+    println("In view")
       trailingLabels.push(None)
       
       val classWriter = classWriters.head
@@ -588,9 +599,17 @@ class ByteCodeProducer(
     val macroName = node.getName().getText()
     val definition = new MacroDefinition(
         macroName, typeResolver.getType(node.getContentType, typeNameResolver), false)
+    
+    // Add on any generics needed
+    val generics = MMap[String, GType]()
+    for (pgeneric <- node.getGenericDefn) {
+      val generic = pgeneric.asInstanceOf[AGenericDefn]
+      generics(generic.getIdentifier.getText) = new GenericType(generic.getIdentifier().getText(), classOf[Object])
+    }
+    
     for (parg <- node.getArgDefn()) {
       val arg = parg.asInstanceOf[AArgDefn]
-      definition.addArgument(arg.getIdentifier().getText(), typeResolver.getType(arg.getType(), typeNameResolver))
+      definition.addArgument(arg.getIdentifier().getText(), typeResolver.getType(arg.getType(), typeNameResolver, generics.toMap))
     }
     return definition
   }

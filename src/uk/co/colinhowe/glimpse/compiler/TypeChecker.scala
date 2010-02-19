@@ -190,7 +190,7 @@ class TypeChecker(
         errors.add(new MacroNotFoundError(lineNumberProvider.getLineNumber(node), macroName, callArgumentTypes.toMap, actualValueType, definitions.toSet))
         
         // Remove this node
-        node.replaceBy(null)
+        node.replaceBy(new AErrorNode)
         
       case Some(macroDefinition) =>
         // Build a map of bound generics
@@ -234,7 +234,7 @@ class TypeChecker(
       for (i <- 0 until compoundDefnType.innerTypes.size) {
         innerTypes.add(bind(genericBindings, compoundDefnType.innerTypes(i), compoundCallType.innerTypes(i)))
       }
-      return new CompoundType(defnType.asInstanceOf[CompoundType].clazz, innerTypes)
+      return new CompoundType(defnType.asInstanceOf[CompoundType].clazz, innerTypes.toList)
     } else {
       return defnType
     }
@@ -293,7 +293,7 @@ class TypeChecker(
         for (t <- p.getActualTypeArguments()) {
           innerTypes += new SimpleType(t.asInstanceOf[Class[_]])
         }
-        returnType = new CompoundType(p.getRawType().asInstanceOf[Class[_]], JavaConversions.asList(innerTypes))
+        returnType = new CompoundType(p.getRawType().asInstanceOf[Class[_]], innerTypes.toList)
       } else {
         returnType = new SimpleType(getter.getReturnType())
       }
