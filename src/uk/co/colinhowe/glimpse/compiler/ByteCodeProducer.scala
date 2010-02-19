@@ -3,6 +3,7 @@
  */
 package uk.co.colinhowe.glimpse.compiler
 
+import java.util.LinkedList
 import uk.co.colinhowe.glimpse.compiler.typing.GenericType
 import java.io.File
 import java.io.FileOutputStream
@@ -227,14 +228,15 @@ class ByteCodeProducer(
   
   override def outADynamicMacroDefn(node : ADynamicMacroDefn) {
     dynamicMacros.add(node.getName().getText())
-    
+
     // Create the class for the dynamic macro
     val cw = new ClassWriter(ClassWriter.COMPUTE_MAXS)
     
     // Get the name of the macro
     val macroName = node.getName().getText()
+    val className = macroName
     
-    cw.visit(V1_6, ACC_SUPER, macroName, null, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", Array[String]())
+    cw.visit(V1_6, ACC_SUPER, className, null, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", Array[String]())
 
     // Instance field for the macro
     var fv = cw.visitField(ACC_PRIVATE + ACC_STATIC, "instance", "Luk/co/colinhowe/glimpse/Macro;", null, null)
@@ -248,10 +250,10 @@ class ByteCodeProducer(
       // Initialise the instance
       val l0 = new Label()
       mv.visitLabel(l0)
-      mv.visitTypeInsn(NEW, macroName)
+      mv.visitTypeInsn(NEW, className)
       mv.visitInsn(DUP)
-      mv.visitMethodInsn(INVOKESPECIAL, macroName, "<init>", "()V")
-      mv.visitFieldInsn(PUTSTATIC, macroName, "instance", "Luk/co/colinhowe/glimpse/Macro;")
+      mv.visitMethodInsn(INVOKESPECIAL, className, "<init>", "()V")
+      mv.visitFieldInsn(PUTSTATIC, className, "instance", "Luk/co/colinhowe/glimpse/Macro;")
       
       val l1 = new Label()
       mv.visitLabel(l1)
@@ -267,17 +269,17 @@ class ByteCodeProducer(
 
       val l1 = new Label()
       mv.visitLabel(l1)
-      mv.visitFieldInsn(GETSTATIC, macroName, "instance", "Luk/co/colinhowe/glimpse/Macro;")
+      mv.visitFieldInsn(GETSTATIC, className, "instance", "Luk/co/colinhowe/glimpse/Macro;")
       mv.visitInsn(ARETURN)
       mv.visitMaxs(0, 0)
       mv.visitEnd();
     } 
     
-    defaultConstructor(cw, macroName, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro")
+    defaultConstructor(cw, className, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro")
     
     cw.visitEnd()
     
-    outputClass(cw, macroName)
+    outputClass(cw, className)
   }
   
   def outputClass(cw : ClassWriter, name : String) {
@@ -376,10 +378,8 @@ class ByteCodeProducer(
     
     val name = IdentifierConverter.identifierListToString(node.getIdentifier)
 
-    if (macros.contains(name)) {
-      mv.visitMethodInsn(INVOKESTATIC, name, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
-      debug("simpleMacroExpr [" + name + "]")
-    } else {
+    // Ignore dynamic macro assignments, they're handled in the assignment handler
+    if (!macros.contains(name)) {
       getFromScope(node.getIdentifier.head.getText)
         
       if (node.getIdentifier().size() > 1) {
@@ -594,8 +594,14 @@ class ByteCodeProducer(
     mv.visitEnd()
   }
   
+  private type MacroDefn = {
+    def getName() : TIdentifier
+    def getContentType() : PType
+    def getGenericDefn() : LinkedList[PGenericDefn]
+    def getArgDefn() : LinkedList[PArgDefn]
+  }
   
-  private def createMacroDefinition(node : AMacroDefn) : MacroDefinition = {
+  private def createMacroDefinition(node : MacroDefn) : MacroDefinition = {
     val macroName = node.getName().getText()
     val definition = new MacroDefinition(
         macroName, typeResolver.getType(node.getContentType, typeNameResolver), false)
@@ -1069,6 +1075,35 @@ class ByteCodeProducer(
     mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "replace", "(Ljava/lang/String;Ljava/lang/Object;)V")
   }
   
+  private def outDynamicMacroAssignment(node : AAssignmentStmt) {
+    val mv = methodVisitors.head
+    val dynamicMacroName = node.getIdentifier().getText()
+    val expr = node.getExpr().asInstanceOf[APropertyExpr]
+    val sourceMacroName = IdentifierConverter.identifierListToString(expr.getIdentifier)
+
+    // Get the dynamic macro definition
+    val dynamicMacroDefinition = callResolver.getMacrosWithName(dynamicMacroName).iterator.next
+    
+    // Get the source macro definition
+    val sourceMacroDefinitions = callResolver.getMacrosWithName(sourceMacroName)
+    
+    // Search for an exact match
+    println("Destination: " + dynamicMacroDefinition)
+    println("Sources: " + sourceMacroDefinitions)
+    val sourceMacroDefinition = sourceMacroDefinitions.find(defn =>
+        defn.valueType == dynamicMacroDefinition.valueType &&
+        defn.arguments == dynamicMacroDefinition.arguments)
+    val sourceClassName = sourceMacroDefinition.get.className
+    
+    mv.visitMethodInsn(INVOKESTATIC, sourceClassName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
+    debug("simpleMacroExpr [" + sourceClassName + "]")
+    
+    debug("setting dynamic macro [" + dynamicMacroName + "]")
+    mv.visitMethodInsn(INVOKESTATIC, dynamicMacroName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
+    mv.visitTypeInsn(CHECKCAST, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro")
+    mv.visitInsn(SWAP)
+    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", "setToInvoke", "(Luk/co/colinhowe/glimpse/Macro;)V")
+  }
   
   override def outAAssignmentStmt(node : AAssignmentStmt) {
     val mv = methodVisitors.head
@@ -1078,11 +1113,7 @@ class ByteCodeProducer(
     
     startOrContinueLabel(node)
     if (dynamicMacros.contains(destinationVariable)) {
-      debug("setting dynamic macro [" + destinationVariable + "]")
-      mv.visitMethodInsn(INVOKESTATIC, destinationVariable, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
-      mv.visitTypeInsn(CHECKCAST, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro")
-      mv.visitInsn(SWAP)
-      mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", "setToInvoke", "(Luk/co/colinhowe/glimpse/Macro;)V")
+      outDynamicMacroAssignment(node)
     } else {
       // The value will be sitting on the stack
       mv.visitVarInsn(ALOAD, 1) // scope, value

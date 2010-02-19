@@ -349,6 +349,7 @@ class TypeChecker(
           errors.add(new DynamicMacroMismatchError(
               lineNumberProvider.getLineNumber(node), 
               macroDefinition.name))
+          node.replaceBy(new AErrorNode)
         }
       } 
     } else {

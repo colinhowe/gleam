@@ -28,12 +28,16 @@ case class MacroDefinition(val name : String, val valueType : Type, val isDynami
    * @return
    */
   def className : String = {
-    var toHash = name + valueType
-    for ((key, value) <- arguments) {
-      toHash += key + value
+    if (!isDynamic) {
+      var toHash = name + valueType
+      for ((key, value) <- arguments) {
+        toHash += key + value
+      }
+      println("Hashing [" + toHash + "]")
+      return name + "$" + Integer.toString(Math.abs(toHash.hashCode()), 16)
+    } else {
+      return name
     }
-    println("Hashing [" + toHash + "]")
-    return name + "$" + Integer.toString(Math.abs(toHash.hashCode()), 16)
   }
   
   def addArgument(argumentName : String, t : Type) {
