@@ -1,4 +1,8 @@
-package uk.co.colinhowe.glimpse.compiler;
+package uk.co.colinhowe.glimpse.compiler;
+import uk.co.colinhowe.glimpse.compiler.typing.CompoundType
+
+import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
+
 import uk.co.colinhowe.glimpse.compiler.typing.GenericType
 
 import uk.co.colinhowe.glimpse.CompilationError
@@ -6,6 +10,7 @@ import uk.co.colinhowe.glimpse.MultipleDefinitionError
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
 import uk.co.colinhowe.glimpse.compiler.typing.Type
 import scala.collection.mutable.{ Map => MMap }
+import scala.collection.mutable.Buffer
 
 import scala.collection.JavaConversions._
 
@@ -23,43 +28,55 @@ class CallResolver(provider : MacroDefinitionProvider) extends DepthFirstAdapter
   
   def getMacrosWithName(macroName : String) = provider.get(macroName)
   
+  def resolveGenerics(source : Type, target : Type, bindings : Map[String, Type]) : (Type, Map[String, Type]) = {
+    target match {
+      case t : SimpleType => (t, bindings)
+      case target : CompoundType => 
+        // If the source type doesn't match then we can bail now
+        if (!source.isInstanceOf[CompoundType]) {
+          (target, bindings)
+        } else {
+          var currentBindings = bindings
+          var newInnerTypes = Buffer[Type]()
+          val compoundSource = source.asInstanceOf[CompoundType]
+
+          for (i <- 0 until target.innerTypes.size) {
+            val (newInnerType, newBindings) = resolveGenerics(
+                compoundSource.innerTypes(i), target.innerTypes(i), currentBindings)
+            currentBindings = newBindings
+            newInnerTypes += newInnerType
+          }
+          
+          (CompoundType(target.clazz, newInnerTypes.toList), currentBindings)
+        }
+      case t : GenericType =>
+        val newBindings = bindings + (t.typeId -> source)
+        (source, newBindings)
+      case _ =>
+        throw new RuntimeException("Fail")
+    }
+  }
+  
   private def matches(definition : MacroDefinition, arguments : Map[String, Type], valueType : Type) : Boolean = {
     var definitionToMatch = definition
     
     // Attempt generic bindings so that matches can be performed correctly
-    val genericBindings = MMap[String, Type]()
     // TODO Remove this out into a class specifically for generic bindings so that it can be reused
-    if (definition.valueType.isInstanceOf[GenericType]) {
-      val t = definition.valueType.asInstanceOf[GenericType]
-      genericBindings(t.typeId) = valueType
-      definitionToMatch = new MacroDefinition(definition.name, valueType, definition.isDynamic)
-      for (argument <- arguments) {
-        definitionToMatch.addArgument(argument._1, argument._2)
-      }
-    }
+    val (newValueType, genericBindings) = 
+      resolveGenerics(valueType, definition.valueType, Map[String, Type]())
+    definitionToMatch = new MacroDefinition(definition.name, newValueType, definition.isDynamic)
     
+    var currentBindings = genericBindings
     for (argument <- definition.arguments) {
-      if (argument._2.isInstanceOf[GenericType]) {
-        val t = argument._2.asInstanceOf[GenericType]
-        
-        if (genericBindings.containsKey(t.typeId)) {
-          if (genericBindings(t.typeId) != arguments.get(argument._1)) {
-            // Generics can't be consistently bound so this definition does not match
-            return false
-          }
-        } else {
-          genericBindings(t.typeId) = arguments(argument._1)
-          val oldDefinition = definitionToMatch
-          definitionToMatch = new MacroDefinition(definition.name, definition.valueType, definition.isDynamic)
-          for (existingArgument <- oldDefinition.arguments) {
-            if (existingArgument._1 == argument._1) {
-              definitionToMatch.addArgument(argument._1, arguments(argument._1))
-            } else{
-              definitionToMatch.addArgument(argument._1, argument._2)
-            }
-          }
-        }
+      if (!arguments.contains(argument._1)) {
+        return false
       }
+      
+      // TODO Fix this kludge
+      var (newArgType2, currentBindings2) = resolveGenerics(arguments(argument._1), argument._2, currentBindings)
+      currentBindings = currentBindings2
+      
+      definitionToMatch.addArgument(argument._1, newArgType2)
     }
     
     println ("Generics resolved to [" + definitionToMatch + "]")
