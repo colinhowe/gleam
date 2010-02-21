@@ -71,7 +71,8 @@ class GlimpseCompiler {
           "temp/" + viewname + ".class", 
           typeNameResolver, 
           intermediate.sourcename,
-          callResolver)
+          callResolver,
+          typeChecker.resolvedCallsProvider)
       ast.apply(bcp)
       errors ++ bcp.errors
       

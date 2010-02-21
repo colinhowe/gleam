@@ -1,7 +1,8 @@
-package uk.co.colinhowe.glimpse.infrastructure
+package uk.co.colinhowe.glimpse.infrastructure
+
 import uk.co.colinhowe.glimpse.IdentifierNotFoundException
 
-import scala.collection.mutable.HashMap
+import scala.collection.mutable.HashMap
 
 
 /*
@@ -40,22 +41,22 @@ When a variable is modified the top-most scope (with the variable) is affected
 
 /**
  * Variable class encapsulates the value of a variable. This allows for the Scope 
- * class to provide a clean way to retrieve a variable for either reading or writing. * TODO Kill this.
+ * class to provide a clean way to retrieve a variable for either reading or writing.
+ * TODO Kill this.
  */
-private class Variable(var value : Object)
+private class Variable(var value : Object, val cascade : Boolean)
 
 class Scope(val parentScope : Scope, val isMacroScope : Boolean) {
 
   private val variables = new java.util.HashMap[String, Variable]()
   
-  /**
-   * Adds the given variable to the current scope.
-   * 
-   * @param variableName
-   * @param value
-   */
+  
   def add(variableName : String, value : Object) : Unit = {
-    variables.put(variableName, new Variable(value))
+    variables.put(variableName, new Variable(value, false))
+  }
+  
+  def add(variableName : String, value : Object, cascade : Boolean) : Unit = {
+    variables.put(variableName, new Variable(value, cascade))
   }
   
   
@@ -67,7 +68,12 @@ class Scope(val parentScope : Scope, val isMacroScope : Boolean) {
    * @param value
    */
   def replace(variableName : String, value : Object) : Unit = {
-    get(variableName, isMacroScope).value = value
+    val variable = get(variableName, isMacroScope)
+    if (!variable.cascade) {
+      variable.value = value
+    } else {
+      throw new IdentifierNotFoundException(variableName)
+    }
   }
   
   
@@ -91,13 +97,15 @@ class Scope(val parentScope : Scope, val isMacroScope : Boolean) {
       if (parentScope != null) {
         return parentScope.get(variableName, firstScopeWasMacro)
       } else {
-        throw new IdentifierNotFoundException(variableName)
+        // Keep going but only look for cascade variables
+        getCascadedVariable(variableName)
       }
     }
     
     // If the first scope was macro scope and we've left macro scope then we must abort
     if (firstScopeWasMacro && !isMacroScope) {
-      throw new IdentifierNotFoundException(variableName)
+      // Keep going but only look for cascade variables
+      getCascadedVariable(variableName)
     }
 
     if (!variables.containsKey(variableName)) {
@@ -108,5 +116,19 @@ class Scope(val parentScope : Scope, val isMacroScope : Boolean) {
       }
     }
     return variables.get(variableName)
+  }
+  
+  private def getCascadedVariable(variableName : String) : Variable = {
+    if (variables.containsKey(variableName)) {
+      if (variables.get(variableName).cascade) {
+        return variables.get(variableName)
+      }
+    }
+    
+    if (parentScope != null) {
+      return parentScope.getCascadedVariable(variableName)
+    } else {
+      throw new IdentifierNotFoundException(variableName)
+    }
   }
 }

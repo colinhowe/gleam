@@ -1,4 +1,5 @@
 package uk.co.colinhowe.glimpse.compiler
+import uk.co.colinhowe.glimpse.compiler.node.ACascadeModifier
 
 import uk.co.colinhowe.glimpse.compiler.typing.GenericType
 import uk.co.colinhowe.glimpse.compiler.node.AGenericDefn
@@ -37,7 +38,8 @@ class MacroDefinitionFinder(
       println("generics: " + genericsInScope)
       val argType = typeProvider.getType(argDefn.getType(), typeNameResolver, genericsInScope.toMap)
       val argumentName = argDefn.getIdentifier().getText()
-      defn.addArgument(argumentName, argType)
+      val cascade = argDefn.getModifier.exists { _.isInstanceOf[ACascadeModifier] }
+      defn.addArgument(argumentName, argType, cascade)
     }
     
     println("Found macro [" + defn.name + "]")
@@ -54,7 +56,7 @@ class MacroDefinitionFinder(
     val name = node.getName().getText()
     
     if (macroProvider.get(name).size != 0) {
-      errors += new MultipleDefinitionError(lineNumberProvider.getLineNumber(node), name)
+      errors += new MultipleDefinitionError(lineNumberProvider.getLineNumber(node).get, name)
     }
     
     // Get the type of the content
@@ -67,7 +69,8 @@ class MacroDefinitionFinder(
       val argDefn = pargDefn.asInstanceOf[AArgDefn]
       val argType = typeProvider.getType(argDefn.getType(), typeNameResolver)
       val argumentName = argDefn.getIdentifier().getText()
-      defn.addArgument(argumentName, argType)
+      val cascade = argDefn.getModifier.exists { _.isInstanceOf[ACascadeModifier] }
+      defn.addArgument(argumentName, argType, cascade)
     }
     
     println("Found macro [" + defn.name + "]")

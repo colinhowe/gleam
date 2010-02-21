@@ -1,11 +1,12 @@
 package uk.co.colinhowe.glimpse.compiler
-import uk.co.colinhowe.glimpse.IdentifierNotFoundException
+
+import uk.co.colinhowe.glimpse.IdentifierNotFoundException
 
 import java.lang.reflect.Method
 
 import scala.collection.JavaConversions
 import scala.collection.JavaConversions._
-import scala.collection.mutable.{ Map => MMap }
+import scala.collection.mutable.{ Map => MMap, Buffer }
 import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl
 import uk.co.colinhowe.glimpse.CompilationError
 import uk.co.colinhowe.glimpse.DynamicMacroMismatchError
@@ -33,6 +34,11 @@ class TypeChecker(
     val typeNameResolver : TypeNameResolver,
     val callResolver : CallResolver
   ) extends DepthFirstAdapter {
+  
+  val resolvedCallsProvider = new ResolvedCallsProvider
+  
+  private val cascadeIdentifier = new CascadeIdentifier(
+      typeResolver, typeNameResolver, resolvedCallsProvider)
   
   /*
    * TODO I think this could all be made a lot tidier
@@ -91,11 +97,11 @@ class TypeChecker(
     try {
       val t = scope.get(node.getIdentifier().getText()).asInstanceOf[Type]
       if (!t.equals(new SimpleType(classOf[java.lang.Integer]))) {
-        errors += new TypeCheckError(lineNumberProvider.getLineNumber(node), new SimpleType(classOf[java.lang.Integer]), t)
+        errors += new TypeCheckError(lineNumberProvider.getLineNumber(node).get, new SimpleType(classOf[java.lang.Integer]), t)
       }
     } catch {
       case _ : IdentifierNotFoundException =>
-        errors += new IdentifierNotFoundError(lineNumberProvider.getLineNumber(node), node.getIdentifier().getText())
+        errors += new IdentifierNotFoundError(lineNumberProvider.getLineNumber(node).get, node.getIdentifier().getText())
     }
   }
   
@@ -157,10 +163,31 @@ class TypeChecker(
     System.out.println("Cleared generics from scope")
   }
   
-  
-  override def outAMacroStmt(node : AMacroStmt) {
-    val invocation = node.getMacroInvoke.asInstanceOf[AMacroInvoke]
+  override def caseAMacroInvoke(node : AMacroInvoke) {
+    inAMacroInvoke(node)
+    if(node.getIdentifier() != null) {
+      node.getIdentifier().apply(this)
+    }
+    node.getArguments.foreach(_.apply(this))
 
+    // Generator expressions must be processed after the macro
+    // invocation has been processed
+    node.getExpr match {
+      case _ : AGeneratorExpr =>
+        processMacroInvocation(node)
+        node.getExpr().apply(this)
+      case null =>
+        processMacroInvocation(node)
+      case _ =>
+        node.getExpr().apply(this)
+        processMacroInvocation(node)
+    }
+
+    outAMacroInvoke(node)
+  }
+  
+  
+  private def processMacroInvocation(invocation : AMacroInvoke) {
     // Check the arguments are type-safe
     val arguments = invocation.getArguments()
     val macroName = invocation.getIdentifier.getText
@@ -174,7 +201,7 @@ class TypeChecker(
       argTypes(argName) = typeResolver.getType(arg.getExpr, typeNameResolver)
     }
 
-    callResolver.getMatchingMacro(macroName, argTypes.toMap, typeResolver.getType(invocation.getExpr, typeNameResolver)) match {
+    callResolver.getMatchingMacro(invocation, macroName, argTypes.toMap, typeResolver.getType(invocation.getExpr, typeNameResolver), cascadeIdentifier) match {
       case None =>
         // We should throw up an error that there are no matching macros
         val definitions = callResolver.getMacrosWithName(macroName)
@@ -187,14 +214,15 @@ class TypeChecker(
           callArgumentTypes(argument.getIdentifier.getText) = callType
         }
         
-        errors.add(new MacroNotFoundError(lineNumberProvider.getLineNumber(node), macroName, callArgumentTypes.toMap, actualValueType, definitions.toSet))
+        errors.add(new MacroNotFoundError(lineNumberProvider.getLineNumber(invocation).get, macroName, callArgumentTypes.toMap, actualValueType, definitions.toSet))
         
         // Remove this node
-        node.replaceBy(new AErrorNode)
+        invocation.parent.replaceBy(new AErrorNode)
         
       case Some(macroDefinition) =>
         // Build a map of bound generics
         val genericBindings = scala.collection.mutable.Map[GenericType, Type]()
+        var isFine = true
         
         for (pargument <- arguments) {
           // Get the type of the argument in the call
@@ -202,18 +230,24 @@ class TypeChecker(
           val callType = typeResolver.getType(argument.getExpr(), typeNameResolver, genericsInScope)
           
           // Get the type of the argument as defined in the macro
-          var defnType = macroDefinition.arguments(argument.getIdentifier().getText())
+          var defnType = macroDefinition.arguments(argument.getIdentifier().getText()).argType
           defnType = bind(genericBindings, defnType, callType)
           
           // Check if this type or any subtypes has been bound already
           if (defnType.isInstanceOf[GenericType] && !genericBindings.containsKey(defnType)) {
             genericBindings(defnType.asInstanceOf[GenericType]) = callType
           } else if (defnType.isInstanceOf[GenericType] && !areTypesCompatible(genericBindings.get(defnType), callType)) {
-            errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), defnType, callType))
+            errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(invocation).get, defnType, callType))
+            isFine = false
           } else if (!areTypesCompatible(defnType, callType)) {
-            errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), defnType, callType))
+            errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(invocation).get, defnType, callType))
+            isFine = false
           }
-        }  
+        }
+        
+        if (isFine) {
+          resolvedCallsProvider.add(invocation.parent.asInstanceOf[AMacroStmt], macroDefinition)
+        }
     }
   }
   
@@ -245,33 +279,47 @@ class TypeChecker(
   }
   
   override def outAPropertyExpr(node : APropertyExpr) {
-    // Get the type from the variable
-    // TODO Move this in to the resolver?
-    val name = identifierListToString(node.getIdentifier)
-    
-      // TODO Make this handle multiple types of the same macro
-    val macrosWithName = macroProvider.get(name).iterator
-    if (macrosWithName.hasNext) {
-      typeResolver.addType(
-          node, 
-          macrosWithName.next()) 
-    } else {
-      if (node.getIdentifier.size == 1) {
+    try {
+      // Get the type from the variable
+      // TODO Move this in to the resolver?
+      val name = identifierListToString(node.getIdentifier)
+      
+        // TODO Make this handle multiple types of the same macro
+      val macrosWithName = macroProvider.get(name).iterator
+      if (macrosWithName.hasNext) {
         typeResolver.addType(
             node, 
-            scope.get(name).asInstanceOf[Type])
+            macrosWithName.next()) 
       } else {
-        val ownerType = scope.get(node.getIdentifier.head.getText).asInstanceOf[Type]
-        typeResolver.addType(
-            node.getIdentifier.head, 
-            ownerType)
-        
-        val returnType = evaluateCompoundProperty(node.getIdentifier.tail, ownerType.asInstanceOf[SimpleType].clazz)
-        println("Compound return type [" + returnType + "]")
-        typeResolver.addType(
-            node, 
-            returnType)
+        if (node.getIdentifier.size == 1) {
+          typeResolver.addType(
+              node, 
+              scope.get(name).asInstanceOf[Type])
+        } else {
+          val ownerType = scope.get(node.getIdentifier.head.getText).asInstanceOf[Type]
+          typeResolver.addType(
+              node.getIdentifier.head, 
+              ownerType)
+          
+          val returnType = evaluateCompoundProperty(node.getIdentifier.tail, ownerType.asInstanceOf[SimpleType].clazz)
+          println("Compound return type [" + returnType + "]")
+          typeResolver.addType(
+              node, 
+              returnType)
+        }
       }
+    } catch {
+      case e : IdentifierNotFoundException =>
+        errors.add(IdentifierNotFoundError(lineNumberProvider.getLineNumber(node).get, e.identifier))
+        replaceWithErrorNode(node)
+    }
+  }
+  
+  private def replaceWithErrorNode(node : Node) {
+    node.parent match {
+      case _ : AView => node.replaceBy(new AErrorNode)
+      case _ : AGenerator => node.replaceBy(new AErrorNode)
+      case _ => replaceWithErrorNode(node.parent)
     }
   }
   
@@ -331,7 +379,7 @@ class TypeChecker(
     val exprType = getExpressionType(node.getExpr())
     val boolType = new SimpleType(classOf[java.lang.Boolean])
     if (!areTypesCompatible(boolType, exprType)) {
-      errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), boolType, exprType))
+      errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node).get, boolType, exprType))
     }
   }
   
@@ -347,7 +395,7 @@ class TypeChecker(
       if (macroDefinition != null && macroDefinition.isDynamic) {
         if (!areTypesCompatible(macroDefinition, typeResolver.getType(node.getExpr(), typeNameResolver, genericsInScope))) {
           errors.add(new DynamicMacroMismatchError(
-              lineNumberProvider.getLineNumber(node), 
+              lineNumberProvider.getLineNumber(node).get, 
               macroDefinition.name))
           node.replaceBy(new AErrorNode)
         }
@@ -358,7 +406,7 @@ class TypeChecker(
       val rhsType = getExpressionType(node.getExpr())
       
       if (!areTypesCompatible(lhsType, rhsType)) {
-        errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node), lhsType, rhsType))
+        errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node).get, lhsType, rhsType))
       }
     }
   }

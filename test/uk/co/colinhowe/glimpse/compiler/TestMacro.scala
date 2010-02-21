@@ -30,6 +30,29 @@ class TestMacro extends CompilerTest {
   }
   
   @Test
+  def generatorInMacroStmt = {   
+    """
+    macro panel with g : generator {
+      div {
+        include g
+      }
+    }
+    macro div with g : generator {
+      node div {
+        include g
+      }   
+    }
+    panel {
+      node p "Inside"
+    }
+    """ compilesTo <view>
+      <div>
+        <p>Inside</p>
+      </div>
+    </view>
+  }
+  
+  @Test
   def string = {   
     """
     macro p with s : string {

@@ -1,10 +1,9 @@
-package uk.co.colinhowe.glimpse.compiler;
+package uk.co.colinhowe.glimpse.compiler
+
+import uk.co.colinhowe.glimpse.compiler.node.Node
 import uk.co.colinhowe.glimpse.compiler.typing.CompoundType
-
 import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
-
-import uk.co.colinhowe.glimpse.compiler.typing.GenericType
-
+import uk.co.colinhowe.glimpse.compiler.typing.GenericType
 import uk.co.colinhowe.glimpse.CompilationError
 import uk.co.colinhowe.glimpse.MultipleDefinitionError
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
@@ -14,10 +13,13 @@ import scala.collection.mutable.Buffer
 
 import scala.collection.JavaConversions._
 
-class CallResolver(provider : MacroDefinitionProvider) extends DepthFirstAdapter {
-  def getMatchingMacro(macroName : String, arguments : Map[String, Type], valueType : Type) : Option[MacroDefinition] = {
+class CallResolver(
+    provider : MacroDefinitionProvider
+    
+) extends DepthFirstAdapter {
+  def getMatchingMacro(node : Node, macroName : String, arguments : Map[String, Type], valueType : Type, cascadeIdentifier : CascadeIdentifier) : Option[MacroDefinition] = {
     val definitions = provider.get(macroName)
-    val matchingDefinitions = definitions.filter(matches(_, arguments, valueType))
+    val matchingDefinitions = definitions.filter(matches(node, _, arguments, valueType, cascadeIdentifier))
     val iterator = matchingDefinitions.iterator
     if (iterator.hasNext) {
       Some(iterator.next)
@@ -57,7 +59,7 @@ class CallResolver(provider : MacroDefinitionProvider) extends DepthFirstAdapter
     }
   }
   
-  private def matches(definition : MacroDefinition, arguments : Map[String, Type], valueType : Type) : Boolean = {
+  private def matches(node : Node, definition : MacroDefinition, arguments : Map[String, Type], valueType : Type, cascadeIdentifier : CascadeIdentifier) : Boolean = {
     var definitionToMatch = definition
     
     // Attempt generic bindings so that matches can be performed correctly
@@ -69,14 +71,19 @@ class CallResolver(provider : MacroDefinitionProvider) extends DepthFirstAdapter
     var currentBindings = genericBindings
     for (argument <- definition.arguments) {
       if (!arguments.contains(argument._1)) {
-        return false
+        // Check if a cascade can be applied
+        val cascadedArg = cascadeIdentifier.identify(node).get(argument._1)
+        return cascadedArg match {
+          case Some(cascadedArg) => cascadedArg.canBeAssignedTo(argument._2.argType)
+          case None => false
+        }
       }
       
       // TODO Fix this kludge
-      var (newArgType2, currentBindings2) = resolveGenerics(arguments(argument._1), argument._2, currentBindings)
+      var (newArgType2, currentBindings2) = resolveGenerics(arguments(argument._1), argument._2.argType, currentBindings)
       currentBindings = currentBindings2
       
-      definitionToMatch.addArgument(argument._1, newArgType2)
+      definitionToMatch.addArgument(argument._1, newArgType2, argument._2.cascade)
     }
     
     println ("Generics resolved to [" + definitionToMatch + "]")
@@ -85,9 +92,12 @@ class CallResolver(provider : MacroDefinitionProvider) extends DepthFirstAdapter
       return false
     }
     
+    println("Defn: " + definition)
+    
     // Check whether all the arguments exist on the definition
+    println("args: " + arguments)
     val invocationArgumentsExist = arguments.forall(invokationArg => 
-      definitionToMatch.arguments.exists(argumentMatches(invokationArg, _))
+      definitionToMatch.arguments.exists(argumentMatch(invokationArg, _))
     )
     if (!invocationArgumentsExist) {
       return false
@@ -97,8 +107,14 @@ class CallResolver(provider : MacroDefinitionProvider) extends DepthFirstAdapter
     return definitionToMatch.arguments.forall(arg => arguments.contains(arg._1))
   }
   
-  private def argumentMatches(invocationArg : (String, Type), macroArg : (String, Type)) : Boolean = {
-    invocationArg._1 == macroArg._1 &&
-    invocationArg._2.canBeAssignedTo(macroArg._2)
+  private def argumentMatches(invocationArg : (String, Type), macroArg : ArgumentDefinition) : Boolean = {
+    invocationArg._1 == macroArg.name &&
+    invocationArg._2.canBeAssignedTo(macroArg.argType)
+  }
+  
+  private def argumentMatch(invocationArg : (String, Type), macroArg : (String, ArgumentDefinition)) : Boolean = {
+    println("FOO " + macroArg)
+    println("FOO " + invocationArg)
+    argumentMatches(invocationArg, macroArg._2)
   }
 }

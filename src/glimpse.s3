@@ -35,6 +35,8 @@ Tokens
     
     controller_token = 'controller';
     
+    cascade = 'cascade';
+    
     if = 'if';
     telse = 'else';
     
@@ -69,12 +71,12 @@ Tokens
     increment = '++';
     
     rightarrow = '=>';
+      
     
     single_line_comment = '//' [[all - cr] - lf]*;
     multi_line_comment = 
       '/*' ([all - '*'] 
       | (all '*' [all - '/']))* '*/';
-      
     
     asterix = '*';
     
@@ -186,7 +188,9 @@ Productions
       | {multiple} arg_defns2 comma arg_defn {-> [arg_defns2.arg_defn, arg_defn]}
       ;
 
-    arg_defn = [name]:identifier colon [type]:type {-> New arg_defn(type, name) }; 
+    arg_defn = modifier* [name]:identifier colon [type]:type {-> New arg_defn([modifier], type, name) }; 
+    
+    modifier = cascade {-> New modifier.cascade()};
     
     generator = lbrace gen_args? stmt+ rbrace {-> New generator([gen_args.arg_defn], [stmt])};
     
@@ -214,11 +218,15 @@ Abstract Syntax Tree
     
     controller = identifier*;
     
-    arg_defn = type identifier;
+    arg_defn = modifier* type identifier;
     
     generic_defn = identifier;
     
     argument = identifier expr; 
+    
+    modifier =
+        {cascade}
+      ;
     
     stmt = {node}  node_create
          | {macro} macro_invoke

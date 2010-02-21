@@ -4,7 +4,7 @@ import uk.co.colinhowe.glimpse.compiler.typing.Type
 
 case class MacroDefinition(val name : String, val valueType : Type, val isDynamic : Boolean) extends Type {
   // TODO Make arguments part of the constructor
-  val arguments = scala.collection.mutable.Map[String, Type]()
+  val arguments = scala.collection.mutable.Map[String, ArgumentDefinition]()
   
   override def equals(o : Any) : Boolean = {
     o match {
@@ -40,8 +40,8 @@ case class MacroDefinition(val name : String, val valueType : Type, val isDynami
     }
   }
   
-  def addArgument(argumentName : String, t : Type) {
-    arguments(argumentName) = t
+  def addArgument(argumentName : String, t : Type, cascade : Boolean) {
+    arguments(argumentName) = ArgumentDefinition(argumentName, t, cascade)
   }
   
   def areCompatible(other : MacroDefinition) = {

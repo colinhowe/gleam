@@ -1,8 +1,7 @@
-package uk.co.colinhowe.glimpse.infrastructure
+package uk.co.colinhowe.glimpse.infrastructure
+
 import uk.co.colinhowe.glimpse.IdentifierNotFoundException
-
-import scala.reflect.BeanProperty
-
+import scala.reflect.BeanProperty
 import org.scalatest.junit.AssertionsForJUnit
 import org.junit.Test
 import org.junit.Assert._
@@ -13,37 +12,60 @@ class TestScope extends AssertionsForJUnit {
   def getFromNormalScope() {   
     val macroScope = new Scope(null, false)
     macroScope.add("x", new Integer(1))
-    
+
     assert(1 === macroScope.get("x"))
   }
 
   @Test
   def getVariableThatDoesNotExist() {   
     val macroScope = new Scope(null, false)
-    
+
     intercept[IdentifierNotFoundException] {
       assert(1 === macroScope.get("y"))
     }
   }
-  
+
   @Test
   def fallThroughScope() {   
     val parentScope = new Scope(null, false)
     parentScope.add("x", new Integer(1))
-    
+
     val childScope = new Scope(parentScope, false)
     assert(1 === childScope.get("x"))
   }
-  
+
   @Test
   def fallThroughStoppedByEndOfMacro() {   
     val parentScope = new Scope(null, false)
     parentScope.add("x", new Integer(1))
-    
+
     val macroScope = new Scope(parentScope, true)
     intercept[IdentifierNotFoundException] {
       assert(1 === macroScope.get("x"))
     }
+  }
+  
+  @Test
+  def fallThroughDetectsCascade() {   
+    val parentScope = new Scope(null, false)
+    parentScope.add("x", new Integer(1), true)
+    
+    val macroScope = new Scope(parentScope, true)
+    assert(1 === macroScope.get("x"))
+  }
+  
+  @Test
+  def replaceIgnoresCascade() { 
+    val parentScope = new Scope(null, false)
+    parentScope.add("x", new Integer(1), true)
+
+    val macroScope = new Scope(parentScope, true)
+
+    intercept[IdentifierNotFoundException] {
+      macroScope.replace("x", new Integer(2))
+    }
+    
+    assert(1 === macroScope.get("x"))
   }
 
   @Test
@@ -58,14 +80,44 @@ class TestScope extends AssertionsForJUnit {
   }
 
   @Test
-  def replaceDoesNotFallTrhough() {   
+  def replaceDoesNotFallThrough() {
     val parentScope = new Scope(null, false)
     parentScope.add("x", new Integer(1))
-    
+
     val macroScope = new Scope(parentScope, true)
     macroScope.add("x", new Integer(2))
-    
+
     assert(2 === macroScope.get("x"))
     assert(1 === parentScope.get("x"))
   }
+
+  /**
+   * Simulates the following:
+   * macro x with generator g {
+   *   div {
+   *     include g // Should use the g above and not have scope problems
+   *   }
+   * }
+   */
+  @Test
+  def ownerscope {   
+    val parentScope = new Scope(null, true)
+    parentScope.add("g", new Integer(1))
+    val middleScope = new Scope(parentScope, false)
+    val childScope = new Scope(middleScope, true)
+
+    assert(1 === childScope.get("g"))
+  }
+  
+  // TODO rename these tests
+  @Test
+  def ownerscope2 {   
+    val parentScope = new Scope(null, true)
+    parentScope.add("g", new Integer(1))
+
+    val childScope = new Scope(parentScope, true)
+    childScope.add("g", new Integer(2))
+    assert(1 === childScope.get("g"))
+  }
 }
+

@@ -24,5 +24,5 @@ class LineNumberProvider extends DepthFirstAdapter {
     super.defaultCase(node)
   }
   
-  def getLineNumber(node : Node) = firstLineNumbers(node)
+  def getLineNumber(node : Node) = firstLineNumbers.get(node)
 }

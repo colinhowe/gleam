@@ -3,6 +3,7 @@
  */
 package uk.co.colinhowe.glimpse.compiler
 
+import uk.co.colinhowe.glimpse.compiler.node.PModifier
 import java.util.LinkedList
 import uk.co.colinhowe.glimpse.compiler.typing.GenericType
 import java.io.File
@@ -37,7 +38,8 @@ class ByteCodeProducer(
     val outputFileName : String,
     val typeNameResolver : TypeNameResolver,
     val sourcename : String,
-    val callResolver : CallResolver
+    val callResolver : CallResolver,
+    val resolvedCallsProvider : ResolvedCallsProvider
    ) extends DepthFirstAdapter {
   private val nodeInitMethodSignature = "(Ljava/util/List;Ljava/lang/String;Ljava/lang/Object;)V"
   
@@ -88,10 +90,14 @@ class ByteCodeProducer(
     label
   }
   
-  private def setLineNumber(mv : MethodVisitor, label : Label, line : Int) {
-    if (!labelsWithLines.contains(label)) {
-      mv.visitLineNumber(line, label)
-      labelsWithLines.add(label)
+  private def setLineNumber(mv : MethodVisitor, label : Label, line : Option[Int]) {
+    line match {
+      case Some(line) =>
+        if (!labelsWithLines.contains(label)) {
+          mv.visitLineNumber(line, label)
+          labelsWithLines.add(label)
+        }
+      case _ =>
     }
   }
   
@@ -615,7 +621,11 @@ class ByteCodeProducer(
     
     for (parg <- node.getArgDefn()) {
       val arg = parg.asInstanceOf[AArgDefn]
-      definition.addArgument(arg.getIdentifier().getText(), typeResolver.getType(arg.getType(), typeNameResolver, generics.toMap))
+      val cascade = arg.getModifier.exists { _.isInstanceOf[ACascadeModifier] }
+      definition.addArgument(
+          arg.getIdentifier().getText(), 
+          typeResolver.getType(arg.getType(), typeNameResolver, generics.toMap),
+          cascade)
     }
     return definition
   }
@@ -645,7 +655,8 @@ class ByteCodeProducer(
       args.add((argName, arg.getType().toString()))
     }
 
-    val className = createMacroDefinition(node).className
+    val macroDefinition = createMacroDefinition(node)
+    val className = macroDefinition.className
     println("Creating macro class [" + className + "]")
     cw.visit(V1_6, ACC_SUPER, className, null, "java/lang/Object", Array[String]("uk/co/colinhowe/glimpse/Macro"))
     cw.visitSource(sourcename, null)
@@ -719,41 +730,28 @@ class ByteCodeProducer(
       mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "<init>", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Z)V")
       mv.visitVarInsn(ASTORE, 4)
       
-      val l1 = new Label()
-      mv.visitLabel(l1)
-      mv.visitVarInsn(ALOAD, 2)
-      mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "entrySet", "()Ljava/util/Set;")
-      mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Set", "iterator", "()Ljava/util/Iterator;")
-      mv.visitVarInsn(ASTORE, 6)
-      
-      val l2 = new Label()
-      mv.visitJumpInsn(GOTO, l2)
-      
-      val l3 = new Label()
-      mv.visitLabel(l3)
-      mv.visitFrame(F_FULL, 7, 
-          Array[Object](className, "uk/co/colinhowe/glimpse/infrastructure/Scope", "java/util/Map", "java/lang/Object", "uk/co/colinhowe/glimpse/infrastructure/Scope", TOP, "java/util/Iterator"), 
-          0, Array[Object]())
-      mv.visitVarInsn(ALOAD, 6)
-      mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Iterator", "next", "()Ljava/lang/Object;")
-      mv.visitTypeInsn(CHECKCAST, "java/util/Map$Entry")
-      mv.visitVarInsn(ASTORE, 5)
-      
-      val l4 = new Label()
-      mv.visitLabel(l4)
-      mv.visitVarInsn(ALOAD, 4)
-      mv.visitVarInsn(ALOAD, 5)
-      mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map$Entry", "getKey", "()Ljava/lang/Object;")
-      mv.visitTypeInsn(CHECKCAST, "java/lang/String")
-      mv.visitVarInsn(ALOAD, 5)
-      mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map$Entry", "getValue", "()Ljava/lang/Object;")
-      mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
+      // Go over each argument and retrieve it from the argument map if possible
+      for ((name, arg) <- macroDefinition.arguments) {
+        mv.visitVarInsn(ALOAD, 2) // argmap
+        mv.visitLdcInsn(name) // name, argmap
+        mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "containsKey", "(Ljava/lang/Object;)Z")
 
-      mv.visitLabel(l2)
-      mv.visitFrame(F_SAME, 0, null, 0, null)
-      mv.visitVarInsn(ALOAD, 6)
-      mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Iterator", "hasNext", "()Z")
-      mv.visitJumpInsn(IFNE, l3)
+        // contained, name
+        val endAdd = new Label()
+        mv.visitJumpInsn(IFEQ, endAdd)
+
+        // Put the content onto the scope
+        mv.visitVarInsn(ALOAD, 4) // scope
+        mv.visitVarInsn(ALOAD, 2) // argmap , scope
+        mv.visitLdcInsn(name) // name, argmap, scope
+        mv.visitInsn(DUP_X1) // name, argmap, name, scope
+        mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "get", "(Ljava/lang/Object;)Ljava/lang/Object;")
+        // value, name, scope
+        mv.visitLdcInsn(arg.cascade)
+        mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;Z)V")
+        
+        mv.visitLabel(endAdd)
+      }
       
       // Put the content onto the scope
       mv.visitVarInsn(ALOAD, 4) // scope
@@ -767,8 +765,7 @@ class ByteCodeProducer(
       mv.visitLocalVariable("callerScope", "Luk/co/colinhowe/glimpse/infrastructure/Scope;", null, l0, l6, 1)
       mv.visitLocalVariable("_args", "Ljava/util/Map;", "Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;", l0, l6, 2)
       mv.visitLocalVariable("value", "Ljava/lang/String;", null, l0, l6, 3)
-      mv.visitLocalVariable("scope", "Luk/co/colinhowe/glimpse/infrastructure/Scope;", null, l1, l6, 4)
-      mv.visitLocalVariable("entry", "Ljava/util/Map$Entry;", "Ljava/util/Map$Entry<Ljava/lang/String;Ljava/lang/Object;>;", l4, l2, 5)
+      mv.visitLocalVariable("scope", "Luk/co/colinhowe/glimpse/infrastructure/Scope;", null, l0, l6, 4)
     }
   }
   
@@ -1157,6 +1154,8 @@ class ByteCodeProducer(
     val args = invocation.getArguments()
     val argTypes = MMap[String, GType]()
     
+    println("Resolving " + node)
+
     for (pargument <- args) {
       val argument = pargument.asInstanceOf[AArgument]
 
@@ -1187,11 +1186,12 @@ class ByteCodeProducer(
     
     // Stack: args, value (string)
     mv.visitInsn(SWAP) // value, args
-
-    // Determine what macro to invoke
-    val macro = callResolver.getMatchingMacro(
-        macroName, argTypes.toMap, typeResolver.getType(invocation.getExpr, typeNameResolver)).get
     
+    // Determine what macro to invoke
+    println("ARg types: "+argTypes)
+    
+    val macro = resolvedCallsProvider.get(node) 
+
     debug("macro invokation [" + macroName + " -> " + macro.className + "]")
     mv.visitMethodInsn(INVOKESTATIC, macro.className, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // macro, value, args
     
