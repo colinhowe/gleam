@@ -42,11 +42,10 @@ When a variable is modified the top-most scope (with the variable) is affected
 /**
  * Variable class encapsulates the value of a variable. This allows for the Scope 
  * class to provide a clean way to retrieve a variable for either reading or writing.
- * TODO Kill this.
  */
 private class Variable(var value : Object, val cascade : Boolean)
 
-class Scope(val parentScope : Scope, val isMacroScope : Boolean) {
+class Scope(val parentScope : Scope, val owner : Object) {
 
   private val variables = new java.util.HashMap[String, Variable]()
   
@@ -68,12 +67,15 @@ class Scope(val parentScope : Scope, val isMacroScope : Boolean) {
    * @param value
    */
   def replace(variableName : String, value : Object) : Unit = {
-    val variable = get(variableName, isMacroScope)
-    if (!variable.cascade) {
-      variable.value = value
-    } else {
-      throw new IdentifierNotFoundException(variableName)
+    get(variableName, owner) match {
+      case Some(variable) =>
+          if (!variable.cascade) {
+            variable.value = value
+            return
+          }
+      case _ =>
     }
+    throw new IdentifierNotFoundException(variableName)
   }
   
   
@@ -81,7 +83,12 @@ class Scope(val parentScope : Scope, val isMacroScope : Boolean) {
    * Get the given variable from the current scope. If the variable doesn't already
    * exist an exception will be thrown.
    */
-  def get(variableName : String) : Object = get(variableName, isMacroScope).value
+  def get(variableName : String) : Object = {
+    get(variableName, owner) match {
+      case Some(variable) => variable.value
+      case None => getCascadedVariable(variableName).value
+    }
+  }
   
   
   /**
@@ -91,31 +98,24 @@ class Scope(val parentScope : Scope, val isMacroScope : Boolean) {
    * This version handles determining whether to fall through based on whether the
    * first scope was a macro scope or not.
    */
-  private def get(variableName : String, firstScopeWasMacro : Boolean) : Variable = {
-    // Skip this scope if it is a macro scope and the first scope was not macro scope
-    if (!firstScopeWasMacro && isMacroScope) {
+  private def get(variableName : String, firstScopeOwner : Object) : Option[Variable] = {
+    // Skip this scope if it is not owned by the same scope as the first scope
+    if (owner != firstScopeOwner) {
       if (parentScope != null) {
-        return parentScope.get(variableName, firstScopeWasMacro)
+        return parentScope.get(variableName, firstScopeOwner)
       } else {
-        // Keep going but only look for cascade variables
-        getCascadedVariable(variableName)
+        return None
       }
     }
     
-    // If the first scope was macro scope and we've left macro scope then we must abort
-    if (firstScopeWasMacro && !isMacroScope) {
-      // Keep going but only look for cascade variables
-      getCascadedVariable(variableName)
-    }
-
     if (!variables.containsKey(variableName)) {
       if (parentScope != null) {
-        return parentScope.get(variableName, firstScopeWasMacro)
+        return parentScope.get(variableName, firstScopeOwner)
       } else {
-        throw new IdentifierNotFoundException(variableName)
+        return None
       }
     }
-    return variables.get(variableName)
+    return Some(variables.get(variableName))
   }
   
   private def getCascadedVariable(variableName : String) : Variable = {

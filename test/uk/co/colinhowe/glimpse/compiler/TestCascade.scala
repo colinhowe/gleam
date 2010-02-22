@@ -151,6 +151,31 @@ class TestCascade extends TypeCheckerTest {
     <view><div><field readonly="false">name</field></div></view>
   }
   
+  
+  @Test
+  def innerVariableWithCascadeName = { 
+    """
+    macro div(cascade readonly : bool) with g : generator {
+      node div {
+        include g
+      }
+    }
+    macro fieldset(cascade readonly : bool) with g : generator {
+      include g
+    }
+    macro field(readonly : bool) with s : string {
+      node field(readonly: readonly) s
+    }
+    fieldset(readonly: true) {
+      var readonly = false
+      div {
+        field "name"
+      }
+    }
+    """ compilesTo 
+    <view><div><field readonly="true">name</field></div></view>
+  }
+  
   /*
    fieldset(readonly: true) {
      field "name"

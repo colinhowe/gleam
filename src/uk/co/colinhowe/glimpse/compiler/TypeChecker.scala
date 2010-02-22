@@ -6,7 +6,7 @@ import java.lang.reflect.Method
 
 import scala.collection.JavaConversions
 import scala.collection.JavaConversions._
-import scala.collection.mutable.{ Map => MMap, Buffer }
+import scala.collection.mutable.{ Map => MMap, Buffer, Stack => MStack }
 import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl
 import uk.co.colinhowe.glimpse.CompilationError
 import uk.co.colinhowe.glimpse.DynamicMacroMismatchError
@@ -36,6 +36,8 @@ class TypeChecker(
   ) extends DepthFirstAdapter {
   
   val resolvedCallsProvider = new ResolvedCallsProvider
+  val owners = new MStack[String]()
+  owners.push("view")
   
   private val cascadeIdentifier = new CascadeIdentifier(
       typeResolver, typeNameResolver, resolvedCallsProvider)
@@ -50,7 +52,7 @@ class TypeChecker(
   val errors = scala.collection.mutable.Buffer[CompilationError]()
   val genericsInScope = scala.collection.mutable.Map[String,Type]()
   
-  var scope : Scope = new Scope(null, false)
+  var scope : Scope = new Scope(null, "view")
   var controllerClazz : Class[_] = null
     
   def getExpressionType(expr : PExpr) : Type = {
@@ -115,7 +117,7 @@ class TypeChecker(
   implicit def toImmutableMap[K, V](mutable : scala.collection.Map[K, V]) = scala.collection.immutable.Map[K, V]() ++ mutable
   
   override def inAGenerator(node : AGenerator) {
-    scope = new Scope(scope, scope.isMacroScope)
+    scope = new Scope(scope, owners.head)
     for (parg <- node.getArgDefn) {
       val arg = parg.asInstanceOf[AArgDefn]
       scope.add(arg.getIdentifier().getText(), typeResolver.getType(arg.getType(), typeNameResolver, genericsInScope))
@@ -127,7 +129,7 @@ class TypeChecker(
   }
   
   override def inAForloop(node : AForloop) {
-    scope = new Scope(scope, scope.isMacroScope)
+    scope = new Scope(scope, owners.head)
     scope.add(node.getIdentifier().getText(), typeResolver.getType(node.getType(), typeNameResolver, genericsInScope))
   }
   
@@ -136,7 +138,8 @@ class TypeChecker(
   }
   
   override def inAMacroDefn(node : AMacroDefn) {
-    scope = new Scope(scope, true)
+    owners.push(node.getName.getText)
+    scope = new Scope(scope, owners.head)
     
     for (pdefn <- node.getGenericDefn()) {
       val defn = pdefn.asInstanceOf[AGenericDefn]
@@ -156,6 +159,7 @@ class TypeChecker(
   }
   
   override def outAMacroDefn(node : AMacroDefn) {
+    owners.pop
     scope = scope.parentScope
 
     // Clear any generics in scope

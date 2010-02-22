@@ -10,7 +10,7 @@ class TestScope extends AssertionsForJUnit {
 
   @Test
   def getFromNormalScope() {   
-    val macroScope = new Scope(null, false)
+    val macroScope = new Scope(null, "view")
     macroScope.add("x", new Integer(1))
 
     assert(1 === macroScope.get("x"))
@@ -18,7 +18,7 @@ class TestScope extends AssertionsForJUnit {
 
   @Test
   def getVariableThatDoesNotExist() {   
-    val macroScope = new Scope(null, false)
+    val macroScope = new Scope(null, "view")
 
     intercept[IdentifierNotFoundException] {
       assert(1 === macroScope.get("y"))
@@ -27,50 +27,27 @@ class TestScope extends AssertionsForJUnit {
 
   @Test
   def fallThroughScope() {   
-    val parentScope = new Scope(null, false)
+    val parentScope = new Scope(null, "view")
     parentScope.add("x", new Integer(1))
 
-    val childScope = new Scope(parentScope, false)
+    val childScope = new Scope(parentScope, "view")
     assert(1 === childScope.get("x"))
   }
 
   @Test
   def fallThroughStoppedByEndOfMacro() {   
-    val parentScope = new Scope(null, false)
+    val parentScope = new Scope(null, "view")
     parentScope.add("x", new Integer(1))
 
-    val macroScope = new Scope(parentScope, true)
+    val macroScope = new Scope(parentScope, "macro")
     intercept[IdentifierNotFoundException] {
       assert(1 === macroScope.get("x"))
     }
   }
-  
-  @Test
-  def fallThroughDetectsCascade() {   
-    val parentScope = new Scope(null, false)
-    parentScope.add("x", new Integer(1), true)
-    
-    val macroScope = new Scope(parentScope, true)
-    assert(1 === macroScope.get("x"))
-  }
-  
-  @Test
-  def replaceIgnoresCascade() { 
-    val parentScope = new Scope(null, false)
-    parentScope.add("x", new Integer(1), true)
-
-    val macroScope = new Scope(parentScope, true)
-
-    intercept[IdentifierNotFoundException] {
-      macroScope.replace("x", new Integer(2))
-    }
-    
-    assert(1 === macroScope.get("x"))
-  }
 
   @Test
   def replaceVariable() {   
-    val scope = new Scope(null, false)
+    val scope = new Scope(null, "owner")
 
     scope.add("x", new Integer(1))
     assert(1 === scope.get("x"))
@@ -81,10 +58,10 @@ class TestScope extends AssertionsForJUnit {
 
   @Test
   def replaceDoesNotFallThrough() {
-    val parentScope = new Scope(null, false)
+    val parentScope = new Scope(null, "view")
     parentScope.add("x", new Integer(1))
 
-    val macroScope = new Scope(parentScope, true)
+    val macroScope = new Scope(parentScope, "owner")
     macroScope.add("x", new Integer(2))
 
     assert(2 === macroScope.get("x"))
@@ -100,24 +77,26 @@ class TestScope extends AssertionsForJUnit {
    * }
    */
   @Test
-  def ownerscope {   
-    val parentScope = new Scope(null, true)
+  def sameOwner {   
+    val parentScope = new Scope(null, "owner")
     parentScope.add("g", new Integer(1))
-    val middleScope = new Scope(parentScope, false)
-    val childScope = new Scope(middleScope, true)
+    val middleScope = new Scope(parentScope, "macro")
+    val childScope = new Scope(middleScope, "owner")
 
     assert(1 === childScope.get("g"))
   }
-  
-  // TODO rename these tests
-  @Test
-  def ownerscope2 {   
-    val parentScope = new Scope(null, true)
-    parentScope.add("g", new Integer(1))
 
-    val childScope = new Scope(parentScope, true)
-    childScope.add("g", new Integer(2))
-    assert(1 === childScope.get("g"))
+  
+  @Test
+  def differentOwner {   
+    val parentScope = new Scope(null, "view")
+    parentScope.add("g", new Integer(1))
+    val middleScope = new Scope(parentScope, "view")
+    val childScope = new Scope(middleScope, "owner")
+
+    intercept[IdentifierNotFoundException] {
+      assert(1 === childScope.get("g"))
+    }
   }
 }
 

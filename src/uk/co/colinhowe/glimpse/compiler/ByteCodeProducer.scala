@@ -3,6 +3,7 @@
  */
 package uk.co.colinhowe.glimpse.compiler
 
+import uk.co.colinhowe.glimpse.Generator
 import uk.co.colinhowe.glimpse.compiler.node.PModifier
 import java.util.LinkedList
 import uk.co.colinhowe.glimpse.compiler.typing.GenericType
@@ -464,7 +465,7 @@ class ByteCodeProducer(
       fv.visitEnd()
   
       // Create a scope for the view
-      val scope = new Scope(null, false)
+      val scope = new Scope(null, null) // TODO Set the owner
       scopes.push(scope)
       
       // Constructor
@@ -485,8 +486,8 @@ class ByteCodeProducer(
         mv.visitTypeInsn(NEW, Type.getInternalName(classOf[Scope]))
         mv.visitInsn(DUP)
         mv.visitInsn(ACONST_NULL)
-        mv.visitInsn(ICONST_0)
-        mv.visitMethodInsn(INVOKESPECIAL, Type.getInternalName(classOf[Scope]), "<init>", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Z)V") 
+        mv.visitLdcInsn(getOwner(node))
+        mv.visitMethodInsn(INVOKESPECIAL, Type.getInternalName(classOf[Scope]), "<init>", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/lang/Object;)V") 
         mv.visitFieldInsn(PUTFIELD, viewname, "globalScope", Type.getDescriptor(classOf[Scope]))
         
         val l2 = new Label()
@@ -634,7 +635,7 @@ class ByteCodeProducer(
     inMacro = true
     
     // Create a scope for this macro
-    val scope = new Scope(if(scopes.isEmpty) null else scopes.head, true)
+    val scope = new Scope(if(scopes.isEmpty) null else scopes.head, null) // TODO Set the owner
     scopes.push(scope)
     
     // TODO Macros really should be ripped out into their own ASTs and processed separately
@@ -726,8 +727,8 @@ class ByteCodeProducer(
       mv.visitTypeInsn(NEW, "uk/co/colinhowe/glimpse/infrastructure/Scope")
       mv.visitInsn(DUP)
       mv.visitVarInsn(ALOAD, 1)
-      mv.visitInsn(ICONST_1)
-      mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "<init>", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Z)V")
+      mv.visitLdcInsn(getOwner(node))
+      mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "<init>", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/lang/Object;)V")
       mv.visitVarInsn(ASTORE, 4)
       
       // Go over each argument and retrieve it from the argument map if possible
@@ -747,10 +748,33 @@ class ByteCodeProducer(
         mv.visitInsn(DUP_X1) // name, argmap, name, scope
         mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "get", "(Ljava/lang/Object;)Ljava/lang/Object;")
         // value, name, scope
-        mv.visitLdcInsn(arg.cascade)
+        mv.visitLdcInsn(0)
         mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;Z)V")
-        
         mv.visitLabel(endAdd)
+      }
+      
+      // Put cascade arguments on the caller's scope as needed
+      for ((name, arg) <- macroDefinition.arguments) {
+        if (arg.cascade) {
+          mv.visitVarInsn(ALOAD, 1) // scope
+          mv.visitLdcInsn("$" + name) // name, scope
+
+          mv.visitVarInsn(ALOAD, 4) // scope
+          mv.visitLdcInsn(name) // name, scope
+          mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
+
+          mv.visitLdcInsn(1) // true, value, name, scope
+          mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;Z)V")
+        }
+      }
+      
+      // If the content is a generator then we must put the scope into a suitably named variable
+      if (macroDefinition.valueType == SimpleType(classOf[Generator])) {
+        mv.visitVarInsn(ALOAD, 4) // scope
+        mv.visitLdcInsn("$ownerscope") // name, scope
+        mv.visitVarInsn(ALOAD, 1) // parent scope, name, scope
+        mv.visitLdcInsn(1) // true, parent scope, name, scope
+        mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;Z)V")
       }
       
       // Put the content onto the scope
@@ -801,26 +825,43 @@ class ByteCodeProducer(
     outputClass(cw, className)
   }
   
-  private def beginScope(store : Boolean = true) {
+  private def beginScope(
+      owner : String, 
+      store : Boolean = true, 
+      putParentScopeOnStack : MethodVisitor => Unit = (_.visitVarInsn(ALOAD, 1))) {
     // TODO Limit starting scopes to only those things that _need_ new scopes
     // If no new variables are created then a new scope isn't needed
     val mv = methodVisitors.head
     mv.visitTypeInsn(NEW, Type.getInternalName(classOf[Scope]))
     mv.visitInsn(DUP)
-    mv.visitVarInsn(ALOAD, 1)
-    mv.visitInsn(if (inMacro) ICONST_1 else ICONST_0)
-    mv.visitMethodInsn(INVOKESPECIAL, Type.getInternalName(classOf[Scope]), "<init>", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Z)V"); 
+    putParentScopeOnStack(mv)
+    if (owner != null) {
+      mv.visitLdcInsn(owner)
+    } else {
+      // Get the owner from the parent
+      mv.visitInsn(DUP)
+      mv.visitMethodInsn(INVOKEVIRTUAL, Type.getInternalName(classOf[Scope]), "owner", "()Ljava/lang/Object;"); 
+    }
+    mv.visitMethodInsn(INVOKESPECIAL, Type.getInternalName(classOf[Scope]), "<init>", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/lang/Object;)V"); 
     if (store) {
       mv.visitInsn(DUP)
       mv.visitVarInsn(ASTORE, 1)
     }
     
-    val scope = new Scope(scopes.head, false)
+    val scope = new Scope(scopes.head, null) // TODO Set the owner
     scopes.push(scope)
   }
   
   private def endScope {
     scopes.pop
+  }
+  
+  private def getOwner(currentNode : Node) : String = {
+    currentNode match {
+      case defn : AMacroDefn => defn.getName.getText
+      case _ : AView => "view"
+      case _ => getOwner(currentNode.parent)
+    }
   }
   
   override def outAIncludeStmt(node : AIncludeStmt) {
@@ -829,7 +870,10 @@ class ByteCodeProducer(
     val include = node.getIncludeA().asInstanceOf[AIncludeA]
 
     inMacro = false
-    beginScope(false)
+    beginScope(null, false, mv => {
+      getFromScope("$ownerscope")
+      mv.visitTypeInsn(CHECKCAST, "uk/co/colinhowe/glimpse/infrastructure/Scope")
+    })
     inMacro = true
     
     // Populate the scope with any arguments
@@ -881,7 +925,7 @@ class ByteCodeProducer(
     trailingLabels.push(None)
     
     // Create a scope for this generator
-    val scope = new Scope(scopes.head, false)
+    val scope = new Scope(scopes.head, null) // TODO Set the owner
     scopes.push(scope)
     
     val outerClassWriter = classWriters.head
@@ -976,7 +1020,7 @@ class ByteCodeProducer(
       methodVisitors.push(mv)
       labels.push(l1)
 
-      beginScope()
+      beginScope(getOwner(node))
     }
   }
 
@@ -1135,10 +1179,29 @@ class ByteCodeProducer(
     debug("constant [" + i + "]")
   }
 
+//  override def caseAMacroInvoke(node : AMacroInvoke) {
+//    inAMacroInvoke(node)
+//    if (node.getIdentifier() != null) {
+//      node.getIdentifier().apply(this)
+//    }
+//    
+//    for (parg <- node.getArguments) {
+//      parg.apply(this)
+//    }
+//    
+//    
+//    if (node.getExpr() != null) {
+//      node.getExpr().apply(this)
+//    }
+//    outAMacroInvoke(node)
+//  }
+  
   override def outAMacroStmt(node : AMacroStmt) {
     val invocation = node.getMacroInvoke().asInstanceOf[AMacroInvoke]
     val mv = methodVisitors.head
-    
+    val macro = resolvedCallsProvider.get(node) 
+
+
     // The arguments will be on the stack already.
     // The stack will look like:
     //   macro value, arg, arg, ...
@@ -1156,6 +1219,8 @@ class ByteCodeProducer(
     
     println("Resolving " + node)
 
+    val argumentsLeftToPopulate = MMap() ++ macro.arguments
+    
     for (pargument <- args) {
       val argument = pargument.asInstanceOf[AArgument]
 
@@ -1180,6 +1245,20 @@ class ByteCodeProducer(
       mv.visitInsn(SWAP) // args, macro value
       
       argTypes(argName) = typeResolver.getType(argument.getExpr, typeNameResolver)
+      
+      argumentsLeftToPopulate.remove(argName)
+    }
+    
+    // Fill in any missing arguments from cascades
+    for ((name, defn) <- argumentsLeftToPopulate) {
+      mv.visitInsn(DUP) // args
+      mv.visitLdcInsn(name) // name, args
+      getFromScope("$" + name) // value, name, args
+      
+      // Put the variable on the arguments
+      mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
+      // object
+      mv.visitInsn(POP) // <empty>
     }
 
     val macroName = invocation.getIdentifier().getText()
@@ -1190,8 +1269,6 @@ class ByteCodeProducer(
     // Determine what macro to invoke
     println("ARg types: "+argTypes)
     
-    val macro = resolvedCallsProvider.get(node) 
-
     debug("macro invokation [" + macroName + " -> " + macro.className + "]")
     mv.visitMethodInsn(INVOKESTATIC, macro.className, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // macro, value, args
     
@@ -1207,7 +1284,7 @@ class ByteCodeProducer(
     mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Macro", "invoke", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;")
     
     addAllNodesFromStack
-}
+  }
   
   private def addAllNodesFromStack {
     val mv = methodVisitors.head
