@@ -23,6 +23,7 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
   
   private def createOwnerMacro(cascade : Boolean, stmts : Buffer[PStmt]) = {
     new AMacroDefn(
+        null,
         new TIdentifier("owner"), 
         Buffer[PGenericDefn](), 
         Buffer[PArgDefn](

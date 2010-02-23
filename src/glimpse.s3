@@ -91,12 +91,15 @@ Ignored Tokens
     multi_line_comment;
     
 Productions 
-    view = import* controller? defn* stmt* ;
+    view = import* controller? macro_defn* stmt* ;
     
-    defn = 
-        {m} macro_defn 
-      | {d} dynamic_macro_defn;
-    
+    macro_defn =       
+        {static} macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with [content_name]:identifier colon [content_type]:type [gen_args]:arg_defns? restriction ? generator 
+        {-> New macro_defn(Null, name, [generic_defns.generic_defn], [macro_args.arg_defn], content_type, content_name, restriction, generator)}
+      | {dynamic} dynamic macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with [content_name]:identifier colon [content_type]:type [gen_args]:arg_defns? restriction ? 
+        {-> New macro_defn(dynamic, name, [generic_defns.generic_defn], [macro_args.arg_defn], content_type, content_name, restriction, Null)}
+      ;
+      
     name {-> identifier*} = 
         {simple} identifier {-> [identifier]}
       | {qualified} name dot identifier {-> [name.identifier, identifier]}
@@ -157,24 +160,13 @@ Productions
     
     var_defn_init {-> expr} = equals expr {-> expr};
     	
-    
-    macro_defn = 
-      macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with [content_name]:identifier colon [content_type]:type [gen_args]:arg_defns? restriction ? generator 
-      {-> New macro_defn(name, [generic_defns.generic_defn], [macro_args.arg_defn], content_type, content_name, restriction ,generator)}
-      ;
-      
     restriction = restrict to identifiers {-> New restriction([identifiers.identifier])};
     
     identifiers {-> identifier*} = 
         {single} identifier {-> [identifier]}
       | {multiple} identifiers comma identifier {-> [identifiers.identifier, identifier]}
       ;
-      
-    dynamic_macro_defn = 
-      dynamic macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with [content_name]:identifier colon [content_type]:type [gen_args]:arg_defns? 
-      {-> New dynamic_macro_defn(name, [generic_defns.generic_defn], [macro_args.arg_defn], content_type, content_name)}
-      ;
-      
+       
     generic_defns {-> generic_defn* } = lt generic_defns2 gt {-> [generic_defns2.generic_defn] };
     
     generic_defns2 {-> generic_defn* } =
@@ -222,11 +214,7 @@ Productions
     //string_literal = string;
                      
 Abstract Syntax Tree
-    view = import* controller? defn* stmt+;
-    
-    defn =
-        {m} macro_defn
-      | {d} dynamic_macro_defn ;
+    view = import* controller? macro_defn* stmt+;
     
     controller = identifier*;
     
@@ -296,10 +284,8 @@ Abstract Syntax Tree
     
     forloop = type identifier expr stmt+;
     
-    macro_defn = [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* [content_type]:type [content_name]:identifier restriction? generator;
+    macro_defn = dynamic? [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* [content_type]:type [content_name]:identifier restriction? generator?;
     
-    dynamic_macro_defn = [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* [content_type]:type [content_name]:identifier;
-
     macro_invoke = identifier [arguments]:argument* expr;
     
     include_a = [the_include]:identifier  [arguments]:argument*;

@@ -20,7 +20,7 @@ class TestCallResolver extends AssertionsForJUnit {
   new AView(
     Buffer[PImport](),
     null,
-    Buffer[PDefn](),
+    Buffer[PMacroDefn](),
     Buffer[PStmt](
       new AMacroStmt(topLevelInvocation)
     )

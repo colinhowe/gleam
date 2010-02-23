@@ -1,5 +1,5 @@
 package uk.co.colinhowe.glimpse.compiler
-
+
 import uk.co.colinhowe.glimpse.compiler.node._
 import uk.co.colinhowe.glimpse.compiler.typing.GenericType
 import uk.co.colinhowe.glimpse.compiler.typing.Type
@@ -9,7 +9,6 @@ import uk.co.colinhowe.glimpse.MultipleDefinitionError
 
 import scala.collection.mutable.{ ListBuffer, Set => MSet }
 import scala.collection.JavaConversions._
-
 
 class MacroDefinitionFinder(
     val lineNumberProvider : LineNumberProvider,
@@ -36,7 +35,7 @@ class MacroDefinitionFinder(
     } else {
       Set[Restriction]()
     }
-    val defn = new MacroDefinition(name, contentType, false, restrictions)
+    val defn = new MacroDefinition(name, contentType, node.getDynamic != null, restrictions)
 
     // Process all the arguments
     for (pargDefn <- node.getArgDefn()) {
@@ -56,36 +55,6 @@ class MacroDefinitionFinder(
     System.out.println("Cleared generics from scope")
   }
   
-
-  override def outADynamicMacroDefn(node : ADynamicMacroDefn) = {
-    // Get the name of the macro
-    val name = node.getName().getText()
-    
-    if (macroProvider.get(name).size != 0) {
-      errors += new MultipleDefinitionError(lineNumberProvider.getLineNumber(node).get, name)
-    }
-    
-    // Get the type of the content
-    val contentType = typeProvider.getType(node.getContentType(), typeNameResolver)
-    val defn = new MacroDefinition(name, contentType, true, Set[Restriction]())
-
-    // Process all the arguments
-    val args = scala.collection.mutable.Set[Tuple2[String, String]]();
-    for (pargDefn <- node.getArgDefn()) {
-      val argDefn = pargDefn.asInstanceOf[AArgDefn]
-      val argType = typeProvider.getType(argDefn.getType(), typeNameResolver)
-      val argumentName = argDefn.getIdentifier().getText()
-      val cascade = argDefn.getModifier.exists { _.isInstanceOf[ACascadeModifier] }
-      defn.addArgument(argumentName, argType, cascade, argDefn.getDefault != null)
-    }
-    
-    println("Found macro [" + defn.name + "]")
-    macroProvider.add(defn)
-
-    // Clear any generics in scope
-    genericsInScope.clear();
-    System.out.println("Cleared generics from scope")
-  }
   
   override def inAGenericDefn(node : AGenericDefn) {
     val nodeType = typeProvider.getType(node, typeNameResolver)

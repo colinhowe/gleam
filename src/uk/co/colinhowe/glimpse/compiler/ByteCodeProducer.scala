@@ -234,62 +234,6 @@ class ByteCodeProducer(
     outAForloop(node)
   }
   
-  override def outADynamicMacroDefn(node : ADynamicMacroDefn) {
-    dynamicMacros.add(node.getName().getText())
-
-    // Create the class for the dynamic macro
-    val cw = new ClassWriter(ClassWriter.COMPUTE_MAXS)
-    
-    // Get the name of the macro
-    val macroName = node.getName().getText()
-    val className = macroName
-    
-    cw.visit(V1_6, ACC_SUPER, className, null, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", Array[String]())
-
-    // Instance field for the macro
-    var fv = cw.visitField(ACC_PRIVATE + ACC_STATIC, "instance", "Luk/co/colinhowe/glimpse/Macro;", null, null)
-    fv.visitEnd()
-    
-    // Static constructor
-    {
-      val mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null)
-      mv.visitCode()
-
-      // Initialise the instance
-      val l0 = new Label()
-      mv.visitLabel(l0)
-      mv.visitTypeInsn(NEW, className)
-      mv.visitInsn(DUP)
-      mv.visitMethodInsn(INVOKESPECIAL, className, "<init>", "()V")
-      mv.visitFieldInsn(PUTSTATIC, className, "instance", "Luk/co/colinhowe/glimpse/Macro;")
-      
-      val l1 = new Label()
-      mv.visitLabel(l1)
-      mv.visitInsn(RETURN)
-      mv.visitMaxs(0, 0)
-      mv.visitEnd()
-    } 
-    
-    // getInstance method
-    {
-      val mv = cw.visitMethod(ACC_STATIC | ACC_PUBLIC, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;", null, null)
-      mv.visitCode()
-
-      val l1 = new Label()
-      mv.visitLabel(l1)
-      mv.visitFieldInsn(GETSTATIC, className, "instance", "Luk/co/colinhowe/glimpse/Macro;")
-      mv.visitInsn(ARETURN)
-      mv.visitMaxs(0, 0)
-      mv.visitEnd();
-    } 
-    
-    defaultConstructor(cw, className, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro")
-    
-    cw.visitEnd()
-    
-    outputClass(cw, className)
-  }
-  
   def outputClass(cw : ClassWriter, name : String) {
     val bytes = cw.toByteArray()
     
@@ -602,17 +546,10 @@ class ByteCodeProducer(
     mv.visitEnd()
   }
   
-  private type MacroDefn = {
-    def getName() : TIdentifier
-    def getContentType() : PType
-    def getGenericDefn() : LinkedList[PGenericDefn]
-    def getArgDefn() : LinkedList[PArgDefn]
-  }
-  
-  private def createMacroDefinition(node : MacroDefn) : MacroDefinition = {
+  private def createMacroDefinition(node : AMacroDefn) : MacroDefinition = {
     val macroName = node.getName().getText()
     val definition = new MacroDefinition(
-        macroName, typeResolver.getType(node.getContentType, typeNameResolver), false, Set[Restriction]())
+        macroName, typeResolver.getType(node.getContentType, typeNameResolver), node.getDynamic != null, Set[Restriction]())
     
     // Add on any generics needed
     val generics = MMap[String, GType]()
@@ -644,15 +581,9 @@ class ByteCodeProducer(
     val scope = new Scope(if(scopes.isEmpty) null else scopes.head, null) // TODO Set the owner
     scopes.push(scope)
     
-    // TODO Macros really should be ripped out into their own ASTs and processed separately
-    
     // Create a new top level class
     val cw = new ClassWriter(ClassWriter.COMPUTE_MAXS)
     classWriters.push(cw)
-    
-    // Get the name of the macro
-    val macroName = node.getName().getText()
-    macros.add(macroName)
     
     // Create the signature for the macro
     val args = scala.collection.mutable.Set[(String, String)]()
@@ -663,9 +594,23 @@ class ByteCodeProducer(
     }
 
     val macroDefinition = createMacroDefinition(node)
+    
+    // Get the name of the macro
+    val macroName = node.getName().getText()
+    if (macroDefinition.isDynamic) {
+      dynamicMacros.add(macroName)
+    } else {
+      macros.add(macroName)
+    }
+
     val className = macroDefinition.className
     println("Creating macro class [" + className + "]")
-    cw.visit(V1_6, ACC_SUPER, className, null, "java/lang/Object", Array[String]("uk/co/colinhowe/glimpse/Macro"))
+    val (parentClass, interfaces) = if (macroDefinition.isDynamic) {
+      ("uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", Array[String]())
+    } else {
+      ("java/lang/Object", Array[String]("uk/co/colinhowe/glimpse/Macro"))
+    }
+    cw.visit(V1_6, ACC_SUPER, className, null, parentClass, interfaces)
     cw.visitSource(sourcename, null)
 
     // Instance field for the macro
@@ -689,7 +634,7 @@ class ByteCodeProducer(
       mv.visitLabel(l1)
       mv.visitInsn(RETURN)
       mv.visitMaxs(0, 0)
-      mv.visitEnd(); 
+      mv.visitEnd()
     } 
     
     // getInstance method
@@ -702,13 +647,13 @@ class ByteCodeProducer(
       mv.visitFieldInsn(GETSTATIC, className, "instance", "Luk/co/colinhowe/glimpse/Macro;")
       mv.visitInsn(ARETURN)
       mv.visitMaxs(0, 0)
-      mv.visitEnd(); 
+      mv.visitEnd();
     } 
     
-    defaultConstructor(cw, className)
+    defaultConstructor(cw, className, parentClass)
     
     // Invoke method
-    {
+    if (!macroDefinition.isDynamic) {
       val valueName = node.getContentName().getText()
       
       val mv = cw.visitMethod(ACC_PUBLIC, 
@@ -814,15 +759,16 @@ class ByteCodeProducer(
   
   
   override def outAMacroDefn(node : AMacroDefn) {
-    val className = createMacroDefinition(node).className
+    val macroDefinition = createMacroDefinition(node)
+    val className = macroDefinition.className
     inMacro = false
 
     // Remove the scope
     scopes.pop()
     
-    val mv = methodVisitors.pop()
-    
-    {
+    if (!macroDefinition.isDynamic) {
+      val mv = methodVisitors.pop()
+
       // The generator will be on the stack
       val generatorId = generatorIds.get(node.getGenerator())
       val generatorIdentifier = viewname + "$$generator" + generatorId

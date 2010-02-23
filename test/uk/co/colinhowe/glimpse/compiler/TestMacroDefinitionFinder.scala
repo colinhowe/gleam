@@ -16,6 +16,41 @@ import org.mockito.Mockito._
 class TestMacroDefinitionFinder extends AssertionsForJUnit {
   
   @Test
+  def detectsDynamic = {
+    val definitionProvider = new MacroDefinitionProvider
+    val finder = new MacroDefinitionFinder(
+        null, 
+        new TypeProvider, 
+        definitionProvider, 
+        null)
+    
+    val defn = new AMacroDefn(
+      new TDynamic,
+      new TIdentifier("macro"),
+      Buffer[PGenericDefn](),
+      Buffer[PArgDefn](
+        new AArgDefn(
+          Buffer[PModifier](),
+          new ABoolType,
+          new TIdentifier("readonly"),
+          new ATrueExpr
+        )
+      ),
+      new AStringType,
+      new TIdentifier("s"),
+      null,
+      new AGenerator(
+      )
+    )
+    
+    finder.outAMacroDefn(defn)
+
+    val macros = definitionProvider.get("macro")
+    val macro = macros.iterator.next
+    assert(true === macro.isDynamic)
+  }
+  
+  @Test
   def detectsDefaults = {
     val definitionProvider = new MacroDefinitionProvider
     val finder = new MacroDefinitionFinder(
@@ -25,6 +60,7 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
         null)
     
     val defn = new AMacroDefn(
+      null,
       new TIdentifier("macro"),
       Buffer[PGenericDefn](),
       Buffer[PArgDefn](
@@ -63,6 +99,7 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
         null)
     
     val defn = new AMacroDefn(
+      null,
       new TIdentifier("macro"),
       Buffer[PGenericDefn](),
       Buffer[PArgDefn](
@@ -97,6 +134,7 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
         null)
     
     val defn = new AMacroDefn(
+      null,
       new TIdentifier("macro"),
       Buffer[PGenericDefn](),
       Buffer[PArgDefn](
