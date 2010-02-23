@@ -31,6 +31,7 @@ import uk.co.colinhowe.glimpse.compiler.IdentifierConverter._
 
 import uk.co.colinhowe.glimpse.compiler.typing.{ Type => GType }
 
+import ArgumentSource._
 
 class ByteCodeProducer(
     val viewname : String, 
@@ -626,9 +627,14 @@ class ByteCodeProducer(
       definition.addArgument(
           arg.getIdentifier().getText(), 
           typeResolver.getType(arg.getType(), typeNameResolver, generics.toMap),
-          cascade)
+          cascade, 
+          arg.getDefault != null)
     }
     return definition
+  }
+  
+  override def caseAArgDefn(node : AArgDefn) {
+    // Do nothing, we don't want these processed
   }
   
   override def inAMacroDefn(node : AMacroDefn) {
@@ -730,6 +736,19 @@ class ByteCodeProducer(
       mv.visitLdcInsn(getOwner(node))
       mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "<init>", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/lang/Object;)V")
       mv.visitVarInsn(ASTORE, 4)
+      
+      // Put defaults on as appropriate
+      for (parg <- node.getArgDefn()) {
+        val arg = parg.asInstanceOf[AArgDefn]
+        
+        if (arg.getDefault != null) {
+          // Load the default on to the stack and put it on the scope
+          mv.visitVarInsn(ALOAD, 4) // scope
+          mv.visitLdcInsn(arg.getIdentifier.getText) // name, scope
+          arg.getDefault.apply(this) // value, name, scope
+          mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
+        }
+      }
       
       // Go over each argument and retrieve it from the argument map if possible
       for ((name, arg) <- macroDefinition.arguments) {
@@ -1199,7 +1218,7 @@ class ByteCodeProducer(
   override def outAMacroStmt(node : AMacroStmt) {
     val invocation = node.getMacroInvoke().asInstanceOf[AMacroInvoke]
     val mv = methodVisitors.head
-    val macro = resolvedCallsProvider.get(node) 
+    val call = resolvedCallsProvider.get(node) 
 
 
     // The arguments will be on the stack already.
@@ -1219,8 +1238,6 @@ class ByteCodeProducer(
     
     println("Resolving " + node)
 
-    val argumentsLeftToPopulate = MMap() ++ macro.arguments
-    
     for (pargument <- args) {
       val argument = pargument.asInstanceOf[AArgument]
 
@@ -1245,20 +1262,22 @@ class ByteCodeProducer(
       mv.visitInsn(SWAP) // args, macro value
       
       argTypes(argName) = typeResolver.getType(argument.getExpr, typeNameResolver)
-      
-      argumentsLeftToPopulate.remove(argName)
     }
     
     // Fill in any missing arguments from cascades
-    for ((name, defn) <- argumentsLeftToPopulate) {
-      mv.visitInsn(DUP) // args
-      mv.visitLdcInsn(name) // name, args
-      getFromScope("$" + name) // value, name, args
-      
-      // Put the variable on the arguments
-      mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
-      // object
-      mv.visitInsn(POP) // <empty>
+    for ((name, source) <- call.argumentSources) {
+      source match {
+        case Cascade =>
+          mv.visitInsn(DUP) // args
+          mv.visitLdcInsn(name) // name, args
+          getFromScope("$" + name) // value, name, args
+          
+          // Put the variable on the arguments
+          mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
+          // object
+          mv.visitInsn(POP) // <empty>
+        case _ =>
+      }
     }
 
     val macroName = invocation.getIdentifier().getText()
@@ -1269,8 +1288,8 @@ class ByteCodeProducer(
     // Determine what macro to invoke
     println("ARg types: "+argTypes)
     
-    debug("macro invokation [" + macroName + " -> " + macro.className + "]")
-    mv.visitMethodInsn(INVOKESTATIC, macro.className, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // macro, value, args
+    debug("macro invokation [" + macroName + " -> " + call.macro.className + "]")
+    mv.visitMethodInsn(INVOKESTATIC, call.macro.className, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // macro, value, args
     
     // macro, value, args
     mv.visitInsn(DUP_X2) // macro, value, args, macro

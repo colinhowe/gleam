@@ -4,10 +4,10 @@ import uk.co.colinhowe.glimpse.compiler.node.AMacroStmt
 import scala.collection.mutable.{ Map => MMap }
 
 class ResolvedCallsProvider {
-  private val calls = MMap[AMacroStmt, MacroDefinition]()
+  private val calls = MMap[AMacroStmt, ResolvedCall]()
   
-  def add(stmt : AMacroStmt, defn : MacroDefinition) = {
-    calls(stmt) = defn
+  def add(stmt : AMacroStmt, call : ResolvedCall) = {
+    calls(stmt) = call
   }
   
   def get(stmt : AMacroStmt) = {

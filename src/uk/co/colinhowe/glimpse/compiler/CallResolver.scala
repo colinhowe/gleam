@@ -12,17 +12,19 @@ import scala.collection.mutable.{ Map => MMap }
 import scala.collection.mutable.Buffer
 
 import scala.collection.JavaConversions._
+import uk.co.colinhowe.glimpse.compiler.ArgumentSource._
 
 class CallResolver(
     provider : MacroDefinitionProvider
     
 ) extends DepthFirstAdapter {
-  def getMatchingMacro(node : Node, macroName : String, arguments : Map[String, Type], valueType : Type, cascadeIdentifier : CascadeIdentifier) : Option[MacroDefinition] = {
+  def getMatchingMacro(node : Node, macroName : String, arguments : Map[String, Type], valueType : Type, cascadeIdentifier : CascadeIdentifier) : Option[ResolvedCall] = {
     val definitions = provider.get(macroName)
-    val matchingDefinitions = definitions.filter(matches(node, _, arguments, valueType, cascadeIdentifier))
+    val calls = definitions.map(matches(node, _, arguments, valueType, cascadeIdentifier))
+    val matchingDefinitions = calls.filter(_ != None)
     val iterator = matchingDefinitions.iterator
     if (iterator.hasNext) {
-      Some(iterator.next)
+      iterator.next
     } else {
       None
     }
@@ -59,8 +61,10 @@ class CallResolver(
     }
   }
   
-  private def matches(node : Node, definition : MacroDefinition, arguments : Map[String, Type], valueType : Type, cascadeIdentifier : CascadeIdentifier) : Boolean = {
+  private def matches(node : Node, definition : MacroDefinition, arguments : Map[String, Type], valueType : Type, cascadeIdentifier : CascadeIdentifier) : Option[ResolvedCall] = {
     var definitionToMatch = definition
+    
+    val argumentSources = MMap[String, ArgumentSource]()
     
     // Attempt generic bindings so that matches can be performed correctly
     // TODO Remove this out into a class specifically for generic bindings so that it can be reused
@@ -69,27 +73,39 @@ class CallResolver(
     definitionToMatch = new MacroDefinition(definition.name, newValueType, definition.isDynamic)
     
     var currentBindings = genericBindings
-    for (argument <- definition.arguments) {
-      if (!arguments.contains(argument._1)) {
+    for ((name, defn) <- definition.arguments) {
+      if (!arguments.contains(name)) {
         // Check if a cascade can be applied
-        val cascadedArg = cascadeIdentifier.identify(node).get(argument._1)
-        return cascadedArg match {
-          case Some(cascadedArg) => cascadedArg.canBeAssignedTo(argument._2.argType)
-          case None => false
+        val cascadedArg = cascadeIdentifier.identify(node).get(name)
+        cascadedArg match {
+          case Some(cascadedArg) => 
+            if (!cascadedArg.canBeAssignedTo(defn.argType)) {
+              return None
+            } else {
+              argumentSources(name) = Cascade
+              definitionToMatch.addArgument(name, defn.argType, defn.cascade, defn.hasDefault)
+            }
+          case None => 
+            if (!defn.hasDefault) {
+              return None
+            } else {
+              argumentSources(name) = Default
+              definitionToMatch.addArgument(name, defn.argType, defn.cascade, defn.hasDefault)
+            }
         }
+      } else {
+        // TODO Fix this kludge
+        var (newArgType2, currentBindings2) = resolveGenerics(arguments(name), defn.argType, currentBindings)
+        currentBindings = currentBindings2
+        argumentSources(name) = Call
+        definitionToMatch.addArgument(name, newArgType2, defn.cascade, defn.hasDefault)
       }
-      
-      // TODO Fix this kludge
-      var (newArgType2, currentBindings2) = resolveGenerics(arguments(argument._1), argument._2.argType, currentBindings)
-      currentBindings = currentBindings2
-      
-      definitionToMatch.addArgument(argument._1, newArgType2, argument._2.cascade)
     }
     
     println ("Generics resolved to [" + definitionToMatch + "]")
     
     if (!valueType.canBeAssignedTo(definitionToMatch.valueType)) {
-      return false
+      return None
     }
     
     println("Defn: " + definition)
@@ -100,11 +116,15 @@ class CallResolver(
       definitionToMatch.arguments.exists(argumentMatch(invokationArg, _))
     )
     if (!invocationArgumentsExist) {
-      return false
+      return None
     }
     
-    // Check whether all the definition's arguments are satisfied
-    return definitionToMatch.arguments.forall(arg => arguments.contains(arg._1))
+//    // Check whether all the definition's arguments are satisfied
+//    if (!definitionToMatch.arguments.forall(arg => arguments.contains(arg._1))) {
+//      return None
+//    }
+    
+    return Some(ResolvedCall(definition, argumentSources.toMap))
   }
   
   private def argumentMatches(invocationArg : (String, Type), macroArg : ArgumentDefinition) : Boolean = {

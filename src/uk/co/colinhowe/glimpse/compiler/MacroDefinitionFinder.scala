@@ -39,7 +39,7 @@ class MacroDefinitionFinder(
       val argType = typeProvider.getType(argDefn.getType(), typeNameResolver, genericsInScope.toMap)
       val argumentName = argDefn.getIdentifier().getText()
       val cascade = argDefn.getModifier.exists { _.isInstanceOf[ACascadeModifier] }
-      defn.addArgument(argumentName, argType, cascade)
+      defn.addArgument(argumentName, argType, cascade, argDefn.getDefault != null)
     }
     
     println("Found macro [" + defn.name + "]")
@@ -70,7 +70,7 @@ class MacroDefinitionFinder(
       val argType = typeProvider.getType(argDefn.getType(), typeNameResolver)
       val argumentName = argDefn.getIdentifier().getText()
       val cascade = argDefn.getModifier.exists { _.isInstanceOf[ACascadeModifier] }
-      defn.addArgument(argumentName, argType, cascade)
+      defn.addArgument(argumentName, argType, cascade, argDefn.getDefault != null)
     }
     
     println("Found macro [" + defn.name + "]")

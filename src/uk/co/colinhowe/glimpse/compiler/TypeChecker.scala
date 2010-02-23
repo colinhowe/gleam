@@ -223,7 +223,7 @@ class TypeChecker(
         // Remove this node
         invocation.parent.replaceBy(new AErrorNode)
         
-      case Some(macroDefinition) =>
+      case Some(call) =>
         // Build a map of bound generics
         val genericBindings = scala.collection.mutable.Map[GenericType, Type]()
         var isFine = true
@@ -234,7 +234,7 @@ class TypeChecker(
           val callType = typeResolver.getType(argument.getExpr(), typeNameResolver, genericsInScope)
           
           // Get the type of the argument as defined in the macro
-          var defnType = macroDefinition.arguments(argument.getIdentifier().getText()).argType
+          var defnType = call.macro.arguments(argument.getIdentifier().getText()).argType
           defnType = bind(genericBindings, defnType, callType)
           
           // Check if this type or any subtypes has been bound already
@@ -250,7 +250,7 @@ class TypeChecker(
         }
         
         if (isFine) {
-          resolvedCallsProvider.add(invocation.parent.asInstanceOf[AMacroStmt], macroDefinition)
+          resolvedCallsProvider.add(invocation.parent.asInstanceOf[AMacroStmt], call)
         }
     }
   }

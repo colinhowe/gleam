@@ -13,6 +13,8 @@ import org.junit.Test
 import org.mockito.Matchers._
 import org.mockito.Mockito._
 
+import uk.co.colinhowe.glimpse.compiler.ArgumentSource._
+
 class TestCascadeIdentifier extends AssertionsForJUnit {
 
   private val typeResolver = new TypeResolver(
@@ -30,7 +32,8 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
                 else 
                   Buffer[PModifier](),
                 new AStringType,
-                new TIdentifier("arg")
+                new TIdentifier("arg"),
+                null
             )
         ), 
         new AStringType(),
@@ -69,8 +72,11 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
     
     val resolvedCallsProvider = new ResolvedCallsProvider
     val defn = new MacroDefinition("macro", new SimpleType(classOf[String]), false)
-    defn.addArgument("readonly", new SimpleType(classOf[Boolean]), true)
-    resolvedCallsProvider.add(macroStmt, defn)
+    defn.addArgument("readonly", new SimpleType(classOf[Boolean]), true, false)
+    
+    val call = ResolvedCall(defn, Map("readonly" -> Cascade))
+    
+    resolvedCallsProvider.add(macroStmt, call)
 
     // Check what cascades are applicable
     val cascades = CascadeIdentifier.identify(incrementStmt, typeResolver, null, resolvedCallsProvider)
@@ -94,8 +100,9 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
         ))
     ))
     val innerDefn = new MacroDefinition("innermacro", new SimpleType(classOf[String]), false)
-    innerDefn.addArgument("readonly", new SimpleType(classOf[Boolean]), true)
-    resolvedCallsProvider.add(innerMacroStmt, innerDefn)
+    innerDefn.addArgument("readonly", new SimpleType(classOf[Boolean]), true, false)
+    val innerCall = ResolvedCall(innerDefn, Map("readonly" -> Cascade))
+    resolvedCallsProvider.add(innerMacroStmt, innerCall)
     
     val outerMacroStmt = new AMacroStmt(new AMacroInvoke(
         new TIdentifier("outermacro"),
@@ -109,8 +116,9 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
     ))
 
     val outerDefn = new MacroDefinition("outermacro", new SimpleType(classOf[String]), false)
-    outerDefn.addArgument("readonly", new SimpleType(classOf[String]), true)
-    resolvedCallsProvider.add(outerMacroStmt, outerDefn)
+    outerDefn.addArgument("readonly", new SimpleType(classOf[String]), true, false)
+    val outerCall = ResolvedCall(outerDefn, Map("readonly" -> Cascade))
+    resolvedCallsProvider.add(outerMacroStmt, outerCall)
 
     // Check what cascades are applicable
     val cascades = CascadeIdentifier.identify(incrementStmt, typeResolver, null, resolvedCallsProvider)
@@ -134,8 +142,9 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
         ))
     ))
     val innerDefn = new MacroDefinition("innermacro", new SimpleType(classOf[String]), false)
-    innerDefn.addArgument("arg", new SimpleType(classOf[Boolean]), true)
-    resolvedCallsProvider.add(innerMacroStmt, innerDefn)
+    innerDefn.addArgument("arg", new SimpleType(classOf[Boolean]), true, false)
+    val innerCall = ResolvedCall(innerDefn, Map("readonly" -> Cascade))
+      resolvedCallsProvider.add(innerMacroStmt, innerCall)
     
     val defn = createOwnerMacro(true, Buffer[PStmt](innerMacroStmt))
 
@@ -161,8 +170,9 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
         ))
     ))
     val innerDefn = new MacroDefinition("innermacro", new SimpleType(classOf[String]), false)
-    innerDefn.addArgument("readonly", new SimpleType(classOf[Boolean]), false)
-    resolvedCallsProvider.add(innerMacroStmt, innerDefn)
+    innerDefn.addArgument("readonly", new SimpleType(classOf[Boolean]), false, false)
+    val innerCall = ResolvedCall(innerDefn, Map("readonly" -> Call))
+    resolvedCallsProvider.add(innerMacroStmt, innerCall)
     
     val outerMacroStmt = new AMacroStmt(new AMacroInvoke(
         new TIdentifier("outermacro"),
@@ -176,8 +186,9 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
     ))
 
     val outerDefn = new MacroDefinition("outermacro", new SimpleType(classOf[String]), false)
-    outerDefn.addArgument("readonly", new SimpleType(classOf[String]), true)
-    resolvedCallsProvider.add(outerMacroStmt, outerDefn)
+    outerDefn.addArgument("readonly", new SimpleType(classOf[String]), true, false)
+    val outerCall = ResolvedCall(outerDefn, Map("readonly" -> Cascade))
+    resolvedCallsProvider.add(outerMacroStmt, outerCall)
 
     // Check what cascades are applicable
     val cascades = CascadeIdentifier.identify(incrementStmt, typeResolver, null, resolvedCallsProvider)

@@ -18,7 +18,9 @@ case class MacroDefinition(val name : String, val valueType : Type, val isDynami
   }
   
   override def toString : String = {
-    "MacroDefinition("+name+","+valueType+","+isDynamic+","+arguments+")"
+    val s = "MacroDefinition("+name+","+valueType+","+isDynamic+","+arguments+")"
+    println(s)
+    s
   }
   
   /**
@@ -40,8 +42,8 @@ case class MacroDefinition(val name : String, val valueType : Type, val isDynami
     }
   }
   
-  def addArgument(argumentName : String, t : Type, cascade : Boolean) {
-    arguments(argumentName) = ArgumentDefinition(argumentName, t, cascade)
+  def addArgument(argumentName : String, t : Type, cascade : Boolean, hasDefault : Boolean) {
+    arguments(argumentName) = ArgumentDefinition(argumentName, t, cascade, hasDefault)
   }
   
   def areCompatible(other : MacroDefinition) = {

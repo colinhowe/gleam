@@ -188,7 +188,7 @@ Productions
       | {multiple} arg_defns2 comma arg_defn {-> [arg_defns2.arg_defn, arg_defn]}
       ;
 
-    arg_defn = modifier* [name]:identifier colon [type]:type {-> New arg_defn([modifier], type, name) }; 
+    arg_defn = modifier* [name]:identifier colon [type]:type var_defn_init? {-> New arg_defn([modifier], type, name, var_defn_init.expr) }; 
     
     modifier = cascade {-> New modifier.cascade()};
     
@@ -218,7 +218,7 @@ Abstract Syntax Tree
     
     controller = identifier*;
     
-    arg_defn = modifier* type identifier;
+    arg_defn = modifier* type identifier [default]:expr?;
     
     generic_defn = identifier;
     

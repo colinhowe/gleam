@@ -28,9 +28,9 @@ object CascadeIdentifier {
         
       case stmt : AMacroStmt =>
         // Find the macro actually invoked
-        val defn = resolvedCallsProvider.get(stmt)
-        if (defn != null) {
-          identify(node.parent, typeResolver, nameResolver, resolvedCallsProvider) ++ defn.arguments.foldLeft(Map[String, Type]())((cascades, argTuple) => {
+        val call = resolvedCallsProvider.get(stmt)
+        if (call != null) {
+          identify(node.parent, typeResolver, nameResolver, resolvedCallsProvider) ++ call.macro.arguments.foldLeft(Map[String, Type]())((cascades, argTuple) => {
             val arg = argTuple._2
             if (arg.cascade) {
               cascades + (arg.name -> arg.argType)
