@@ -55,7 +55,7 @@ class TestTypeChecker extends TypeCheckerTest {
 
   @Test
   def invalidArgumentToMacro = {   
-    val definition = new MacroDefinition("p", SimpleType(classOf[String]), false)
+    val definition = new MacroDefinition("p", SimpleType(classOf[String]), false, Set[Restriction]())
     definition.addArgument("v", SimpleType(classOf[Integer]), false, false)
 
     ;
@@ -86,7 +86,7 @@ class TestTypeChecker extends TypeCheckerTest {
 
   @Test
   def invalidValueToMacro = {   
-    val definition = new MacroDefinition("p", SimpleType(classOf[String]), false)
+    val definition = new MacroDefinition("p", SimpleType(classOf[String]), false, Set[Restriction]())
     definition.addArgument("v", SimpleType(classOf[Integer]), false, false)
 
     ;

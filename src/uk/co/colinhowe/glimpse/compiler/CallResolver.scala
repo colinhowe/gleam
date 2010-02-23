@@ -1,6 +1,6 @@
 package uk.co.colinhowe.glimpse.compiler
 
-import uk.co.colinhowe.glimpse.compiler.node.Node
+import uk.co.colinhowe.glimpse.compiler.node._
 import uk.co.colinhowe.glimpse.compiler.typing.CompoundType
 import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
 import uk.co.colinhowe.glimpse.compiler.typing.GenericType
@@ -27,6 +27,15 @@ class CallResolver(
       iterator.next
     } else {
       None
+    }
+  }
+  
+  def getParent(node : Node) : String = {
+    node match {
+      case stmt : AMacroStmt => stmt.toString
+      case defn : AMacroDefn => defn.getName.getText
+      case view : AView => "top level"
+      case node : Node => getParent(node.parent)
     }
   }
   
@@ -66,11 +75,25 @@ class CallResolver(
     
     val argumentSources = MMap[String, ArgumentSource]()
     
+    // Check restrictions on this definition
+    val parent = getParent(node.parent.parent)
+    if (definition.restrictions .size > 0) {
+      var restricted = true
+      for (restriction <- definition.restrictions) {
+        restricted &= (restriction match {
+          case NameRestriction(name) => name != parent 
+        })
+      }
+      if (restricted) {
+        return None
+      }
+    }
+    
     // Attempt generic bindings so that matches can be performed correctly
     // TODO Remove this out into a class specifically for generic bindings so that it can be reused
     val (newValueType, genericBindings) = 
       resolveGenerics(valueType, definition.valueType, Map[String, Type]())
-    definitionToMatch = new MacroDefinition(definition.name, newValueType, definition.isDynamic)
+    definitionToMatch = new MacroDefinition(definition.name, newValueType, definition.isDynamic, Set[Restriction]())
     
     var currentBindings = genericBindings
     for ((name, defn) <- definition.arguments) {
@@ -119,11 +142,6 @@ class CallResolver(
       return None
     }
     
-//    // Check whether all the definition's arguments are satisfied
-//    if (!definitionToMatch.arguments.forall(arg => arguments.contains(arg._1))) {
-//      return None
-//    }
-    
     return Some(ResolvedCall(definition, argumentSources.toMap))
   }
   
@@ -133,8 +151,6 @@ class CallResolver(
   }
   
   private def argumentMatch(invocationArg : (String, Type), macroArg : (String, ArgumentDefinition)) : Boolean = {
-    println("FOO " + macroArg)
-    println("FOO " + invocationArg)
     argumentMatches(invocationArg, macroArg._2)
   }
 }

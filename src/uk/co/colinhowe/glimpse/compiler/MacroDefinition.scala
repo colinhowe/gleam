@@ -2,7 +2,11 @@ package uk.co.colinhowe.glimpse.compiler
 
 import uk.co.colinhowe.glimpse.compiler.typing.Type
 
-case class MacroDefinition(val name : String, val valueType : Type, val isDynamic : Boolean) extends Type {
+case class MacroDefinition(
+    val name : String, 
+    val valueType : Type, 
+    val isDynamic : Boolean,
+    val restrictions : Iterable[Restriction]) extends Type {
   // TODO Make arguments part of the constructor
   val arguments = scala.collection.mutable.Map[String, ArgumentDefinition]()
   

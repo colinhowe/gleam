@@ -28,6 +28,8 @@ Tokens
     type_generator = 'generator';
     timport = 'import';
     
+    //toplevel = 'top level';
+    
     false = 'false';
     true = 'true';
     
@@ -36,6 +38,9 @@ Tokens
     controller_token = 'controller';
     
     cascade = 'cascade';
+    
+    restrict = 'restrict';
+    to = 'to';
     
     if = 'if';
     telse = 'else';
@@ -47,7 +52,7 @@ Tokens
     dot = '.';
     bang = '!';
     
-    identifier = letter (letter | digit | '_')*;
+    identifier = 'top level' | letter (letter | digit | '_')*;
     number = digit+;
     
     lt = '<';
@@ -154,8 +159,15 @@ Productions
     	
     
     macro_defn = 
-      macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with [content_name]:identifier colon [content_type]:type [gen_args]:arg_defns? generator 
-      {-> New macro_defn(name, [generic_defns.generic_defn], [macro_args.arg_defn], content_type, content_name, generator)}
+      macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with [content_name]:identifier colon [content_type]:type [gen_args]:arg_defns? restriction ? generator 
+      {-> New macro_defn(name, [generic_defns.generic_defn], [macro_args.arg_defn], content_type, content_name, restriction ,generator)}
+      ;
+      
+    restriction = restrict to identifiers {-> New restriction([identifiers.identifier])};
+    
+    identifiers {-> identifier*} = 
+        {single} identifier {-> [identifier]}
+      | {multiple} identifiers comma identifier {-> [identifiers.identifier, identifier]}
       ;
       
     dynamic_macro_defn = 
@@ -227,6 +239,8 @@ Abstract Syntax Tree
     modifier =
         {cascade}
       ;
+      
+    restriction = identifier*;
     
     stmt = {node}  node_create
          | {macro} macro_invoke
@@ -282,7 +296,7 @@ Abstract Syntax Tree
     
     forloop = type identifier expr stmt+;
     
-    macro_defn = [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* [content_type]:type [content_name]:identifier generator;
+    macro_defn = [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* [content_type]:type [content_name]:identifier restriction? generator;
     
     dynamic_macro_defn = [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* [content_type]:type [content_name]:identifier;
 

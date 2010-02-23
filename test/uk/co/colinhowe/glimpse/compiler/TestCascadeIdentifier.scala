@@ -5,7 +5,7 @@ import uk.co.colinhowe.glimpse.Generator
 import uk.co.colinhowe.glimpse.compiler.typing.Type
 import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
 import org.scalatest.junit.AssertionsForJUnit
-import scala.collection.mutable.{ Set, Buffer }
+import scala.collection.mutable.{ Set => MSet, Buffer }
 import scala.collection.JavaConversions._
 
 import org.junit.Test
@@ -38,6 +38,7 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
         ), 
         new AStringType(),
         new TIdentifier("content"), 
+        null,
         new AGenerator(
             Buffer[PArgDefn](),
             stmts
@@ -71,7 +72,7 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
     ))
     
     val resolvedCallsProvider = new ResolvedCallsProvider
-    val defn = new MacroDefinition("macro", new SimpleType(classOf[String]), false)
+    val defn = new MacroDefinition("macro", new SimpleType(classOf[String]), false, Set[Restriction]())
     defn.addArgument("readonly", new SimpleType(classOf[Boolean]), true, false)
     
     val call = ResolvedCall(defn, Map("readonly" -> Cascade))
@@ -99,7 +100,7 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
             Buffer[PStmt](incrementStmt)
         ))
     ))
-    val innerDefn = new MacroDefinition("innermacro", new SimpleType(classOf[String]), false)
+    val innerDefn = new MacroDefinition("innermacro", new SimpleType(classOf[String]), false, Set[Restriction]())
     innerDefn.addArgument("readonly", new SimpleType(classOf[Boolean]), true, false)
     val innerCall = ResolvedCall(innerDefn, Map("readonly" -> Cascade))
     resolvedCallsProvider.add(innerMacroStmt, innerCall)
@@ -115,7 +116,7 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
         ))
     ))
 
-    val outerDefn = new MacroDefinition("outermacro", new SimpleType(classOf[String]), false)
+    val outerDefn = new MacroDefinition("outermacro", new SimpleType(classOf[String]), false, Set[Restriction]())
     outerDefn.addArgument("readonly", new SimpleType(classOf[String]), true, false)
     val outerCall = ResolvedCall(outerDefn, Map("readonly" -> Cascade))
     resolvedCallsProvider.add(outerMacroStmt, outerCall)
@@ -141,7 +142,7 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
             Buffer[PStmt](incrementStmt)
         ))
     ))
-    val innerDefn = new MacroDefinition("innermacro", new SimpleType(classOf[String]), false)
+    val innerDefn = new MacroDefinition("innermacro", new SimpleType(classOf[String]), false, Set[Restriction]())
     innerDefn.addArgument("arg", new SimpleType(classOf[Boolean]), true, false)
     val innerCall = ResolvedCall(innerDefn, Map("readonly" -> Cascade))
       resolvedCallsProvider.add(innerMacroStmt, innerCall)
@@ -169,7 +170,7 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
             Buffer[PStmt](incrementStmt)
         ))
     ))
-    val innerDefn = new MacroDefinition("innermacro", new SimpleType(classOf[String]), false)
+    val innerDefn = new MacroDefinition("innermacro", new SimpleType(classOf[String]), false, Set[Restriction]())
     innerDefn.addArgument("readonly", new SimpleType(classOf[Boolean]), false, false)
     val innerCall = ResolvedCall(innerDefn, Map("readonly" -> Call))
     resolvedCallsProvider.add(innerMacroStmt, innerCall)
@@ -185,7 +186,7 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
         ))
     ))
 
-    val outerDefn = new MacroDefinition("outermacro", new SimpleType(classOf[String]), false)
+    val outerDefn = new MacroDefinition("outermacro", new SimpleType(classOf[String]), false, Set[Restriction]())
     outerDefn.addArgument("readonly", new SimpleType(classOf[String]), true, false)
     val outerCall = ResolvedCall(outerDefn, Map("readonly" -> Cascade))
     resolvedCallsProvider.add(outerMacroStmt, outerCall)

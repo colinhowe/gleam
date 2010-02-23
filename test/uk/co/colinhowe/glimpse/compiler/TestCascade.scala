@@ -175,18 +175,4 @@ class TestCascade extends TypeCheckerTest {
     """ compilesTo 
     <view><div><field readonly="true">name</field></div></view>
   }
-  
-  /*
-   fieldset(readonly: true) {
-     field "name"
-   }
-   
-   if readonly has cascade is equivalent to:
-   var $readonly = true
-   fieldset(readonly: true) { 
-     field(readonly: $readonly)
-   }
-   
-   
-   */
 }

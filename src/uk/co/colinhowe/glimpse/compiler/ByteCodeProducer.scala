@@ -612,7 +612,7 @@ class ByteCodeProducer(
   private def createMacroDefinition(node : MacroDefn) : MacroDefinition = {
     val macroName = node.getName().getText()
     val definition = new MacroDefinition(
-        macroName, typeResolver.getType(node.getContentType, typeNameResolver), false)
+        macroName, typeResolver.getType(node.getContentType, typeNameResolver), false, Set[Restriction]())
     
     // Add on any generics needed
     val generics = MMap[String, GType]()

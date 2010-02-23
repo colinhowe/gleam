@@ -1,16 +1,13 @@
 package uk.co.colinhowe.glimpse.compiler
-import uk.co.colinhowe.glimpse.compiler.node.ACascadeModifier
-
+
+import uk.co.colinhowe.glimpse.compiler.node._
 import uk.co.colinhowe.glimpse.compiler.typing.GenericType
-import uk.co.colinhowe.glimpse.compiler.node.AGenericDefn
 import uk.co.colinhowe.glimpse.compiler.typing.Type
-import uk.co.colinhowe.glimpse.compiler.node.ADynamicMacroDefn
 import uk.co.colinhowe.glimpse.CompilationError
-import uk.co.colinhowe.glimpse.compiler.node.AMacroDefn
-import uk.co.colinhowe.glimpse.compiler.node.AArgDefn
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
 import uk.co.colinhowe.glimpse.MultipleDefinitionError
-import scala.collection.mutable.ListBuffer
+
+import scala.collection.mutable.{ ListBuffer, Set => MSet }
 import scala.collection.JavaConversions._
 
 
@@ -30,7 +27,16 @@ class MacroDefinitionFinder(
     
     // Get the type of the content
     val contentType = typeProvider.getType(node.getContentType(), typeNameResolver, genericsInScope.toMap)
-    val defn = new MacroDefinition(name, contentType, false)
+    val restrictions = if (node.getRestriction != null) {
+      val restrictions = MSet[Restriction]()
+      for (restriction <- node.getRestriction.asInstanceOf[ARestriction].getIdentifier) {
+        restrictions += NameRestriction(restriction.getText)
+      }
+      restrictions.toSet
+    } else {
+      Set[Restriction]()
+    }
+    val defn = new MacroDefinition(name, contentType, false, restrictions)
 
     // Process all the arguments
     for (pargDefn <- node.getArgDefn()) {
@@ -61,7 +67,7 @@ class MacroDefinitionFinder(
     
     // Get the type of the content
     val contentType = typeProvider.getType(node.getContentType(), typeNameResolver)
-    val defn = new MacroDefinition(name, contentType, true)
+    val defn = new MacroDefinition(name, contentType, true, Set[Restriction]())
 
     // Process all the arguments
     val args = scala.collection.mutable.Set[Tuple2[String, String]]();

@@ -37,6 +37,7 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
       ),
       new AStringType,
       new TIdentifier("s"),
+      null,
       new AGenerator(
       )
     )
@@ -50,5 +51,73 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
       ===
       macro.arguments("readonly")
     )
+  }
+  
+  @Test
+  def detectsRestriction = {
+    val definitionProvider = new MacroDefinitionProvider
+    val finder = new MacroDefinitionFinder(
+        null, 
+        new TypeProvider, 
+        definitionProvider, 
+        null)
+    
+    val defn = new AMacroDefn(
+      new TIdentifier("macro"),
+      Buffer[PGenericDefn](),
+      Buffer[PArgDefn](
+        new AArgDefn(
+          Buffer[PModifier](),
+          new ABoolType,
+          new TIdentifier("readonly"),
+          new ATrueExpr
+        )
+      ),
+      new AStringType,
+      new TIdentifier("s"),
+      new ARestriction(Buffer(new TIdentifier("onlyhere"))),
+      new AGenerator(
+      )
+    )
+    
+    finder.outAMacroDefn(defn)
+
+    val macros = definitionProvider.get("macro")
+    val macro = macros.iterator.next
+    assert(Set(NameRestriction("onlyhere")) === macro.restrictions)
+  }
+  
+  @Test
+  def detectsTopLevelRestriction = {
+    val definitionProvider = new MacroDefinitionProvider
+    val finder = new MacroDefinitionFinder(
+        null, 
+        new TypeProvider, 
+        definitionProvider, 
+        null)
+    
+    val defn = new AMacroDefn(
+      new TIdentifier("macro"),
+      Buffer[PGenericDefn](),
+      Buffer[PArgDefn](
+        new AArgDefn(
+          Buffer[PModifier](),
+          new ABoolType,
+          new TIdentifier("readonly"),
+          new ATrueExpr
+        )
+      ),
+      new AStringType,
+      new TIdentifier("s"),
+      new ARestriction(Buffer(new TIdentifier("top level"))),
+      new AGenerator(
+      )
+    )
+    
+    finder.outAMacroDefn(defn)
+
+    val macros = definitionProvider.get("macro")
+    val macro = macros.iterator.next
+    assert(Set(NameRestriction("top level")) === macro.restrictions)
   }
 }
