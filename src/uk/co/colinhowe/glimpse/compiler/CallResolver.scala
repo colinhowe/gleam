@@ -93,9 +93,9 @@ class CallResolver(
     // TODO Remove this out into a class specifically for generic bindings so that it can be reused
     val (newValueType, genericBindings) = 
       resolveGenerics(valueType, definition.valueType, Map[String, Type]())
-    definitionToMatch = new MacroDefinition(definition.name, newValueType, definition.isDynamic, Set[Restriction]())
     
     var currentBindings = genericBindings
+    val argumentsToMatch = MMap[String, ArgumentDefinition]()
     for ((name, defn) <- definition.arguments) {
       if (!arguments.contains(name)) {
         // Check if a cascade can be applied
@@ -106,14 +106,14 @@ class CallResolver(
               return None
             } else {
               argumentSources(name) = Cascade
-              definitionToMatch.addArgument(name, defn.argType, defn.cascade, defn.hasDefault)
+              argumentsToMatch(name) = ArgumentDefinition(name, defn.argType, defn.cascade, defn.hasDefault)
             }
           case None => 
             if (!defn.hasDefault) {
               return None
             } else {
               argumentSources(name) = Default
-              definitionToMatch.addArgument(name, defn.argType, defn.cascade, defn.hasDefault)
+              argumentsToMatch(name) = ArgumentDefinition(name, defn.argType, defn.cascade, defn.hasDefault)
             }
         }
       } else {
@@ -121,10 +121,12 @@ class CallResolver(
         var (newArgType2, currentBindings2) = resolveGenerics(arguments(name), defn.argType, currentBindings)
         currentBindings = currentBindings2
         argumentSources(name) = Call
-        definitionToMatch.addArgument(name, newArgType2, defn.cascade, defn.hasDefault)
+        argumentsToMatch(name) = ArgumentDefinition(name, newArgType2, defn.cascade, defn.hasDefault)
       }
     }
     
+    definitionToMatch = new MacroDefinition(definition.name, newValueType, definition.isDynamic, Set[Restriction](), argumentsToMatch.toMap)
+
     if (!valueType.canBeAssignedTo(definitionToMatch.valueType)) {
       return None
     }

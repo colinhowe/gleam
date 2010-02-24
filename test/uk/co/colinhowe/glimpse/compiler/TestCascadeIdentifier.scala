@@ -73,8 +73,8 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
     )
     
     val resolvedCallsProvider = new ResolvedCallsProvider
-    val defn = new MacroDefinition("macro", new SimpleType(classOf[String]), false, Set[Restriction]())
-    defn.addArgument("readonly", new SimpleType(classOf[Boolean]), true, false)
+    val defn = new MacroDefinition("macro", new SimpleType(classOf[String]), false, Set[Restriction](), 
+        Map[String, ArgumentDefinition]("readonly" -> ArgumentDefinition("readonly", new SimpleType(classOf[Boolean]), true, false)))
     
     val call = ResolvedCall(defn, Map("readonly" -> Cascade))
     
@@ -101,8 +101,8 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
             Buffer[PStmt](incrementStmt)
         ))
     )
-    val innerDefn = new MacroDefinition("innermacro", new SimpleType(classOf[String]), false, Set[Restriction]())
-    innerDefn.addArgument("readonly", new SimpleType(classOf[Boolean]), true, false)
+    val innerDefn = new MacroDefinition("innermacro", new SimpleType(classOf[String]), false, Set[Restriction](),
+        Map("readonly" -> ArgumentDefinition("readonly", new SimpleType(classOf[Boolean]), true, false)))
     val innerCall = ResolvedCall(innerDefn, Map("readonly" -> Cascade))
     resolvedCallsProvider.add(innerMacroStmt, innerCall)
     
@@ -117,8 +117,8 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
         ))
     )
 
-    val outerDefn = new MacroDefinition("outermacro", new SimpleType(classOf[String]), false, Set[Restriction]())
-    outerDefn.addArgument("readonly", new SimpleType(classOf[String]), true, false)
+    val outerDefn = new MacroDefinition("outermacro", new SimpleType(classOf[String]), false, Set[Restriction](),
+        Map("readonly" -> ArgumentDefinition("readonly", new SimpleType(classOf[String]), true, false)))
     val outerCall = ResolvedCall(outerDefn, Map("readonly" -> Cascade))
     resolvedCallsProvider.add(outerMacroStmt, outerCall)
 
@@ -143,8 +143,8 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
             Buffer[PStmt](incrementStmt)
         ))
     )
-    val innerDefn = new MacroDefinition("innermacro", new SimpleType(classOf[String]), false, Set[Restriction]())
-    innerDefn.addArgument("arg", new SimpleType(classOf[Boolean]), true, false)
+    val innerDefn = new MacroDefinition("innermacro", new SimpleType(classOf[String]), false, Set[Restriction](),
+        Map("arg" -> ArgumentDefinition("arg", new SimpleType(classOf[Boolean]), true, false)))
     val innerCall = ResolvedCall(innerDefn, Map("readonly" -> Cascade))
       resolvedCallsProvider.add(innerMacroStmt, innerCall)
     
@@ -171,8 +171,8 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
             Buffer[PStmt](incrementStmt)
         ))
     )
-    val innerDefn = new MacroDefinition("innermacro", new SimpleType(classOf[String]), false, Set[Restriction]())
-    innerDefn.addArgument("readonly", new SimpleType(classOf[Boolean]), false, false)
+    val innerDefn = new MacroDefinition("innermacro", new SimpleType(classOf[String]), false, Set[Restriction](),
+        Map("readonly" -> ArgumentDefinition("readonly", new SimpleType(classOf[Boolean]), false, false)))
     val innerCall = ResolvedCall(innerDefn, Map("readonly" -> Call))
     resolvedCallsProvider.add(innerMacroStmt, innerCall)
     
@@ -187,8 +187,8 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
         ))
     )
 
-    val outerDefn = new MacroDefinition("outermacro", new SimpleType(classOf[String]), false, Set[Restriction]())
-    outerDefn.addArgument("readonly", new SimpleType(classOf[String]), true, false)
+    val outerDefn = new MacroDefinition("outermacro", new SimpleType(classOf[String]), false, Set[Restriction](),
+        Map("readonly" -> ArgumentDefinition("readonly", new SimpleType(classOf[String]), true, false)))
     val outerCall = ResolvedCall(outerDefn, Map("readonly" -> Cascade))
     resolvedCallsProvider.add(outerMacroStmt, outerCall)
 

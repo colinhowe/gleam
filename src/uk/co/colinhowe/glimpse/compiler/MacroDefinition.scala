@@ -6,9 +6,8 @@ case class MacroDefinition(
     val name : String, 
     val valueType : Type, 
     val isDynamic : Boolean,
-    val restrictions : Iterable[Restriction]) extends Type {
-  // TODO Make arguments part of the constructor
-  val arguments = scala.collection.mutable.Map[String, ArgumentDefinition]()
+    val restrictions : Iterable[Restriction],
+    val arguments : Map[String, ArgumentDefinition] = Map()) extends Type {
   
   override def equals(o : Any) : Boolean = {
     o match {
@@ -41,10 +40,6 @@ case class MacroDefinition(
     } else {
       return name
     }
-  }
-  
-  def addArgument(argumentName : String, t : Type, cascade : Boolean, hasDefault : Boolean) {
-    arguments(argumentName) = ArgumentDefinition(argumentName, t, cascade, hasDefault)
   }
   
   def areCompatible(other : MacroDefinition) = {

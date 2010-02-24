@@ -29,7 +29,7 @@ class TestCallResolver extends AssertionsForJUnit {
   
   @Test
   def singleMatchWithNoArguments = {
-    val definition = new MacroDefinition("p", new SimpleType(classOf[String]), false, Set[Restriction]())
+    val definition = new MacroDefinition("p", new SimpleType(classOf[String]), false, Set[Restriction](), Map[String, ArgumentDefinition]())
     val definitionProvider = mock(classOf[MacroDefinitionProvider])
     when(definitionProvider.get(any())).thenReturn(Set[MacroDefinition](definition))
 
@@ -42,7 +42,7 @@ class TestCallResolver extends AssertionsForJUnit {
   
   @Test
   def noMatchByValueType = {
-    val definition = new MacroDefinition("p", new SimpleType(classOf[String]), false, Set[Restriction]())
+    val definition = new MacroDefinition("p", new SimpleType(classOf[String]), false, Set[Restriction](), Map[String, ArgumentDefinition]())
     val definitionProvider = mock(classOf[MacroDefinitionProvider])
     when(definitionProvider.get(any())).thenReturn(Set[MacroDefinition](definition))
 
@@ -55,11 +55,11 @@ class TestCallResolver extends AssertionsForJUnit {
   
   @Test
   def twoMacrosWithDifferentArgumentNames = {
-    val definition1 = new MacroDefinition("p", SimpleType(classOf[String]), false, Set[Restriction]())
-    definition1.addArgument("name", SimpleType(classOf[String]), false, false)
+    val definition1 = new MacroDefinition("p", SimpleType(classOf[String]), false, Set[Restriction](), Map[String, ArgumentDefinition](
+        "name" -> ArgumentDefinition("name", SimpleType(classOf[String]), false, false)))
 
-    val definition2 = new MacroDefinition("p", SimpleType(classOf[String]), false, Set[Restriction]())
-    definition2.addArgument("title", SimpleType(classOf[String]), false, false)
+    val definition2 = new MacroDefinition("p", SimpleType(classOf[String]), false, Set[Restriction](), Map[String, ArgumentDefinition](
+        "title" -> ArgumentDefinition("title", SimpleType(classOf[String]), false, false)))
 
     val definitionProvider = mock(classOf[MacroDefinitionProvider])
     when(definitionProvider.get(any())).thenReturn(Set[MacroDefinition](definition1, definition2))
@@ -74,11 +74,11 @@ class TestCallResolver extends AssertionsForJUnit {
   
   @Test
   def twoMacrosWithDifferentArgumentTypes = {
-    val definition1 = new MacroDefinition("p", SimpleType(classOf[String]), false, Set[Restriction]())
-    definition1.addArgument("name", SimpleType(classOf[String]), false, false)
+    val definition1 = new MacroDefinition("p", SimpleType(classOf[String]), false, Set[Restriction](), Map[String, ArgumentDefinition](
+        "name" -> ArgumentDefinition("name", SimpleType(classOf[String]), false, false)))
 
-    val definition2 = new MacroDefinition("p", SimpleType(classOf[String]), false, Set[Restriction]())
-    definition2.addArgument("name", SimpleType(classOf[Int]), false, false)
+    val definition2 = new MacroDefinition("p", SimpleType(classOf[String]), false, Set[Restriction](), Map[String, ArgumentDefinition](
+        "name" -> ArgumentDefinition("name", SimpleType(classOf[Int]), false, false)))
 
     val definitionProvider = mock(classOf[MacroDefinitionProvider])
     when(definitionProvider.get(any())).thenReturn(Set[MacroDefinition](definition1, definition2))
@@ -93,8 +93,8 @@ class TestCallResolver extends AssertionsForJUnit {
   
   @Test
   def macroInvokationWithInsufficientArguments = {
-    val definition = new MacroDefinition("p", SimpleType(classOf[String]), false, Set[Restriction]())
-    definition.addArgument("name", SimpleType(classOf[String]), false, false)
+    val definition = new MacroDefinition("p", SimpleType(classOf[String]), false, Set[Restriction](), Map[String, ArgumentDefinition](
+        "name" -> ArgumentDefinition("name", SimpleType(classOf[String]), false, false)))
 
     val definitionProvider = mock(classOf[MacroDefinitionProvider])
     when(definitionProvider.get(any())).thenReturn(Set[MacroDefinition](definition))
@@ -149,8 +149,8 @@ class TestCallResolver extends AssertionsForJUnit {
   
   @Test
   def macroInvokationDetectsCascade = {
-    val defn = new MacroDefinition("field", SimpleType(classOf[String]), false, Set[Restriction]())
-    defn.addArgument("readonly", SimpleType(classOf[Boolean]), true, false)
+    val defn = new MacroDefinition("field", SimpleType(classOf[String]), false, Set[Restriction](),
+        Map[String, ArgumentDefinition]("readonly" -> ArgumentDefinition("readonly", SimpleType(classOf[Boolean]), true, false)))
 
     val definitionProvider = mock(classOf[MacroDefinitionProvider])
     when(definitionProvider.get(any())).thenReturn(Set[MacroDefinition](defn))
@@ -172,8 +172,8 @@ class TestCallResolver extends AssertionsForJUnit {
   
   @Test
   def macroInvokationDetectsDefaults = {
-    val defn = new MacroDefinition("field", SimpleType(classOf[String]), false, Set[Restriction]())
-    defn.addArgument("readonly", SimpleType(classOf[Boolean]), true, true)
+    val defn = new MacroDefinition("field", SimpleType(classOf[String]), false, Set[Restriction](),
+        Map[String, ArgumentDefinition]("readonly" -> ArgumentDefinition("readonly", SimpleType(classOf[Boolean]), true, true)))
 
     val definitionProvider = mock(classOf[MacroDefinitionProvider])
     when(definitionProvider.get(any())).thenReturn(Set[MacroDefinition](defn))

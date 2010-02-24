@@ -38,13 +38,14 @@ class ByteCodeProducer(
     val lineNumberProvider : LineNumberProvider,
     val typeResolver : TypeResolver, 
     val outputFileName : String,
-    val typeNameResolver : TypeNameResolver,
+    implicit val typeNameResolver : TypeNameResolver,
     val sourcename : String,
     val callResolver : CallResolver,
     val resolvedCallsProvider : ResolvedCallsProvider
-   ) extends DepthFirstAdapter {
+   ) extends DepthFirstAdapter with Conversions {
   private val nodeInitMethodSignature = "(Ljava/util/List;Ljava/lang/String;Ljava/lang/Object;)V"
-  
+  private implicit val typeProvider = typeResolver.typeProvider
+    
   private var generatorCount : Int = 0
   private val generatorIds = scala.collection.mutable.Map[AGenerator, Integer]()
   private val methodVisitors = new MStack[MethodVisitor]()
@@ -531,30 +532,6 @@ class ByteCodeProducer(
     mv.visitEnd()
   }
   
-  private def createMacroDefinition(node : AMacroDefn) : MacroDefinition = {
-    val macroName = node.getName().getText()
-    val definition = new MacroDefinition(
-        macroName, typeResolver.getType(node.getContentType, typeNameResolver), node.getDynamic != null, Set[Restriction]())
-    
-    // Add on any generics needed
-    val generics = MMap[String, GType]()
-    for (pgeneric <- node.getGenericDefn) {
-      val generic = pgeneric.asInstanceOf[AGenericDefn]
-      generics(generic.getIdentifier.getText) = new GenericType(generic.getIdentifier().getText(), classOf[Object])
-    }
-    
-    for (parg <- node.getArgDefn()) {
-      val arg = parg.asInstanceOf[AArgDefn]
-      val cascade = arg.getModifier.exists { _.isInstanceOf[ACascadeModifier] }
-      definition.addArgument(
-          arg.getIdentifier().getText(), 
-          typeResolver.getType(arg.getType(), typeNameResolver, generics.toMap),
-          cascade, 
-          arg.getDefault != null)
-    }
-    return definition
-  }
-  
   override def caseAArgDefn(node : AArgDefn) {
     // Do nothing, we don't want these processed
   }
@@ -578,7 +555,7 @@ class ByteCodeProducer(
       args.add((argName, arg.getType().toString()))
     }
 
-    val macroDefinition = createMacroDefinition(node)
+    val macroDefinition : MacroDefinition = node
     
     // Get the name of the macro
     val macroName = node.getName().getText()
@@ -743,7 +720,7 @@ class ByteCodeProducer(
   
   
   override def outAMacroDefn(node : AMacroDefn) {
-    val macroDefinition = createMacroDefinition(node)
+    val macroDefinition : MacroDefinition = node
     val className = macroDefinition.className
     inMacro = false
 

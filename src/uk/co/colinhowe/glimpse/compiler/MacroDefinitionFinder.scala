@@ -12,40 +12,16 @@ import scala.collection.JavaConversions._
 
 class MacroDefinitionFinder(
     val lineNumberProvider : LineNumberProvider,
-    val typeProvider : TypeProvider,
+    implicit val typeProvider : TypeProvider,
     val macroProvider : MacroDefinitionProvider,
-    val typeNameResolver : TypeNameResolver)
-  extends DepthFirstAdapter {
+    implicit val typeNameResolver : TypeNameResolver)
+  extends DepthFirstAdapter with Conversions {
   
   val errors = ListBuffer[CompilationError]()
   val genericsInScope = scala.collection.mutable.Map[String, Type]()
 
   override def outAMacroDefn(node : AMacroDefn) = {
-    // Get the name of the macro
-    val name = node.getName().getText()
-    
-    // Get the type of the content
-    val contentType = typeProvider.getType(node.getContentType(), typeNameResolver, genericsInScope.toMap)
-    val restrictions = if (node.getRestriction != null) {
-      val restrictions = MSet[Restriction]()
-      for (restriction <- node.getRestriction.asInstanceOf[ARestriction].getIdentifier) {
-        restrictions += NameRestriction(restriction.getText)
-      }
-      restrictions.toSet
-    } else {
-      Set[Restriction]()
-    }
-    val defn = new MacroDefinition(name, contentType, node.getDynamic != null, restrictions)
-
-    // Process all the arguments
-    for (pargDefn <- node.getArgDefn()) {
-      val argDefn = pargDefn.asInstanceOf[AArgDefn]
-      val argType = typeProvider.getType(argDefn.getType(), typeNameResolver, genericsInScope.toMap)
-      val argumentName = argDefn.getIdentifier().getText()
-      val cascade = argDefn.getModifier.exists { _.isInstanceOf[ACascadeModifier] }
-      defn.addArgument(argumentName, argType, cascade, argDefn.getDefault != null)
-    }
-    
+    val defn = node
     macroProvider.add(defn)
 
     // Clear any generics in scope
