@@ -28,8 +28,6 @@ Tokens
     type_generator = 'generator';
     timport = 'import';
     
-    //toplevel = 'top level';
-    
     false = 'false';
     true = 'true';
     
@@ -76,7 +74,6 @@ Tokens
     increment = '++';
     
     rightarrow = '=>';
-      
     
     single_line_comment = '//' [[all - cr] - lf]*;
     multi_line_comment = 
