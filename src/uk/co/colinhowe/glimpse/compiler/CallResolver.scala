@@ -125,16 +125,11 @@ class CallResolver(
       }
     }
     
-    println ("Generics resolved to [" + definitionToMatch + "]")
-    
     if (!valueType.canBeAssignedTo(definitionToMatch.valueType)) {
       return None
     }
     
-    println("Defn: " + definition)
-    
     // Check whether all the arguments exist on the definition
-    println("args: " + arguments)
     val invocationArgumentsExist = arguments.forall(invokationArg => 
       definitionToMatch.arguments.exists(argumentMatch(invokationArg, _))
     )

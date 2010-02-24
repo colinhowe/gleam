@@ -22,9 +22,7 @@ case class MacroDefinition(
   }
   
   override def toString : String = {
-    val s = "MacroDefinition("+name+","+valueType+","+isDynamic+","+arguments+")"
-    println(s)
-    s
+    "MacroDefinition("+name+","+valueType+","+isDynamic+","+arguments+")"
   }
   
   /**
@@ -39,7 +37,6 @@ case class MacroDefinition(
       for ((key, value) <- arguments) {
         toHash += key + value
       }
-      println("Hashing [" + toHash + "]")
       return name + "$" + Integer.toString(Math.abs(toHash.hashCode()), 16)
     } else {
       return name

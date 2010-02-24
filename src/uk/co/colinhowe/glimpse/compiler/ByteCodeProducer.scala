@@ -47,16 +47,7 @@ class ByteCodeProducer(
   
   private var generatorCount : Int = 0
   private val generatorIds = scala.collection.mutable.Map[AGenerator, Integer]()
-  private val methodVisitors = new MStack[MethodVisitor]() {
-    override def push(visitor : MethodVisitor) = {
-      println(">>> push")
-      super.push(visitor)
-    }
-    override def pop = {
-      println(">>> pop")
-      super.pop
-    }
-  }
+  private val methodVisitors = new MStack[MethodVisitor]()
   private val labels = new MStack[Label]()
   private val generatorNames = new MStack[String]()
   private val classWriters = new MStack[ClassWriter]()
@@ -79,10 +70,8 @@ class ByteCodeProducer(
   // TODO write some tests for this 
   private def startLabel(node : Node) : Label = {
     val label = new Label()
-    println("Starting label [" + label + "]")
     val mv = methodVisitors.head
     if (node != null) {
-      println("Visiting label as part of start [" + label + "]")
       mv.visitLabel(label)
       setLineNumber(mv, label, lineNumberProvider.getLineNumber(node))
       labelsWithLines.add(label)
@@ -108,10 +97,8 @@ class ByteCodeProducer(
       case Some(label) => (label, true)
       case _ => (new Label(), false)
     }
-    println("Starting/continuing label [" + label + "]")
     val mv = methodVisitors.head
     if (!continued) {
-      println("Visiting label as part of startOrContinue [" + label + "]")
       mv.visitLabel(label)
     }
     setLineNumber(mv, label, lineNumberProvider.getLineNumber(node))
@@ -121,7 +108,6 @@ class ByteCodeProducer(
 
   
   private def visitLabel(label : Label) {
-    println("Visiting label [" + label + "]")
     val mv = methodVisitors.head
     mv.visitLabel(label)
     trailingLabels.pop
@@ -396,7 +382,6 @@ class ByteCodeProducer(
   override def inAView(node : AView) {
     // Output a view class only if the view contains something that isn't a macro definition
     if (node.getStmt().size() > 0) {
-    println("In view")
       trailingLabels.push(None)
       
       val classWriter = classWriters.head
@@ -604,7 +589,6 @@ class ByteCodeProducer(
     }
 
     val className = macroDefinition.className
-    println("Creating macro class [" + className + "]")
     val (parentClass, interfaces) = if (macroDefinition.isDynamic) {
       ("uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", Array[String]())
     } else {
@@ -1094,8 +1078,6 @@ class ByteCodeProducer(
     val sourceMacroDefinitions = callResolver.getMacrosWithName(sourceMacroName)
     
     // Search for an exact match
-    println("Destination: " + dynamicMacroDefinition)
-    println("Sources: " + sourceMacroDefinitions)
     val sourceMacroDefinition = sourceMacroDefinitions.find(defn =>
         defn.valueType == dynamicMacroDefinition.valueType &&
         defn.arguments == dynamicMacroDefinition.arguments)
@@ -1181,8 +1163,6 @@ class ByteCodeProducer(
     val args = node.getArguments()
     val argTypes = MMap[String, GType]()
     
-    println("Resolving " + node)
-
     for (pargument <- args) {
       val argument = pargument.asInstanceOf[AArgument]
 
@@ -1231,8 +1211,6 @@ class ByteCodeProducer(
     mv.visitInsn(SWAP) // value, args
     
     // Determine what macro to invoke
-    println("ARg types: "+argTypes)
-    
     debug("macro invokation [" + macroName + " -> " + call.macro.className + "]")
     mv.visitMethodInsn(INVOKESTATIC, call.macro.className, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // macro, value, args
     

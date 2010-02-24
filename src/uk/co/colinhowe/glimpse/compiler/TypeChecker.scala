@@ -78,9 +78,6 @@ class TypeChecker(
    * @return
    */
   def areTypesCompatible(destinationType : Type, sourceType : Type) : Boolean = {
-    System.out.print(destinationType + " == " + sourceType + " -> ")
-    System.out.println(destinationType.equals(sourceType))
-
     if (destinationType.isInstanceOf[MacroDefinition] && sourceType.isInstanceOf[MacroDefinition]) {
       return (destinationType.asInstanceOf[MacroDefinition]).areCompatible(sourceType.asInstanceOf[MacroDefinition])
     }
@@ -146,7 +143,6 @@ class TypeChecker(
       val nodeType = typeResolver.getType(defn, typeNameResolver, genericsInScope)
 
       // Put this generic in scope
-      System.out.println("Put generic["+defn.getIdentifier().getText()+"] in scope")
       genericsInScope.put(defn.getIdentifier().getText(), nodeType)
     }
     
@@ -164,7 +160,6 @@ class TypeChecker(
 
     // Clear any generics in scope
     genericsInScope.clear()
-    System.out.println("Cleared generics from scope")
   }
   
   override def caseAMacroStmt(node : AMacroStmt) {
@@ -306,7 +301,6 @@ class TypeChecker(
               ownerType)
           
           val returnType = evaluateCompoundProperty(node.getIdentifier.tail, ownerType.asInstanceOf[SimpleType].clazz)
-          println("Compound return type [" + returnType + "]")
           typeResolver.addType(
               node, 
               returnType)
