@@ -16,14 +16,12 @@ import uk.co.colinhowe.glimpse.compiler.ArgumentSource._
 
 class TestCallResolver extends AssertionsForJUnit {
   
-  private val topLevelInvocation = new AMacroInvoke()
+  private val topLevelInvocation = new AMacroStmt()
   new AView(
     Buffer[PImport](),
     null,
     Buffer[PMacroDefn](),
-    Buffer[PStmt](
-      new AMacroStmt(topLevelInvocation)
-    )
+    Buffer[PStmt](topLevelInvocation)
   )
   
   private val stubCascadeIdentifier = mock(classOf[CascadeIdentifier])

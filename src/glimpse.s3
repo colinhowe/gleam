@@ -108,7 +108,7 @@ Productions
     controller = controller_token name {-> New controller([name.identifier])};
     
     stmt = {node} node_create
-         | {macro} macro_invoke
+         | {macro} identifier opt_args? expr {-> New stmt.macro(identifier, [opt_args.argument], expr)}
          | {include} include_a 
          | {var_defn} var_defn
          | {increment} identifier increment {-> New stmt.increment(identifier)}
@@ -176,9 +176,6 @@ Productions
       
     generic_defn = identifier {-> New generic_defn(identifier) };
       
-    macro_invoke = 
-      identifier opt_args? expr {-> New macro_invoke(identifier, [opt_args.argument], expr)} ;
-    
     include_a = include [the_include]:identifier opt_args? {-> New include_a(the_include, [opt_args.argument])};
 
     node_create {-> node_create} = 
@@ -231,7 +228,7 @@ Abstract Syntax Tree
     restriction = identifier*;
     
     stmt = {node}  node_create
-         | {macro} macro_invoke
+         | {macro} identifier [arguments]:argument* expr
          | {include} include_a
          | {var_defn} var_defn
          | {increment} identifier
@@ -285,8 +282,6 @@ Abstract Syntax Tree
     forloop = type identifier expr stmt+;
     
     macro_defn = dynamic? [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* [content_type]:type [content_name]:identifier restriction? generator?;
-    
-    macro_invoke = identifier [arguments]:argument* expr;
     
     include_a = [the_include]:identifier  [arguments]:argument*;
     

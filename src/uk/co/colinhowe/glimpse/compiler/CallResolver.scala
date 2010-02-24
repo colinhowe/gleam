@@ -76,7 +76,7 @@ class CallResolver(
     val argumentSources = MMap[String, ArgumentSource]()
     
     // Check restrictions on this definition
-    val parent = getParent(node.parent.parent)
+    val parent = getParent(node.parent)
     if (definition.restrictions .size > 0) {
       var restricted = true
       for (restriction <- definition.restrictions) {

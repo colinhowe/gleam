@@ -1162,7 +1162,6 @@ class ByteCodeProducer(
 //  }
   
   override def outAMacroStmt(node : AMacroStmt) {
-    val invocation = node.getMacroInvoke().asInstanceOf[AMacroInvoke]
     val mv = methodVisitors.head
     val call = resolvedCallsProvider.get(node) 
 
@@ -1179,7 +1178,7 @@ class ByteCodeProducer(
     // args, macro value, arg
     mv.visitTypeInsn(CHECKCAST, "java/util/Map") // args, macro value, arg
 
-    val args = invocation.getArguments()
+    val args = node.getArguments()
     val argTypes = MMap[String, GType]()
     
     println("Resolving " + node)
@@ -1226,7 +1225,7 @@ class ByteCodeProducer(
       }
     }
 
-    val macroName = invocation.getIdentifier().getText()
+    val macroName = node.getIdentifier().getText()
     
     // Stack: args, value (string)
     mv.visitInsn(SWAP) // value, args

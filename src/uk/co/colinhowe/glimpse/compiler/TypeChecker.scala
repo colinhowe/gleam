@@ -167,8 +167,8 @@ class TypeChecker(
     System.out.println("Cleared generics from scope")
   }
   
-  override def caseAMacroInvoke(node : AMacroInvoke) {
-    inAMacroInvoke(node)
+  override def caseAMacroStmt(node : AMacroStmt) {
+    inAMacroStmt(node)
     if(node.getIdentifier() != null) {
       node.getIdentifier().apply(this)
     }
@@ -187,11 +187,11 @@ class TypeChecker(
         processMacroInvocation(node)
     }
 
-    outAMacroInvoke(node)
+    outAMacroStmt(node)
   }
   
   
-  private def processMacroInvocation(invocation : AMacroInvoke) {
+  private def processMacroInvocation(invocation : AMacroStmt) {
     // Check the arguments are type-safe
     val arguments = invocation.getArguments()
     val macroName = invocation.getIdentifier.getText
@@ -221,7 +221,7 @@ class TypeChecker(
         errors.add(new MacroNotFoundError(lineNumberProvider.getLineNumber(invocation).get, macroName, callArgumentTypes.toMap, actualValueType, definitions.toSet))
         
         // Remove this node
-        invocation.parent.replaceBy(new AErrorNode)
+        invocation.replaceBy(new AErrorNode)
         
       case Some(call) =>
         // Build a map of bound generics
@@ -250,7 +250,7 @@ class TypeChecker(
         }
         
         if (isFine) {
-          resolvedCallsProvider.add(invocation.parent.asInstanceOf[AMacroStmt], call)
+          resolvedCallsProvider.add(invocation, call)
         }
     }
   }
