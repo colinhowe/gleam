@@ -193,4 +193,32 @@ class TestCallResolver extends AssertionsForJUnit {
     val expectedCall = ResolvedCall(defn, Map("readonly" -> Default))
     assert(Some(expectedCall) === resolvedCall)
   }
+  
+  @Test
+  def ignoresRuntimeTypedImplementations = {
+    val abstractDefinition = new MacroDefinition(
+        "p", new SimpleType(classOf[String]), false, Set[Restriction](), 
+        Map[String, ArgumentDefinition]("o" -> ArgumentDefinition(
+          "o", SimpleType(classOf[Object]), false, false, true
+        )),
+        true
+    )
+    val concreteDefinition = new MacroDefinition(
+        "p", new SimpleType(classOf[String]), false, Set[Restriction](), 
+        Map[String, ArgumentDefinition]("o" -> ArgumentDefinition(
+          "o", SimpleType(classOf[String]), false, false, true
+        )),
+        false
+    )
+    
+    val definitionProvider = mock(classOf[MacroDefinitionProvider])
+    when(definitionProvider.get(any())).thenReturn(Set[MacroDefinition](
+        concreteDefinition, abstractDefinition))
+
+    val resolver = new CallResolver(definitionProvider)
+
+    val resolvedCall = resolver.getMatchingMacro(topLevelInvocation, "p", Map[String, Type]("o" -> SimpleType(classOf[String])), SimpleType(classOf[String]), null)
+    val expectedCall = ResolvedCall(abstractDefinition, Map("o" -> Call))
+    assert(Some(expectedCall) === resolvedCall)
+  }
 }

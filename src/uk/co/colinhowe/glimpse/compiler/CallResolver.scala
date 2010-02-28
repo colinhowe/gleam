@@ -75,6 +75,11 @@ class CallResolver(
     
     val argumentSources = MMap[String, ArgumentSource]()
     
+    // Ignore any definitions that have runtime typing but are not abstract
+    if (definition.hasRuntimeTyping && !definition.isAbstract) {
+      return None
+    }
+    
     // Check restrictions on this definition
     val parent = getParent(node.parent)
     if (definition.restrictions .size > 0) {

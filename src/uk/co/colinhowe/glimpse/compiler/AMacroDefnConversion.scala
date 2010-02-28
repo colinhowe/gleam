@@ -21,11 +21,13 @@ object AMacroDefnConversion {
     val arguments = node.getArgDefn().foldLeft(Map[String, ArgumentDefinition]())({ (args, parg) =>
       val arg = parg.asInstanceOf[AArgDefn]
       val cascade = arg.getModifier.exists { _.isInstanceOf[ACascadeModifier] }
+      val isRuntimeTyped = arg.getModifier.exists { _.isInstanceOf[ARuntimetypedModifier] }
       args + (arg.getIdentifier().getText() -> ArgumentDefinition(
           arg.getIdentifier().getText(), 
           typeProvider.getType(arg.getType(), typeNameResolver, generics.toMap),
           cascade, 
-          arg.getDefault != null))
+          arg.getDefault != null,
+          isRuntimeTyped))
     })
     
     val restrictions = if (node.getRestriction != null) {
@@ -34,8 +36,11 @@ object AMacroDefnConversion {
     } else {
       Set[Restriction]()
     }
+    
+    val isDynamic = node.getMacroModifier != null && node.getMacroModifier.isInstanceOf[ADynamicMacroModifier]
+    val isAbstract = node.getMacroModifier != null && node.getMacroModifier.isInstanceOf[AAbstractMacroModifier]
 
     new MacroDefinition(
-        macroName, typeProvider.getType(node.getContentType, typeNameResolver), node.getDynamic != null, restrictions, arguments)
+        macroName, typeProvider.getType(node.getContentType, typeNameResolver), isDynamic, restrictions, arguments, isAbstract)
   }
 }

@@ -1,7 +1,9 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.glimpse.compiler
+
 import uk.co.colinhowe.glimpse.CompilationError
 
-import uk.co.colinhowe.glimpse.CompilationResult
+
+import uk.co.colinhowe.glimpse.CompilationResult
 
 import java.io.File
 import java.net.URLClassLoader
@@ -12,9 +14,19 @@ import org.junit.Assert._
 import scala.collection.JavaConversions._
 import scala.xml._
 
+import org.junit.After
+
 abstract trait CompilerTest {
   val view_name = "basic_string"
   
+  @After
+  def clearTempFiles = {
+    val tempFolder = new File("temp")
+    for (file <- tempFolder.listFiles) {
+      file.delete
+    }
+  }
+    
   implicit def errors(source : String) = {
     Errors(new CompilationSet(List(source), null))
   }
@@ -86,7 +98,8 @@ abstract trait CompilerTest {
     
     val view = cls1.newInstance().asInstanceOf[View]
     val invokeMethod = view.getClass().getMethods()(0)
-    val nodes = invokeMethod.invoke(view, compilationSet.controller).asInstanceOf[java.util.List[Node]]    
+    val nodes = invokeMethod.invoke(view, compilationSet.controller).asInstanceOf[java.util.List[Node]]
+    
     val scalaNodes = List.fromArray(nodes.toArray).asInstanceOf[List[Node]]
     
     // Print the nodes and check them out
@@ -103,7 +116,11 @@ abstract trait CompilerTest {
         errors = error.asInstanceOf[CompilationError] :: errors
       }
     }
-        if (errors.size > 0) {      assertEquals("Got errors [" + errors + "]", 0, errors.size)    }  }
+    
+    if (errors.size > 0) {
+      assertEquals("Got errors [" + errors + "]", 0, errors.size)
+    }
+  }
  
   def printXml(nodes : List[Node]) : String = {
     nodes.foldLeft("") { (acc, node) =>

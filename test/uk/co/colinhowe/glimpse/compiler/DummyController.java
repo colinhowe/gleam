@@ -1,5 +1,6 @@
 package uk.co.colinhowe.glimpse.compiler;
 
+import java.math.BigInteger;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -10,6 +11,10 @@ public class DummyController {
   
   private List<String> names = new LinkedList<String>();
   private List<Integer> ages = new LinkedList<Integer>();
+
+  private Object someString = "someString";
+  private Object someBigInteger = new BigInteger("5");
+
 
   public DummyController() {
     names.add("Alan");
@@ -49,5 +54,14 @@ public class DummyController {
    */
   public String getName() {
     return name;
+  }
+  
+  public Object getSomeString() {
+    return someString;
+  }
+
+
+  public Object getSomeBigInteger() {
+    return someBigInteger;
   }
 }

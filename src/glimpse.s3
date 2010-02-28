@@ -21,6 +21,7 @@ Tokens
     for = 'for';
     in = 'in';
     dynamic = 'dynamic';
+    abstract = 'abstract';
     
     type_int = 'int';
     type_bool = 'bool';
@@ -36,6 +37,7 @@ Tokens
     controller_token = 'controller';
     
     cascade = 'cascade';
+    runtimetyped = 'runtime typed';
     
     restrict = 'restrict';
     to = 'to';
@@ -93,8 +95,13 @@ Productions
     macro_defn =       
         {static} macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with [content_name]:identifier colon [content_type]:type [gen_args]:arg_defns? restriction ? generator 
         {-> New macro_defn(Null, name, [generic_defns.generic_defn], [macro_args.arg_defn], content_type, content_name, restriction, generator)}
-      | {dynamic} dynamic macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with [content_name]:identifier colon [content_type]:type [gen_args]:arg_defns? restriction ? 
-        {-> New macro_defn(dynamic, name, [generic_defns.generic_defn], [macro_args.arg_defn], content_type, content_name, restriction, Null)}
+      | {no_impl} macro_modifier macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with [content_name]:identifier colon [content_type]:type [gen_args]:arg_defns? restriction ? 
+        {-> New macro_defn(macro_modifier, name, [generic_defns.generic_defn], [macro_args.arg_defn], content_type, content_name, restriction, Null)}
+      ;
+      
+    macro_modifier =
+        {dynamic} dynamic {-> New macro_modifier.dynamic()}
+      | {abstract} abstract {-> New macro_modifier.abstract()}
       ;
       
     name {-> identifier*} = 
@@ -188,7 +195,10 @@ Productions
 
     arg_defn = modifier* [name]:identifier colon [type]:type var_defn_init? {-> New arg_defn([modifier], type, name, var_defn_init.expr) }; 
     
-    modifier = cascade {-> New modifier.cascade()};
+    modifier = 
+        {cascade} cascade {-> New modifier.cascade()}
+      | {runtimetyped} runtimetyped {-> New modifier.runtimetyped()}
+      ;
     
     generator = lbrace gen_args? stmt+ rbrace {-> New generator([gen_args.arg_defn], [stmt])};
     
@@ -220,6 +230,12 @@ Abstract Syntax Tree
     
     modifier =
         {cascade}
+      | {runtimetyped}
+      ;
+      
+    macro_modifier =
+        {dynamic}
+      | {abstract}
       ;
       
     restriction = identifier*;
@@ -277,7 +293,7 @@ Abstract Syntax Tree
     
     forloop = type identifier expr stmt+;
     
-    macro_defn = dynamic? [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* [content_type]:type [content_name]:identifier restriction? generator?;
+    macro_defn = macro_modifier? [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* [content_type]:type [content_name]:identifier restriction? generator?;
     
     include_a = [the_include]:identifier  [arguments]:argument*;
     

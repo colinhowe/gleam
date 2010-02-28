@@ -490,15 +490,8 @@ class ByteCodeProducer(
     // Put the text onto the stack
     val mv = methodVisitors.head
     mv.visitLdcInsn(node.getText())
-    
-    debug("string [" + node.getText() + "]")
   }
   
-  private def debug(debugText : String) {
-    System.out.println("[debug:" + methodVisitors.head + "] " + debugText)
-  }
-
-
   override def outAController(node : AController) {
     // The controller will be in register 3... put it on the environment
     val mv = methodVisitors.head
@@ -508,7 +501,6 @@ class ByteCodeProducer(
     mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
     
     val className = identifierListToString(node.getIdentifier)
-    debug("controller has type [" + className + "]")
     
     // Load the controller class
     controllerType = new SimpleType(getTypeByName(className))
@@ -566,12 +558,14 @@ class ByteCodeProducer(
     }
 
     val className = macroDefinition.className
-    val (parentClass, interfaces) = if (macroDefinition.isDynamic) {
+    val (parentClass, interfaces) = if (macroDefinition.isAbstract) {
+      ("uk/co/colinhowe/glimpse/infrastructure/RuntimeTypedMacro", Array[String]())
+    } else if (macroDefinition.isDynamic) {
       ("uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", Array[String]())
     } else {
       ("java/lang/Object", Array[String]("uk/co/colinhowe/glimpse/Macro"))
     }
-    cw.visit(V1_6, ACC_SUPER, className, null, parentClass, interfaces)
+    cw.visit(V1_6, ACC_SUPER + ACC_PUBLIC, className, null, parentClass, interfaces)
     cw.visitSource(sourcename, null)
 
     // Instance field for the macro
@@ -611,10 +605,39 @@ class ByteCodeProducer(
       mv.visitEnd();
     } 
     
+    // getMacroName method
+    if (macroDefinition.isAbstract) {
+      val mv = cw.visitMethod(ACC_PUBLIC, "getMacroName", "()Ljava/lang/String;", null, null)
+      mv.visitCode()
+
+      val l1 = new Label()
+      mv.visitLabel(l1)
+      mv.visitLdcInsn(macroDefinition.name)
+      mv.visitInsn(ARETURN)
+      mv.visitMaxs(0, 0)
+      mv.visitEnd();
+    } 
+    
+    // getRuntimeTypedArgumentName method
+    if (macroDefinition.isAbstract) {
+      // Find the runtime typed argument
+      val argDefn = macroDefinition.arguments.find(arg => arg._2.isRuntimeTyped).get._2
+      
+      val mv = cw.visitMethod(ACC_PUBLIC, "getRuntimeTypedArgumentName", "()Ljava/lang/String;", null, null)
+      mv.visitCode()
+
+      val l1 = new Label()
+      mv.visitLabel(l1)
+      mv.visitLdcInsn(argDefn.name)
+      mv.visitInsn(ARETURN)
+      mv.visitMaxs(0, 0)
+      mv.visitEnd();
+    } 
+    
     defaultConstructor(cw, className, parentClass)
     
     // Invoke method
-    if (!macroDefinition.isDynamic) {
+    if (!macroDefinition.isDynamic && !macroDefinition.isAbstract) {
       val valueName = node.getContentName().getText()
       
       val mv = cw.visitMethod(ACC_PUBLIC, 
@@ -727,7 +750,7 @@ class ByteCodeProducer(
     // Remove the scope
     scopes.pop()
     
-    if (!macroDefinition.isDynamic) {
+    if (!macroDefinition.isDynamic && !macroDefinition.isAbstract) {
       val mv = methodVisitors.pop()
 
       // The generator will be on the stack
@@ -986,13 +1009,6 @@ class ByteCodeProducer(
     // Get the instance of the generator
     mv = methodVisitors.head
     mv.visitMethodInsn(INVOKESTATIC, generatorIdentifier, "getInstance", "()Luk/co/colinhowe/glimpse/Generator;") // macro, value, args
-//    mv.visitTypeInsn(NEW, generatorIdentifier)
-//    mv.visitInsn(DUP) // generator, generator, args
-//    mv.visitInsn(ACONST_NULL) // null, generator, generator, args
-//    mv.visitMethodInsn(INVOKESPECIAL, generatorIdentifier, "<init>", "(L" + generatorIdentifier + ";)V")
-    // generator, args    
-    
-    debug("generator [" + generatorIdentifier + "]")
   }
 
   override def outAInvertExpr(node : AInvertExpr) {
@@ -1061,9 +1077,7 @@ class ByteCodeProducer(
     val sourceClassName = sourceMacroDefinition.get.className
     
     mv.visitMethodInsn(INVOKESTATIC, sourceClassName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
-    debug("simpleMacroExpr [" + sourceClassName + "]")
     
-    debug("setting dynamic macro [" + dynamicMacroName + "]")
     mv.visitMethodInsn(INVOKESTATIC, dynamicMacroName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
     mv.visitTypeInsn(CHECKCAST, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro")
     mv.visitInsn(SWAP)
@@ -1099,27 +1113,8 @@ class ByteCodeProducer(
     // we don't like leaving primitive types on the stack
     // This is inefficient but it simplifies implementation
     mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;")
-    
-    debug("constant [" + i + "]")
   }
 
-//  override def caseAMacroInvoke(node : AMacroInvoke) {
-//    inAMacroInvoke(node)
-//    if (node.getIdentifier() != null) {
-//      node.getIdentifier().apply(this)
-//    }
-//    
-//    for (parg <- node.getArguments) {
-//      parg.apply(this)
-//    }
-//    
-//    
-//    if (node.getExpr() != null) {
-//      node.getExpr().apply(this)
-//    }
-//    outAMacroInvoke(node)
-//  }
-  
   override def outAMacroStmt(node : AMacroStmt) {
     val mv = methodVisitors.head
     val call = resolvedCallsProvider.get(node) 
@@ -1188,7 +1183,6 @@ class ByteCodeProducer(
     mv.visitInsn(SWAP) // value, args
     
     // Determine what macro to invoke
-    debug("macro invokation [" + macroName + " -> " + call.macro.className + "]")
     mv.visitMethodInsn(INVOKESTATIC, call.macro.className, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // macro, value, args
     
     // macro, value, args

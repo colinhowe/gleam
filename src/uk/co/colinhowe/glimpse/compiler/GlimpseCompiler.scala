@@ -14,6 +14,13 @@ import uk.co.colinhowe.glimpse.compiler.parser.Parser
 
 class GlimpseCompiler {
   
+  val startTime = System.currentTimeMillis
+  
+  private def debug(line : String) {
+    val time = System.currentTimeMillis - startTime
+    println("[" + time + "] " + line)
+  }
+  
   private def compileAsts(intermediates : List[IntermediateResult], classPaths : List[String]) : scala.collection.mutable.Buffer[CompilationResult] = {
     val results = scala.collection.mutable.Buffer[CompilationResult]()
     
@@ -27,7 +34,9 @@ class GlimpseCompiler {
     val typeProvider = new TypeProvider()
     val macroProvider = new MacroDefinitionProvider()
     val typeResolver = new TypeResolver(typeProvider, macroProvider)
+    debug("Starting classpath resolution")
     val classPathResolver = new ClassPathResolver(classPaths.toArray)
+    debug("Resolved classpath")
     val callResolver = new CallResolver(macroProvider)
     
     for (intermediate <- intermediates) {
@@ -88,6 +97,8 @@ class GlimpseCompiler {
         result.addError(error)
       }
       results += result
+      
+      debug("Compiled " + viewname)
     }
 
     return results

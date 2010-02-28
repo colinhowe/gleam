@@ -1,13 +1,19 @@
 package uk.co.colinhowe.glimpse.compiler
 
 import uk.co.colinhowe.glimpse.compiler.typing.Type
+import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
 
 case class MacroDefinition(
     val name : String, 
     val valueType : Type, 
     val isDynamic : Boolean,
     val restrictions : Iterable[Restriction],
-    val arguments : Map[String, ArgumentDefinition] = Map()) extends Type {
+    val arguments : Map[String, ArgumentDefinition] = Map(),
+    val isAbstract : Boolean = false) extends Type {
+  
+  def hasRuntimeTyping = {
+    arguments.exists(arg => arg._2.isRuntimeTyped)
+  }
   
   override def equals(o : Any) : Boolean = {
     o match {
@@ -31,7 +37,11 @@ case class MacroDefinition(
    * @return
    */
   def className : String = {
-    if (!isDynamic) {
+    if (hasRuntimeTyping && !isAbstract) {
+      val runtimeArgument = arguments.find(arg => arg._2.isRuntimeTyped).get._2
+      val toHash = runtimeArgument.argType.asInstanceOf[SimpleType].clazz.getCanonicalName
+      return name + "$rtt" + Integer.toString(Math.abs(toHash.hashCode()), 16)
+    } else if (!isDynamic && !isAbstract) {
       var toHash = name + valueType
       for ((key, value) <- arguments) {
         toHash += key + value
