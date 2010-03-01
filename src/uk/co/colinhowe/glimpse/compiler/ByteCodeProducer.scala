@@ -621,7 +621,7 @@ class ByteCodeProducer(
     // getRuntimeTypedArgumentName method
     if (macroDefinition.isAbstract) {
       // Find the runtime typed argument
-      val argDefn = macroDefinition.arguments.find(arg => arg._2.isRuntimeTyped).get._2
+      val argDefn = macroDefinition.arguments.values.find(_.isRuntimeTyped).get
       
       val mv = cw.visitMethod(ACC_PUBLIC, "getRuntimeTypedArgumentName", "()Ljava/lang/String;", null, null)
       mv.visitCode()
@@ -638,7 +638,6 @@ class ByteCodeProducer(
     
     // Invoke method
     if (!macroDefinition.isDynamic && !macroDefinition.isAbstract) {
-      val valueName = node.getWithDefn.asInstanceOf[AWithDefn].getContentName().getText()
       
       val mv = cw.visitMethod(ACC_PUBLIC, 
           "invoke", 
@@ -726,10 +725,13 @@ class ByteCodeProducer(
       }
       
       // Put the content onto the scope
-      mv.visitVarInsn(ALOAD, 4) // scope
-      mv.visitLdcInsn(valueName) // name, scope
-      mv.visitVarInsn(ALOAD, 3) // value, name, scope
-      mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
+      if (node.getWithDefn != null) {
+        mv.visitVarInsn(ALOAD, 4) // scope
+        val valueName = node.getWithDefn.asInstanceOf[AWithDefn].getContentName().getText()
+        mv.visitLdcInsn(valueName) // name, scope
+        mv.visitVarInsn(ALOAD, 3) // value, name, scope
+        mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
+      }
       
       val l6 = new Label()
       mv.visitLabel(l6)
@@ -1119,6 +1121,10 @@ class ByteCodeProducer(
     val mv = methodVisitors.head
     val call = resolvedCallsProvider.get(node) 
 
+    if (node.getExpr == null) {
+      // Load null on to the stack as the value when there is no expression 
+      mv.visitInsn(ACONST_NULL)
+    }
 
     // The arguments will be on the stack already.
     // The stack will look like:
@@ -1222,6 +1228,10 @@ class ByteCodeProducer(
     // Load up the node list ready for adding the node to
     // Create the node on the stack ready for setting properties on it
     val l1 = startLabel(node)
+    
+    if (node.getExpr == null) {
+      mv.visitInsn(ACONST_NULL)
+    }
       
     mv.visitTypeInsn(NEW, "uk/co/colinhowe/glimpse/Node") // node, value
     mv.visitInsn(DUP_X1) // node, value, node

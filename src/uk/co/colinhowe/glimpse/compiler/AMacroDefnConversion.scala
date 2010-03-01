@@ -40,7 +40,13 @@ object AMacroDefnConversion {
     val isDynamic = node.getMacroModifier != null && node.getMacroModifier.isInstanceOf[ADynamicMacroModifier]
     val isAbstract = node.getMacroModifier != null && node.getMacroModifier.isInstanceOf[AAbstractMacroModifier]
 
+    val contentType = if (node.getWithDefn != null) {
+      typeProvider.getType(node.getWithDefn.asInstanceOf[AWithDefn].getContentType, typeNameResolver)
+    } else {
+      null
+    }
+    
     new MacroDefinition(
-        macroName, typeProvider.getType(node.getWithDefn.asInstanceOf[AWithDefn].getContentType, typeNameResolver), isDynamic, restrictions, arguments, isAbstract)
+        macroName, contentType, isDynamic, restrictions, arguments, isAbstract)
   }
 }

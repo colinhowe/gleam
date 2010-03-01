@@ -221,4 +221,17 @@ class TestCallResolver extends AssertionsForJUnit {
     val expectedCall = ResolvedCall(abstractDefinition, Map("o" -> Call))
     assert(Some(expectedCall) === resolvedCall)
   }
+  
+  @Test
+  def macroWithValueCalledWithoutValue = {
+    val definition = new MacroDefinition("p", new SimpleType(classOf[String]), false, Set[Restriction](), Map[String, ArgumentDefinition]())
+    val definitionProvider = mock(classOf[MacroDefinitionProvider])
+    when(definitionProvider.get(any())).thenReturn(Set[MacroDefinition](definition))
+
+    val resolver = new CallResolver(definitionProvider)
+
+    val definitionFound = resolver.getMatchingMacro(topLevelInvocation, "p", Map[String, Type](), null, null)
+    
+    assert(None === definitionFound)
+  }
 }

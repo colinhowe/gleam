@@ -141,8 +141,10 @@ abstract trait CompilerTest {
       if (node.getNodes() != null) {
         val inner = printXml(List.fromArray(node.getNodes().toArray).asInstanceOf[List[Node]])
         inner.split("\n").foldLeft("") { _ + "  " + _ + "\n" }
-      } else {
+      } else if (node.getValue() != null) {
         "  " + node.getValue() + "\n"
+      } else {
+        "  \n"
       }
     "<" + node.getId() + attrs + ">\n" +
     innerText +

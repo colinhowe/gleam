@@ -151,7 +151,9 @@ class TypeChecker(
       scope.add(arg.getIdentifier().getText(), typeResolver.getType(arg.getType(), typeNameResolver, genericsInScope))
     }
     
-    scope.add(node.getWithDefn.asInstanceOf[AWithDefn].getContentName().getText(), typeResolver.getType(node.getWithDefn.asInstanceOf[AWithDefn].getContentType, typeNameResolver, genericsInScope))
+    if (node.getWithDefn != null) {
+      scope.add(node.getWithDefn.asInstanceOf[AWithDefn].getContentName().getText(), typeResolver.getType(node.getWithDefn.asInstanceOf[AWithDefn].getContentType, typeNameResolver, genericsInScope))
+    }
   }
   
   override def outAMacroDefn(node : AMacroDefn) {
@@ -190,7 +192,11 @@ class TypeChecker(
     // Check the arguments are type-safe
     val arguments = invocation.getArguments()
     val macroName = invocation.getIdentifier.getText
-    val actualValueType = getExpressionType(invocation.getExpr())
+    val actualValueType = if (invocation.getExpr != null) {
+      getExpressionType(invocation.getExpr())
+    } else {
+      null
+    }
     
     // Find the macro
     val argTypes = MMap[String, Type]()

@@ -124,8 +124,8 @@ class TestMacro extends CompilerTest {
   @Test
   def macroWithNoValue = {   
     """
-    macro br with s : string {
-      node br s
+    macro br {
+      node br
     }
     br
     br

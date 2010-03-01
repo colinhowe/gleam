@@ -14,23 +14,15 @@ import scala.collection.mutable.Buffer
 import scala.collection.JavaConversions._
 import uk.co.colinhowe.glimpse.compiler.ArgumentSource._
 
-class CallResolver(
-    provider : MacroDefinitionProvider
-    
-) extends DepthFirstAdapter {
+class CallResolver(provider : MacroDefinitionProvider) extends DepthFirstAdapter {
   def getMatchingMacro(node : Node, macroName : String, arguments : Map[String, Type], valueType : Type, cascadeIdentifier : CascadeIdentifier) : Option[ResolvedCall] = {
     val definitions = provider.get(macroName)
     val calls = definitions.map(matches(node, _, arguments, valueType, cascadeIdentifier))
     val matchingDefinitions = calls.filter(_ != None)
-    val iterator = matchingDefinitions.iterator
-    if (iterator.hasNext) {
-      iterator.next
-    } else {
-      None
-    }
+    matchingDefinitions.headOption.getOrElse(None)
   }
   
-  def getParent(node : Node) : String = {
+  private def getParent(node : Node) : String = {
     node match {
       case stmt : AMacroStmt => stmt.toString
       case defn : AMacroDefn => defn.getName.getText
@@ -44,37 +36,29 @@ class CallResolver(
   def resolveGenerics(source : Type, target : Type, bindings : Map[String, Type]) : (Type, Map[String, Type]) = {
     target match {
       case t : SimpleType => (t, bindings)
+      case null => (target, bindings)
       case target : CompoundType => 
         // If the source type doesn't match then we can bail now
-        if (!source.isInstanceOf[CompoundType]) {
-          (target, bindings)
-        } else {
-          var currentBindings = bindings
-          var newInnerTypes = Buffer[Type]()
-          val compoundSource = source.asInstanceOf[CompoundType]
+         source match {
+           case source : CompoundType =>
+             var currentBindings = bindings
+             var newInnerTypes = Buffer[Type]()
+  
+             source.innerTypes.zip(target.innerTypes).foreach { case(sourceType, targetType) =>
+               val (newInnerType, newBindings) = resolveGenerics(sourceType, targetType, currentBindings)
+               currentBindings = newBindings
+               newInnerTypes += newInnerType
+             }
+             (CompoundType(target.clazz, newInnerTypes.toList), currentBindings)
 
-          for (i <- 0 until target.innerTypes.size) {
-            val (newInnerType, newBindings) = resolveGenerics(
-                compoundSource.innerTypes(i), target.innerTypes(i), currentBindings)
-            currentBindings = newBindings
-            newInnerTypes += newInnerType
-          }
-          
-          (CompoundType(target.clazz, newInnerTypes.toList), currentBindings)
+           case _ => (target, bindings)
         }
-      case t : GenericType =>
-        val newBindings = bindings + (t.typeId -> source)
-        (source, newBindings)
-      case _ =>
-        throw new RuntimeException("Fail")
+      case t : GenericType => (source, bindings + (t.typeId -> source))
+      case _ => throw new RuntimeException("Fail " + target)
     }
   }
   
   private def matches(node : Node, definition : MacroDefinition, arguments : Map[String, Type], valueType : Type, cascadeIdentifier : CascadeIdentifier) : Option[ResolvedCall] = {
-    var definitionToMatch = definition
-    
-    val argumentSources = MMap[String, ArgumentSource]()
-    
     // Ignore any definitions that have runtime typing but are not abstract
     if (definition.hasRuntimeTyping && !definition.isAbstract) {
       return None
@@ -82,16 +66,11 @@ class CallResolver(
     
     // Check restrictions on this definition
     val parent = getParent(node.parent)
-    if (definition.restrictions .size > 0) {
-      var restricted = true
-      for (restriction <- definition.restrictions) {
-        restricted &= (restriction match {
-          case NameRestriction(name) => name != parent 
-        })
-      }
-      if (restricted) {
-        return None
-      }
+    var restricted = definition.restrictions.forall(_ match {
+      case NameRestriction(name) => name != parent 
+    })
+    if (definition.restrictions.size > 0 && restricted) {
+      return None
     }
     
     // Attempt generic bindings so that matches can be performed correctly
@@ -101,38 +80,41 @@ class CallResolver(
     
     var currentBindings = genericBindings
     val argumentsToMatch = MMap[String, ArgumentDefinition]()
+    val argumentSources = MMap[String, ArgumentSource]()
     for ((name, defn) <- definition.arguments) {
-      if (!arguments.contains(name)) {
+      val (source, argType) = if (!arguments.contains(name)) {
         // Check if a cascade can be applied
         val cascadedArg = cascadeIdentifier.identify(node).get(name)
-        cascadedArg match {
+        val source = cascadedArg match {
           case Some(cascadedArg) => 
             if (!cascadedArg.canBeAssignedTo(defn.argType)) {
               return None
             } else {
-              argumentSources(name) = Cascade
-              argumentsToMatch(name) = ArgumentDefinition(name, defn.argType, defn.cascade, defn.hasDefault)
+              Cascade
             }
           case None => 
             if (!defn.hasDefault) {
               return None
             } else {
-              argumentSources(name) = Default
-              argumentsToMatch(name) = ArgumentDefinition(name, defn.argType, defn.cascade, defn.hasDefault)
+              Default
             }
         }
+        (source, defn.argType)
       } else {
         // TODO Fix this kludge
-        var (newArgType2, currentBindings2) = resolveGenerics(arguments(name), defn.argType, currentBindings)
+        var (newArgType, currentBindings2) = resolveGenerics(arguments(name), defn.argType, currentBindings)
         currentBindings = currentBindings2
-        argumentSources(name) = Call
-        argumentsToMatch(name) = ArgumentDefinition(name, newArgType2, defn.cascade, defn.hasDefault)
+        (Call, newArgType)
       }
+      argumentSources(name) = source
+      argumentsToMatch(name) = ArgumentDefinition(name, argType, defn.cascade, defn.hasDefault)
     }
     
-    definitionToMatch = new MacroDefinition(definition.name, newValueType, definition.isDynamic, Set[Restriction](), argumentsToMatch.toMap)
+    val definitionToMatch = new MacroDefinition(definition.name, newValueType, definition.isDynamic, Set[Restriction](), argumentsToMatch.toMap)
 
-    if (!valueType.canBeAssignedTo(definitionToMatch.valueType)) {
+    if (valueType != null && !valueType.canBeAssignedTo(definitionToMatch.valueType)) {
+      return None
+    } else if (valueType == null && definitionToMatch.valueType != null) {
       return None
     }
     
@@ -147,12 +129,8 @@ class CallResolver(
     return Some(ResolvedCall(definition, argumentSources.toMap))
   }
   
-  private def argumentMatches(invocationArg : (String, Type), macroArg : ArgumentDefinition) : Boolean = {
-    invocationArg._1 == macroArg.name &&
-    invocationArg._2.canBeAssignedTo(macroArg.argType)
-  }
-  
   private def argumentMatch(invocationArg : (String, Type), macroArg : (String, ArgumentDefinition)) : Boolean = {
-    argumentMatches(invocationArg, macroArg._2)
+    invocationArg._1 == macroArg._2.name &&
+      invocationArg._2.canBeAssignedTo(macroArg._2.argType)
   }
 }

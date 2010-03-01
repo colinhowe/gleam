@@ -192,7 +192,7 @@ Productions
     include_a = include [the_include]:identifier opt_args? {-> New include_a(the_include, [opt_args.argument])};
 
     node_create {-> node_create} = 
-        node identifier opt_args? expr {-> New node_create(identifier, [opt_args.argument], expr) }
+        node identifier opt_args? expr? {-> New node_create(identifier, [opt_args.argument], expr) }
       ;
       
     arg_defns {-> arg_defn* } = lparen arg_defns2 rparen {-> [arg_defns2.arg_defn] };
@@ -296,7 +296,7 @@ Abstract Syntax Tree
       ;
       
     node_create = 
-      [id]:identifier [arguments]:argument* [expr]:expr 
+      [id]:identifier [arguments]:argument* [expr]:expr? 
       ;
       
     generator = arg_defn* stmt+;
