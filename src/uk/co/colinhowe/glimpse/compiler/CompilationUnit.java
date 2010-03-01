@@ -1,20 +1,16 @@
 package uk.co.colinhowe.glimpse.compiler;
 
-public class CompilationUnit {
-  private final String source;
+public abstract class CompilationUnit {
   private final String viewName;
   private final String sourceName;
   
-  public CompilationUnit(String viewName, String source, String sourceName) {
+  public CompilationUnit(String viewName, String sourceName) {
     super();
-    this.source = source;
     this.viewName = viewName;
     this.sourceName = sourceName;
   }
 
-  public String getSource() {
-    return source;
-  }
+  public abstract String getSource();
 
   public String getViewName() {
     return viewName;
@@ -23,6 +19,4 @@ public class CompilationUnit {
   public String getSourceName() {
     return sourceName;
   }
-  
-  
 }

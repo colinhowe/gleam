@@ -8,4 +8,6 @@ class IntermediateResult(
     val viewName : String,
     val sourcename : String) {
   val errors = scala.collection.mutable.Buffer[CompilationError]()
+  var lineNumberProvider = new LineNumberProvider
+  var typeNameResolver : TypeNameResolver = null
 }

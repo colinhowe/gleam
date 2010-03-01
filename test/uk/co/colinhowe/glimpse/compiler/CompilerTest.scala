@@ -73,7 +73,7 @@ abstract trait CompilerTest {
     val compilationUnits = scala.collection.mutable.ListBuffer[CompilationUnit]()
     var i = 0
     for (source <- compilationSet.sources) {
-      val compilationUnit = new CompilationUnit("view" + i, source, "nosource")
+      val compilationUnit = new StringCompilationUnit("view" + i, "nosource", source)
       i = i + 1
       compilationUnits += compilationUnit
     }

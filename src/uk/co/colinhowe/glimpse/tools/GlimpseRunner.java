@@ -12,6 +12,7 @@ import uk.co.colinhowe.glimpse.CompilationResult;
 import uk.co.colinhowe.glimpse.Node;
 import uk.co.colinhowe.glimpse.View;
 import uk.co.colinhowe.glimpse.compiler.CompilationUnit;
+import uk.co.colinhowe.glimpse.compiler.StringCompilationUnit;
 import uk.co.colinhowe.glimpse.compiler.GlimpseCompiler;
 
 public class GlimpseRunner {
@@ -45,7 +46,7 @@ public class GlimpseRunner {
       
       // Compile the view
       List<CompilationUnit> units = new LinkedList<CompilationUnit>();
-      units.add(new CompilationUnit(viewname, lines.toString(), filename));
+      units.add(new StringCompilationUnit(viewname, filename, lines.toString()));
       
       compiler.compile(units);
       

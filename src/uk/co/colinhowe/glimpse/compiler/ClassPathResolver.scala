@@ -5,8 +5,15 @@ import java.util.jar.JarInputStream
 import java.io.File
 import scala.collection.mutable.{ListBuffer => MList}
 import scala.collection.mutable.{Map => MMap}
+import scala.actors.Actor
+import scala.actors.Actor._
+import scala.actors.Futures._
 
-class ClassPathResolver(paths : Array[String]) {
+object ClassPathResolver {
+  case class Resolved
+}
+
+class ClassPathResolver(paths : Iterable[String], notify : Actor) {
   private val defaultPackage = new Package
   
   // TODO - Doing this as lazily as possible would be neat
@@ -40,9 +47,12 @@ class ClassPathResolver(paths : Array[String]) {
     p.classes.toList
   }
   
-  private def processPaths(paths : Array[String]) {
-    for (path <- paths) {
-      processPath(path)
+  private def processPaths(paths : Iterable[String]) {
+    future {
+      for (path <- paths) {
+        processPath(path)
+      }
+      notify ! ClassPathResolver.Resolved
     }
   }
   

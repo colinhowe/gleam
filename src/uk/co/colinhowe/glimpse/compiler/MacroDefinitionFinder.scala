@@ -21,8 +21,8 @@ class MacroDefinitionFinder(
   val genericsInScope = scala.collection.mutable.Map[String, Type]()
 
   override def outAMacroDefn(node : AMacroDefn) = {
-    val defn = node
-    macroProvider.add(defn)
+    val defn : MacroDefinition = node
+    macroProvider ! defn
 
     // Clear any generics in scope
     genericsInScope.clear();

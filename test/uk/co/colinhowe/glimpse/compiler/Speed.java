@@ -1,5 +1,8 @@
 package uk.co.colinhowe.glimpse.compiler;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -9,84 +12,46 @@ import java.util.Map;
 
 public class Speed {
   
-  private int ITERATIONS = 30000000;
+  private static final int MACROS = 50;
   
-  public static List<Object> invokeStatic() {
-    return new LinkedList<Object>();
+  private static void createFile(int i, String s) throws IOException {
+    File file = new File("performance/v" + i + ".glimpse");
+    FileWriter writer = new FileWriter(file);
+    writer.write(s);
+    writer.close();
+  }
+
+  private static void generateMacro(int i) throws IOException {
+    String content = 
+        "macro x" + i + " with s : string {\n"
+     +  "  node p s\n"
+     +  "}\n";
+    createFile(i, content);
+  }
+
+  private static void generateView(int j) throws IOException {
+    String content = 
+        "x" + (j - MACROS) + " \"cats\"\n" 
+     +  "node div {\n"
+     +  "  node div {\n"
+     +  "    node div {\n"
+     +  "      node div {\n"
+     +  "        node div {\n"
+     +  "          node inner \"hoihoi\"\n"
+     +  "        }\n"
+     +  "      }\n"
+     +  "    }\n"
+     +  "  }\n"
+     +  "}\n";
+    createFile(j, content);
   }
   
-  private class GeneratorClass {
-    public List<Object> invoke() {
-      return new LinkedList<Object>();
+  public static void main(String[] args) throws IOException {
+    for (int i = 0; i < MACROS; i++) {
+      generateMacro(i);
     }
-  }
-  
-  public void withOneInstance() {
-    long start = System.currentTimeMillis();
-    GeneratorClass instance = new GeneratorClass();
-    for (int i = 0; i < ITERATIONS; i++) {
-      instance.invoke();
+    for (int j = MACROS; j < MACROS * 2; j++) {
+      generateView(j);
     }
-    long end = System.currentTimeMillis();
-    System.out.println("With instance took:\t\t" + (end - start) + "ms");
-  }
-  
-  public void withInstance() {
-    long start = System.currentTimeMillis();
-    for (int i = 0; i < ITERATIONS; i++) {
-      new GeneratorClass().invoke();
-    }
-    long end = System.currentTimeMillis();
-    System.out.println("With instance took:\t\t" + (end - start) + "ms");
-  }
-  
-  public void withReflection() throws SecurityException, NoSuchMethodException, IllegalArgumentException, IllegalAccessException, InvocationTargetException {
-    long start = System.currentTimeMillis();
-    for (int i = 0; i < ITERATIONS; i++) {
-      Speed.class.getMethod("invokeStatic").invoke(null);
-    }
-    long end = System.currentTimeMillis();
-    System.out.println("Reflection took:\t\t" + (end - start) + "ms");
-  }
-  
-  public void withCachedReflection() throws SecurityException, NoSuchMethodException, IllegalArgumentException, IllegalAccessException, InvocationTargetException {
-    long start = System.currentTimeMillis();
-    Map<String, Method> methodCache = new HashMap<String, Method>();
-    for (int i = 0; i < ITERATIONS; i++) {
-      Method method = methodCache.get("invokeStatic");
-      if (method != null) {
-        method.invoke(null);
-      } else {
-        method = Speed.class.getMethod("invokeStatic");
-        methodCache.put("invokeStatic", method);
-        method.invoke(null);
-      }
-    }
-    long end = System.currentTimeMillis();
-    System.out.println("Reflection took:\t\t" + (end - start) + "ms");
-  }
-  
-  public void peelingArguments() {
-    long start = System.currentTimeMillis();
-    Map<String, Object> exampleMap = new HashMap<String, Object>();
-    exampleMap.put("hi", 1);
-    exampleMap.put("bye", 1);
-    exampleMap.put("fly", 1);
-    for (int i = 0; i < ITERATIONS; i++) {
-      Object hi = exampleMap.get("hi");
-      Object bye = exampleMap.get("bye");
-      Object fly = exampleMap.get("fly");
-      Object smile = exampleMap.get("smile");
-    }
-    long end = System.currentTimeMillis();
-    System.out.println("Reflection took:\t\t" + (end - start) + "ms");
-  }
-  
-  public static void main(String[] args) throws SecurityException, IllegalArgumentException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-    new Speed().withOneInstance();
-    new Speed().withInstance();
-    new Speed().withCachedReflection();
-    new Speed().peelingArguments();
-    new Speed().withReflection();
   }
 }

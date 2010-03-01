@@ -3,6 +3,7 @@ package uk.co.colinhowe.glimpse.compiler
 import uk.co.colinhowe.glimpse.compiler.node._
 import uk.co.colinhowe.glimpse.compiler.typing.Type
 import scala.collection.JavaConversions._
+import scala.actors.Actor._
 
 class TypeResolver(
     val typeProvider : TypeProvider, 
@@ -10,6 +11,18 @@ class TypeResolver(
   ) extends DepthFirstAdapter {
 
   private val types = scala.collection.mutable.Map[Node, Type]()
+  
+  case class Stop
+  val typesActor = actor {
+    loop {
+      react {
+        case (node : Node, t : Type) =>
+          types.put(node, t)
+        case Stop() =>
+          exit
+      }
+    }
+  }
   
   def addType(node : Node, t : Type) {
     types.put(node, t)
@@ -27,9 +40,13 @@ class TypeResolver(
   override def outAPropertyExpr(node : APropertyExpr) {
     val name = IdentifierConverter.identifierListToString(node.getIdentifier)
     if (macroProvider.get(name).size > 0) {
-      this.types.put(node, macroProvider.get(name).iterator.next())
+      typesActor ! (node, macroProvider.get(name).iterator.next())
     } else {
       // TODO Get the type out
     }
+  }
+  
+  def stop : Unit = { 
+    typesActor ! Stop()
   }
 }
