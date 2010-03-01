@@ -1,0 +1,3 @@
+macro x5 with s : string {
+  node p s
+}

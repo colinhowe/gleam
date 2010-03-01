@@ -1,0 +1,3 @@
+macro x14 with s : string {
+  node p s
+}

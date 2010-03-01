@@ -1,0 +1,12 @@
+x12 "cats"
+node div {
+  node div {
+    node div {
+      node div {
+        node div {
+          node inner "hoihoi"
+        }
+      }
+    }
+  }
+}

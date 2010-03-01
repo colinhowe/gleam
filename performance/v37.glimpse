@@ -1,0 +1,3 @@
+macro x37 with s : string {
+  node p s
+}

@@ -1,0 +1,3 @@
+macro x28 with s : string {
+  node p s
+}

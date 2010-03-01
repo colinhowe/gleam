@@ -1,0 +1,46 @@
+Last call detection might be useful for menus, e.g.
+
+Home | Blog | Contact | About
+
+The bits in the middle are seperators that need to be generated but from a call like:
+
+  menu {
+    link "Home"
+    link "Blog"
+    link "Contact"
+    link "About"
+  }
+
+Might be used in a macro like:
+  macro link with s : string {
+    // Output a seperator
+    if (!last) {
+      node span "|"
+    }
+    node span s
+  }
+  
+Alternatively, a between syntax might be neat:
+
+  between link {
+    node span s
+  }
+
+With new between tracking in each view ? or customisable reset
+  between link reset on div {
+    node span s
+  }
+  
+  div {
+    link "a"
+    link "b"
+    link "c"
+  }
+  div {
+    link "d"
+    link "e"
+  }
+  
+Might result in:
+  a | b | c     d | e
+
