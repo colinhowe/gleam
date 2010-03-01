@@ -60,11 +60,13 @@ class TestTypeChecker extends TypeCheckerTest {
 
     ;
     """
-    macro p(v : int) with s : string { node p s }
+    macro p(v : int) with s : string {
+      node p s 
+    }
     p(v: "1") "1"
     """ failsWith
     MacroNotFoundError(
-      line = 3,
+      line = 5,
       name = "p",
       argumentTypes = Map[String, Type](
         "v" -> SimpleType(classOf[String])
@@ -78,7 +80,9 @@ class TestTypeChecker extends TypeCheckerTest {
   @Test
   def validCallToMacro = {
     """
-    macro p(v : int) with s : string { node p s }
+    macro p(v : int) with s : string {
+      node p s 
+    }
     p(v: 1) "1"
     """ succeeds
   }
@@ -91,13 +95,15 @@ class TestTypeChecker extends TypeCheckerTest {
 
     ;
     """
-    macro p(v : int) with s : string { node p s }
+    macro p(v : int) with s : string {
+      node p s 
+    }
     p(v: 1) {
       node div "hi"
     }
     """ failsWith
     MacroNotFoundError(
-      line = 3,      name = "p",      argumentTypes = Map[String, Type](        "v" -> SimpleType(classOf[Integer])      ),      valueType = SimpleType(classOf[Generator]),      definitionsFound = Set[MacroDefinition](definition)    )
+      line = 5,      name = "p",      argumentTypes = Map[String, Type](        "v" -> SimpleType(classOf[Integer])      ),      valueType = SimpleType(classOf[Generator]),      definitionsFound = Set[MacroDefinition](definition)    )
   }  
   @Test  def incrementOnString = {     """    var x = "1"    x++    node h1 x    """ failsWith    TypeCheckError(        line = 3,         expectedType = new SimpleType(classOf[Integer]),         actualType = new SimpleType(classOf[String]))  }
 }

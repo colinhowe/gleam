@@ -10,10 +10,10 @@ Helpers
     colon = ':';
     all = [ 0 .. 65535 ];
     quote = '"';
-    
+        
 Tokens  
     newline = (13 10 | 10 | 13);
-    whitespace = (' ' | '\t' | 13 10  | 10 | 13 )+;
+    whitespace = (' ' | '\t' )+;
     node = 'node';
     macro = 'macro';
     include = 'include';
@@ -91,18 +91,19 @@ Ignored Tokens
     whitespace,
     single_line_comment,
     multi_line_comment;
-    
+
 Productions 
-    view = import* controller? macro_defn* stmt* ;
+    view = newline* import* controller? macro_defn* stmt* 
+      {-> New view([import], controller, [macro_defn], [stmt])};
     
     with_defn {-> with_defn} =
-      with [content_name]:identifier colon [content_type]:type [gen_args]:arg_defns?
+      with [n1]:newline* [content_name]:identifier [n2]:newline* colon [n3]:newline* [content_type]:type [n4]:newline* [gen_args]:arg_defns?
       {-> New with_defn(content_name, content_type, [])};
-       
+    
     macro_defn =       
-        {static} macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with_defn? restriction? generator 
+        {static} macro [n1]:newline* [name]:identifier [n2]:newline* [generic_defns]:generic_defns? [macro_args]:arg_defns? with_defn? restriction? generator [n3]:newline* 
         {-> New macro_defn(Null, name, [generic_defns.generic_defn], [macro_args.arg_defn], with_defn, restriction, generator)}
-      | {no_impl} macro_modifier macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with_defn? restriction? 
+      | {no_impl} macro_modifier [n1]:newline* macro [n2]:newline* [name]:identifier [n3]:newline* [generic_defns]:generic_defns? [macro_args]:arg_defns? with_defn? restriction? 
         {-> New macro_defn(macro_modifier, name, [generic_defns.generic_defn], [macro_args.arg_defn], with_defn, restriction, Null)}
       ;
       
@@ -113,27 +114,27 @@ Productions
       
     name {-> identifier*} = 
         {simple} identifier {-> [identifier]}
-      | {qualified} name dot identifier {-> [name.identifier, identifier]}
+      | {qualified} name dot [n1]:newline* identifier {-> [name.identifier, identifier]}
       ;
     
-    controller = controller_token name {-> New controller([name.identifier])};
+    controller = controller_token [n1]:newline* name [n2]:newline* {-> New controller([name.identifier])};
     
-    stmt = {node} node_create
-         | {macro} identifier opt_args? expr {-> New stmt.macro(identifier, [opt_args.argument], expr)}
-         | {macro_noexpr} identifier opt_args? semicolon {-> New stmt.macro(identifier, [opt_args.argument], Null)}
-         | {include} include_a 
-         | {var_defn} var_defn
-         | {increment} identifier increment {-> New stmt.increment(identifier)}
-         | {assignment} identifier equals expr {-> New stmt.assignment(identifier, expr)}
-         | {for} forloop
-         | {if} ifelse 
+    stmt = {node} node_create [n1]:newline+ {-> New stmt.node(node_create)}
+         | {macro} identifier opt_args? expr [n1]:newline+ {-> New stmt.macro(identifier, [opt_args.argument], expr)}
+         | {macro_noexpr} identifier opt_args? [n1]:newline+ {-> New stmt.macro(identifier, [opt_args.argument], Null)}
+         | {include} include_a [n1]:newline+ {-> New stmt.include(include_a)}
+         | {var_defn} var_defn [n1]:newline+ {-> New stmt.var_defn(var_defn)}
+         | {increment} identifier increment [n1]:newline+ {-> New stmt.increment(identifier)}
+         | {assignment} identifier equals expr [n1]:newline+ {-> New stmt.assignment(identifier, expr)}
+         | {for} forloop [n1]:newline+ {-> New stmt.for(forloop) }
+         | {if} ifelse [n1]:newline+ {-> New stmt.if(ifelse) }
          ;
          
     ifelse = if lparen expr rparen codeblock else? {-> New ifelse(expr, codeblock, else.codeblock) };
     
     else {-> codeblock} = telse codeblock {-> codeblock };
     
-    codeblock = lbrace stmt+ rbrace {-> New codeblock([stmt]) } ;
+    codeblock = lbrace [n1]:newline* stmt+ rbrace {-> New codeblock([stmt]) } ;
     
     type = {string} type_string
          | {generator} type_generator
@@ -143,7 +144,7 @@ Productions
          | {compound} type lt types gt {-> New type.compound(type, [types.type]) }
          ;
          
-    import = timport import_type {-> New import(import_type) };
+    import = timport import_type [n1]:newline* {-> New import(import_type) };
     
     import_type =
         {single} name {-> New import_type.single([name.identifier])}
@@ -157,7 +158,7 @@ Productions
          
     expr = 
            {string} string
-         | {generator} generator
+         | {generator} generator 
          | {constant} number
          | {property} name {-> New expr.property([name.identifier])}
          | {controller_prop} controller_ref dot name {-> New expr.controller_prop([name.identifier])}
@@ -201,16 +202,16 @@ Productions
       | {multiple} arg_defns2 comma arg_defn {-> [arg_defns2.arg_defn, arg_defn]}
       ;
 
-    arg_defn = modifier* [name]:identifier colon [type]:type var_defn_init? {-> New arg_defn([modifier], type, name, var_defn_init.expr) }; 
+    arg_defn = modifier* [name]:identifier colon [type]:type var_defn_init? [n1]:newline* {-> New arg_defn([modifier], type, name, var_defn_init.expr) }; 
     
     modifier = 
         {cascade} cascade {-> New modifier.cascade()}
       | {runtimetyped} runtimetyped {-> New modifier.runtimetyped()}
       ;
     
-    generator = lbrace gen_args? stmt+ rbrace {-> New generator([gen_args.arg_defn], [stmt])};
+    generator = lbrace [n1]:newline* gen_args? stmt+ rbrace {-> New generator([gen_args.arg_defn], [stmt])};
     
-    gen_args {-> arg_defn*} = arg_defns2 rightarrow {-> [arg_defns2.arg_defn] };
+    gen_args {-> arg_defn*} = arg_defns2 rightarrow [n1]:newline* {-> [arg_defns2.arg_defn] };
     
     opt_args {-> argument* } = 
       lparen arguments? rparen {-> [arguments.argument] };
@@ -222,7 +223,7 @@ Productions
       
     argument = identifier colon expr {-> New argument(identifier, expr) };
     
-    forloop = for lparen type identifier in expr rparen lbrace stmt+ rbrace {-> New forloop(type, identifier, expr, [stmt]) };
+    forloop = for lparen type identifier in expr rparen lbrace [n1]:newline* stmt+ rbrace {-> New forloop(type, identifier, expr, [stmt]) };
     
     //string_literal = string;
                      

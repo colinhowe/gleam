@@ -127,8 +127,9 @@ class TestMacro extends CompilerTest {
     macro br with s : string {
       node br s
     }
-    br;
+    br
+    br
     """ compilesTo 
-    <view><br /></view>
+    <view><br /><br /></view>
   }
 }
