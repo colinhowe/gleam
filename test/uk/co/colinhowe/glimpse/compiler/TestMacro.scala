@@ -120,4 +120,15 @@ class TestMacro extends CompilerTest {
     """ compilesTo 
     <view><p>string</p><p><p>generator</p></p></view>
   }
+  
+  @Test
+  def macroWithNoValue = {   
+    """
+    macro br with s : string {
+      node br s
+    }
+    br;
+    """ compilesTo 
+    <view><br /></view>
+  }
 }

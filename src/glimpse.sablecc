@@ -12,6 +12,7 @@ Helpers
     quote = '"';
     
 Tokens  
+    newline = (13 10 | 10 | 13);
     whitespace = (' ' | '\t' | 13 10  | 10 | 13 )+;
     node = 'node';
     macro = 'macro';
@@ -84,6 +85,8 @@ Tokens
     
     asterix = '*';
     
+    semicolon = ';';
+    
 Ignored Tokens
     whitespace,
     single_line_comment,
@@ -92,11 +95,15 @@ Ignored Tokens
 Productions 
     view = import* controller? macro_defn* stmt* ;
     
+    with_defn {-> with_defn} =
+      with [content_name]:identifier colon [content_type]:type [gen_args]:arg_defns?
+      {-> New with_defn(content_name, content_type, [])};
+       
     macro_defn =       
-        {static} macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with [content_name]:identifier colon [content_type]:type [gen_args]:arg_defns? restriction ? generator 
-        {-> New macro_defn(Null, name, [generic_defns.generic_defn], [macro_args.arg_defn], content_type, content_name, restriction, generator)}
-      | {no_impl} macro_modifier macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with [content_name]:identifier colon [content_type]:type [gen_args]:arg_defns? restriction ? 
-        {-> New macro_defn(macro_modifier, name, [generic_defns.generic_defn], [macro_args.arg_defn], content_type, content_name, restriction, Null)}
+        {static} macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with_defn? restriction? generator 
+        {-> New macro_defn(Null, name, [generic_defns.generic_defn], [macro_args.arg_defn], with_defn, restriction, generator)}
+      | {no_impl} macro_modifier macro [name]:identifier [generic_defns]:generic_defns? [macro_args]:arg_defns? with_defn? restriction? 
+        {-> New macro_defn(macro_modifier, name, [generic_defns.generic_defn], [macro_args.arg_defn], with_defn, restriction, Null)}
       ;
       
     macro_modifier =
@@ -113,6 +120,7 @@ Productions
     
     stmt = {node} node_create
          | {macro} identifier opt_args? expr {-> New stmt.macro(identifier, [opt_args.argument], expr)}
+         | {macro_noexpr} identifier opt_args? semicolon {-> New stmt.macro(identifier, [opt_args.argument], Null)}
          | {include} include_a 
          | {var_defn} var_defn
          | {increment} identifier increment {-> New stmt.increment(identifier)}
@@ -204,7 +212,8 @@ Productions
     
     gen_args {-> arg_defn*} = arg_defns2 rightarrow {-> [arg_defns2.arg_defn] };
     
-    opt_args {-> argument* } = lparen arguments rparen {-> [arguments.argument] };
+    opt_args {-> argument* } = 
+      lparen arguments? rparen {-> [arguments.argument] };
     
     arguments {-> argument* } = 
         {single} argument {-> [argument]}
@@ -241,7 +250,7 @@ Abstract Syntax Tree
     restriction = identifier*;
     
     stmt = {node}  node_create
-         | {macro} identifier [arguments]:argument* expr
+         | {macro} identifier [arguments]:argument* expr?
          | {include} include_a
          | {var_defn} var_defn
          | {increment} identifier
@@ -293,7 +302,10 @@ Abstract Syntax Tree
     
     forloop = type identifier expr stmt+;
     
-    macro_defn = macro_modifier? [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* [content_type]:type [content_name]:identifier restriction? generator?;
+    macro_defn = macro_modifier? [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* with_defn? restriction? generator?;
     
     include_a = [the_include]:identifier  [arguments]:argument*;
+    
+    with_defn = 
+      [content_name]:identifier [content_type]:type [gen_args]:arg_defn*;
     

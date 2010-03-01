@@ -36,8 +36,11 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
           new ATrueExpr
         )
       ),
-      new AStringType,
-      new TIdentifier("s"),
+      new AWithDefn(
+        new TIdentifier("s"),
+        new AStringType(),
+        Buffer[PArgDefn]()
+      ),
       null,
       new AGenerator(
       )
@@ -71,8 +74,11 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
           new ATrueExpr
         )
       ),
-      new AStringType,
-      new TIdentifier("s"),
+      new AWithDefn(
+        new TIdentifier("s"),
+        new AStringType(),
+        Buffer[PArgDefn]()
+      ),
       null,
       new AGenerator(
       )
@@ -106,8 +112,11 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
           null
         )
       ),
-      new AStringType,
-      new TIdentifier("s"),
+      new AWithDefn(
+        new TIdentifier("s"),
+        new AStringType(),
+        Buffer[PArgDefn]()
+      ),
       null,
       new AGenerator(
       )
@@ -146,8 +155,11 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
           new ATrueExpr
         )
       ),
-      new AStringType,
-      new TIdentifier("s"),
+      new AWithDefn(
+        new TIdentifier("s"),
+        new AStringType(),
+        Buffer[PArgDefn]()
+      ),
       null,
       new AGenerator(
       )
@@ -185,8 +197,11 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
           new ATrueExpr
         )
       ),
-      new AStringType,
-      new TIdentifier("s"),
+      new AWithDefn(
+        new TIdentifier("s"),
+        new AStringType(),
+        Buffer[PArgDefn]()
+      ),
       new ARestriction(Buffer(new TIdentifier("onlyhere"))),
       new AGenerator(
       )
@@ -220,8 +235,11 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
           new ATrueExpr
         )
       ),
-      new AStringType,
-      new TIdentifier("s"),
+      new AWithDefn(
+        new TIdentifier("s"),
+        new AStringType(),
+        Buffer[PArgDefn]()
+      ),
       new ARestriction(Buffer(new TIdentifier("top level"))),
       new AGenerator(
       )

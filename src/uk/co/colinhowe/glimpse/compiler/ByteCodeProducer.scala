@@ -638,7 +638,7 @@ class ByteCodeProducer(
     
     // Invoke method
     if (!macroDefinition.isDynamic && !macroDefinition.isAbstract) {
-      val valueName = node.getContentName().getText()
+      val valueName = node.getWithDefn.asInstanceOf[AWithDefn].getContentName().getText()
       
       val mv = cw.visitMethod(ACC_PUBLIC, 
           "invoke", 

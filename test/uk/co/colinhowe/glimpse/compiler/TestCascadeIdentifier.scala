@@ -37,8 +37,11 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
                 null
             )
         ), 
-        new AStringType(),
-        new TIdentifier("content"), 
+        new AWithDefn(
+          new TIdentifier("content"),
+          new AStringType(),
+          Buffer[PArgDefn]()
+        ),
         null,
         new AGenerator(
             Buffer[PArgDefn](),

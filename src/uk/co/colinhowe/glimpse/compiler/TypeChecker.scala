@@ -151,7 +151,7 @@ class TypeChecker(
       scope.add(arg.getIdentifier().getText(), typeResolver.getType(arg.getType(), typeNameResolver, genericsInScope))
     }
     
-    scope.add(node.getContentName().getText(), typeResolver.getType(node.getContentType(), typeNameResolver, genericsInScope))
+    scope.add(node.getWithDefn.asInstanceOf[AWithDefn].getContentName().getText(), typeResolver.getType(node.getWithDefn.asInstanceOf[AWithDefn].getContentType, typeNameResolver, genericsInScope))
   }
   
   override def outAMacroDefn(node : AMacroDefn) {

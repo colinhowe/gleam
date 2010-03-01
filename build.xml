@@ -1,0 +1,11 @@
+<project name="Glimpse">
+  <target name = "gen">
+  	<property name="gendir" value="src/output" />
+    <mkdir dir="${gendir}" />
+    <java jar = "lib/sablecc.jar" fork="true" failonerror="true">
+      <arg value = "-d" />
+      <arg value = "${gendir}" />
+      <arg value = "src/glimpse.sablecc" />
+    </java>
+  </target>
+</project>
