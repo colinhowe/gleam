@@ -21,6 +21,7 @@ import uk.co.colinhowe.glimpse.CompilationResult
 import uk.co.colinhowe.glimpse.compiler.lexer.Lexer
 import uk.co.colinhowe.glimpse.compiler.node.Start
 import uk.co.colinhowe.glimpse.compiler.parser.Parser
+import scala.actors.Future
 
 case class Join
 case class Joined
@@ -30,6 +31,7 @@ class GlimpseCompiler extends Actor {
   var classPathResolver : ClassPathResolver = null
   
   case class Parsed(result : IntermediateResult)
+  case class Errored
   case class Finished
   
   val startTime = System.currentTimeMillis
@@ -52,12 +54,14 @@ class GlimpseCompiler extends Actor {
             if (!finished) {
               replyTo = sender
             } else {
-              replyTo ! Joined()
+              debug("Sending Joined whilst handling Join " + replyTo)
+              sender ! Joined()
               exit
             }
           case Finished() =>
             finished = true
             if (replyTo != null) {
+              debug("Sending Joined whilst handling Finished " + replyTo)
               replyTo ! Joined()
               exit
             }
@@ -70,7 +74,7 @@ class GlimpseCompiler extends Actor {
   
   private def debug(line : String) {
     val time = System.currentTimeMillis - startTime
-    println("[" + time + "] " + line)
+    println("[" + Thread.currentThread + "] [" + time + "] " + line)
   }
   
   def act() {
@@ -79,6 +83,15 @@ class GlimpseCompiler extends Actor {
         case ClassPathResolver.Resolved => 
           classPathResolved = true
           toParse.foreach(GlimpseCompiler.this ! Parsed(_))
+          
+        case Errored() =>
+          sourcesRemaining -= 1
+          
+          if (sourcesRemaining == 0) {
+            // Start real processing now
+            compileAsts(toProcess)
+            exit
+          }
           
         case Parsed(result) => 
           if (!classPathResolved) {
@@ -93,6 +106,15 @@ class GlimpseCompiler extends Actor {
             compileAsts(toProcess)
             exit
           }
+      }
+    }
+  }
+  def future(body : => Any) : scala.actors.Future[Any] = {
+    scala.actors.Futures.future {
+      try {
+        body
+      } catch {
+        case e => e
       }
     }
   }
@@ -125,7 +147,10 @@ class GlimpseCompiler extends Actor {
       }
     }
     for (future <- futures) {
-      future()
+      future() match {
+        case e : Exception => throw e
+        case _ =>
+      }
     }
     macroProvider !? Join()
     typeResolver.stop
@@ -181,10 +206,18 @@ class GlimpseCompiler extends Actor {
       }
     }
     
+    debug("Waiting for phase 2")
+    var exception : Exception = null
     for (future <- futures) {
-      future()
+      future() match {
+        case e : Exception => exception = e
+        case _ =>
+      }
     }
     
+    // TODO Do something with the exception
+
+    debug("Sending finished message to results actor")
     resultsActor ! Finished()
   }
   
@@ -200,23 +233,42 @@ class GlimpseCompiler extends Actor {
     classPathResolver = new ClassPathResolver(classPaths, this)
 
     // Parse each source file
+    val futures = Buffer[Future[_]]()
     for (unit <- units) {
-      val parser = future {
-        // create lexer
-        val lexer = new Lexer(new PushbackReader(new BufferedReader(new StringReader(unit.getSource())), 204800))
+      futures += future {
+        try {
+          // create lexer
+          val lexer = new Lexer(new PushbackReader(new BufferedReader(new StringReader(unit.getSource())), 204800))
+          
+          // parse program
+          val parser = new Parser(lexer)
+          val ast = parser.parse()
         
-        // parse program
-        val parser = new Parser(lexer)
-        val ast = parser.parse()
-        
-        GlimpseCompiler.this ! Parsed(new IntermediateResult(ast, unit.getViewName(), unit.getSourceName))
+          GlimpseCompiler.this ! Parsed(new IntermediateResult(ast, unit.getViewName(), unit.getSourceName))
+        } catch {
+          case e => 
+            GlimpseCompiler.this ! Errored()
+            e
+        }
       }
     }
     
+    debug("Waiting for parsing")
+    var exception : Exception = null
+    for (future <- futures) {
+      future() match {
+        case e : Exception => exception = e
+        case _ =>
+      }
+    }
+    debug("Waiting for results actor")
     resultsActor !? Join()
-//    Waiter.waitForActors(List(resultsActor))
-
-
+    
+    debug("Done")
+    if (exception != null) {
+      throw exception
+    }
+    
     results
   }
 }

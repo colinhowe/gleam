@@ -26,6 +26,35 @@ abstract trait CompilerTest {
       file.delete
     }
   }
+  
+  def runTypeChecker(compilationUnit : CompilationSet) : List[CompilationError] = {
+    val results = compile(compilationUnit)
+    var errors = List[CompilationError]()
+    for (result <- results) {
+      for (error <- result.getErrors()) {
+        errors = error.asInstanceOf[CompilationError] :: errors
+      }
+    }
+    errors
+  }
+  
+  case class FailsWith(compilationSet : CompilationSet) {
+    def failsWith(expectedError : CompilationError) : Unit = {
+      System.out.println("Expected: " + expectedError)
+      val errors = runTypeChecker(compilationSet)
+      val actualError = errors(0)
+      assertEquals(expectedError, actualError)
+    }
+    
+    def failsWith(expectedErrors : List[CompilationError]) : Unit = {
+      System.out.println("Expected: " + expectedErrors)
+      val actualErrors = runTypeChecker(compilationSet)
+      assertEquals(expectedErrors, actualErrors)
+    }
+  }
+  
+  implicit def failsWith(source : String) = FailsWith(new CompilationSet(List(source), null))
+  implicit def failsWith(compilationSet : CompilationSet) = FailsWith(compilationSet)
     
   implicit def errors(source : String) = {
     Errors(new CompilationSet(List(source), null))

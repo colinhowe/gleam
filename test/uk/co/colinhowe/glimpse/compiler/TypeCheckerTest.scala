@@ -12,22 +12,6 @@ import scala.xml._
 import uk.co.colinhowe.glimpse.TypeCheckError
 
 abstract trait TypeCheckerTest extends CompilerTest {
-  case class FailsWith(source : String) {
-    def failsWith(expectedError : CompilationError) : Unit = {
-      System.out.println("Expected: " + expectedError)
-      val errors = runTypeChecker(new CompilationSet(List(source), null))
-      val actualError = errors(0)
-      assertEquals(expectedError, actualError)
-    }
-    
-    def failsWith(expectedErrors : List[CompilationError]) : Unit = {
-      System.out.println("Expected: " + expectedErrors)
-      val actualErrors = runTypeChecker(new CompilationSet(List(source), null))
-      assertEquals(expectedErrors, actualErrors)
-    }
-  }
-  
-  implicit def failsWith(source : String) = FailsWith(source)
   
   case class Succeeds(source : String) {
     def succeeds : Unit = {
@@ -38,15 +22,4 @@ abstract trait TypeCheckerTest extends CompilerTest {
   }
   
   implicit def succeeds(source : String) = Succeeds(source)
-  
-  def runTypeChecker(compilationUnit : CompilationSet) : List[CompilationError] = {
-    val results = compile(compilationUnit)
-    var errors = List[CompilationError]()
-    for (result <- results) {
-      for (error <- result.getErrors()) {
-        errors = error.asInstanceOf[CompilationError] :: errors
-      }
-    }
-    errors
-  }
 }

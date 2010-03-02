@@ -24,11 +24,10 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
         definitionProvider, 
         null)
     
-    val defn = new AMacroDefn(
-      new ADynamicMacroModifier,
-      new TIdentifier("macro"),
-      Buffer[PGenericDefn](),
-      Buffer[PArgDefn](
+    val defn = HMacroDefn(
+      "macro",
+      modifier = new ADynamicMacroModifier,
+      args = Buffer[PArgDefn](
         new AArgDefn(
           Buffer[PModifier](),
           new ABoolType,
@@ -36,14 +35,12 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
           new ATrueExpr
         )
       ),
-      new AWithDefn(
+      withDefn = new AWithDefn(
         new TIdentifier("s"),
         new AStringType(),
         Buffer[PArgDefn]()
       ),
-      null,
-      new AGenerator(
-      )
+      generator = new AGenerator()
     )
     
     finder.outAMacroDefn(defn)
@@ -63,11 +60,10 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
         definitionProvider, 
         null)
     
-    val defn = new AMacroDefn(
-      new AAbstractMacroModifier,
-      new TIdentifier("macro"),
-      Buffer[PGenericDefn](),
-      Buffer[PArgDefn](
+    val defn = HMacroDefn(
+      "macro",
+      modifier = new AAbstractMacroModifier,
+      args = Buffer[PArgDefn](
         new AArgDefn(
           Buffer[PModifier](),
           new ABoolType,
@@ -75,14 +71,12 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
           new ATrueExpr
         )
       ),
-      new AWithDefn(
+      withDefn = new AWithDefn(
         new TIdentifier("s"),
         new AStringType(),
         Buffer[PArgDefn]()
       ),
-      null,
-      new AGenerator(
-      )
+      generator = new AGenerator()
     )
     
     finder.outAMacroDefn(defn)
@@ -102,11 +96,9 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
         definitionProvider, 
         null)
     
-    val defn = new AMacroDefn(
-      null,
-      new TIdentifier("macro"),
-      Buffer[PGenericDefn](),
-      Buffer[PArgDefn](
+    val defn = HMacroDefn(
+      "macro",
+      args = Buffer[PArgDefn](
         new AArgDefn(
           Buffer[PModifier](new ARuntimetypedModifier),
           new ABoolType,
@@ -114,14 +106,12 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
           null
         )
       ),
-      new AWithDefn(
+      withDefn = new AWithDefn(
         new TIdentifier("s"),
         new AStringType(),
         Buffer[PArgDefn]()
       ),
-      null,
-      new AGenerator(
-      )
+      generator = new AGenerator()
     )
     
     finder.outAMacroDefn(defn)
@@ -146,11 +136,9 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
         definitionProvider, 
         null)
     
-    val defn = new AMacroDefn(
-      null,
-      new TIdentifier("macro"),
-      Buffer[PGenericDefn](),
-      Buffer[PArgDefn](
+    val defn = HMacroDefn(
+      "macro",
+      args = Buffer[PArgDefn](
         new AArgDefn(
           Buffer[PModifier](),
           new ABoolType,
@@ -158,14 +146,12 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
           new ATrueExpr
         )
       ),
-      new AWithDefn(
+      withDefn = new AWithDefn(
         new TIdentifier("s"),
         new AStringType(),
         Buffer[PArgDefn]()
       ),
-      null,
-      new AGenerator(
-      )
+      generator = new AGenerator()
     )
     
     finder.outAMacroDefn(defn)
@@ -189,11 +175,9 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
         definitionProvider, 
         null)
     
-    val defn = new AMacroDefn(
-      null,
-      new TIdentifier("macro"),
-      Buffer[PGenericDefn](),
-      Buffer[PArgDefn](
+    val defn = HMacroDefn(
+      "macro",
+      args = Buffer[PArgDefn](
         new AArgDefn(
           Buffer[PModifier](),
           new ABoolType,
@@ -201,14 +185,13 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
           new ATrueExpr
         )
       ),
-      new AWithDefn(
+      withDefn = new AWithDefn(
         new TIdentifier("s"),
         new AStringType(),
         Buffer[PArgDefn]()
       ),
-      new ARestriction(Buffer(new TIdentifier("onlyhere"))),
-      new AGenerator(
-      )
+      restriction = new ARestriction(Buffer(new TIdentifier("onlyhere"))),
+      generator = new AGenerator()
     )
     
     finder.outAMacroDefn(defn)
@@ -228,11 +211,9 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
         definitionProvider, 
         null)
     
-    val defn = new AMacroDefn(
-      null,
-      new TIdentifier("macro"),
-      Buffer[PGenericDefn](),
-      Buffer[PArgDefn](
+    val defn = HMacroDefn(
+      "macro",
+      args = Buffer[PArgDefn](
         new AArgDefn(
           Buffer[PModifier](),
           new ABoolType,
@@ -240,14 +221,13 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
           new ATrueExpr
         )
       ),
-      new AWithDefn(
+      withDefn = new AWithDefn(
         new TIdentifier("s"),
         new AStringType(),
         Buffer[PArgDefn]()
       ),
-      new ARestriction(Buffer(new TIdentifier("top level"))),
-      new AGenerator(
-      )
+      restriction = new ARestriction(Buffer(new TIdentifier("top level"))),
+      generator = new AGenerator()
     )
     
     finder.outAMacroDefn(defn)

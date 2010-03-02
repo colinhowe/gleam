@@ -4,7 +4,7 @@ import java.math.BigInteger;
 import java.util.LinkedList;
 import java.util.List;
 
-public class DummyController {
+public class DummyController implements DummyInterface {
   private String name = "Name of the controller";
   
   private CompoundProperty compound = new CompoundProperty();

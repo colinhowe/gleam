@@ -7,3 +7,4 @@ case class DynamicMacroMismatchError(line : Int, dynamicMacro : String) extends 
 
 case class MacroNotFoundError(line : Int, name : String, argumentTypes : Map[String, Type], valueType : Type, definitionsFound : Set[MacroDefinition]) extends CompilationError(line)
 
+case class IncompatibleControllerError(line : Int, name : String, controllerFound : Type, controllerNeeded : Type) extends CompilationError(line)

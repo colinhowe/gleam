@@ -22,32 +22,57 @@ class TestCascadeIdentifier extends AssertionsForJUnit {
       new MacroDefinitionProvider)
   
   private def createOwnerMacro(cascade : Boolean, stmts : Buffer[PStmt]) = {
-    new AMacroDefn(
-        null,
-        new TIdentifier("owner"), 
-        Buffer[PGenericDefn](), 
-        Buffer[PArgDefn](
-            new AArgDefn(
-                if (cascade) 
-                  Buffer[PModifier](new ACascadeModifier)
-                else 
-                  Buffer[PModifier](),
-                new AStringType,
-                new TIdentifier("arg"),
-                null
-            )
-        ), 
-        new AWithDefn(
-          new TIdentifier("content"),
-          new AStringType(),
-          Buffer[PArgDefn]()
-        ),
-        null,
-        new AGenerator(
-            Buffer[PArgDefn](),
-            stmts
+    HMacroDefn(
+      "owner",
+      args = Buffer[PArgDefn](
+        new AArgDefn(
+          if (cascade) 
+            Buffer[PModifier](new ACascadeModifier)
+          else 
+            Buffer[PModifier](),
+          new AStringType,
+          new TIdentifier("arg"),
+          null
         )
+      ),
+      withDefn = new AWithDefn(
+        new TIdentifier("content"),
+        new AStringType(),
+        Buffer[PArgDefn]()
+      ),
+      generator = new AGenerator(
+        Buffer[PArgDefn](),
+        stmts
+      )
     )
+        
+        
+        
+//        null,
+//        new TIdentifier("owner"), 
+//        Buffer[PGenericDefn](), 
+//        Buffer[PArgDefn](
+//            new AArgDefn(
+//                if (cascade) 
+//                  Buffer[PModifier](new ACascadeModifier)
+//                else 
+//                  Buffer[PModifier](),
+//                new AStringType,
+//                new TIdentifier("arg"),
+//                null
+//            )
+//        ), 
+//        new AWithDefn(
+//          new TIdentifier("content"),
+//          new AStringType(),
+//          Buffer[PArgDefn]()
+//        ),
+//        null,
+//        new AGenerator(
+//            Buffer[PArgDefn](),
+//            stmts
+//        )
+//    )
   }
   
   @Test
