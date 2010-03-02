@@ -19,6 +19,7 @@ class TypeResolver(
         case (node : Node, t : Type) =>
           types.put(node, t)
         case Stop() =>
+          reply(null)
           exit
       }
     }
@@ -47,6 +48,6 @@ class TypeResolver(
   }
   
   def stop : Unit = { 
-    typesActor ! Stop()
+    typesActor !? Stop()
   }
 }

@@ -47,6 +47,7 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
     )
     
     finder.outAMacroDefn(defn)
+    definitionProvider !? Join()
 
     val macros = definitionProvider.get("macro")
     val macro = macros.iterator.next
@@ -85,6 +86,7 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
     )
     
     finder.outAMacroDefn(defn)
+    definitionProvider !? Join()
 
     val macros = definitionProvider.get("macro")
     val macro = macros.iterator.next
@@ -123,6 +125,7 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
     )
     
     finder.outAMacroDefn(defn)
+    definitionProvider !? Join()
 
     val macros = definitionProvider.get("macro")
     val macro = macros.iterator.next
@@ -166,6 +169,7 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
     )
     
     finder.outAMacroDefn(defn)
+    definitionProvider !? Join()
 
     val macros = definitionProvider.get("macro")
     val macro = macros.iterator.next
@@ -208,6 +212,7 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
     )
     
     finder.outAMacroDefn(defn)
+    definitionProvider !? Join()
 
     val macros = definitionProvider.get("macro")
     val macro = macros.iterator.next
@@ -246,6 +251,7 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
     )
     
     finder.outAMacroDefn(defn)
+    definitionProvider !? Join()
 
     val macros = definitionProvider.get("macro")
     val macro = macros.iterator.next

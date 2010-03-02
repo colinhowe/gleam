@@ -22,22 +22,6 @@ import uk.co.colinhowe.glimpse.compiler.lexer.Lexer
 import uk.co.colinhowe.glimpse.compiler.node.Start
 import uk.co.colinhowe.glimpse.compiler.parser.Parser
 
-object Waiter {
-  def waitForActors(actors: List[Actor]): Unit = {
-    actors.foreach( _ ! Join() )
-
-    def waitForFinish(left: Int): Unit = {
-      if (left <= 0) return ()
-      receive {
-        case Joined => waitForFinish(left - 1)
-      }
-    }
-
-    waitForFinish( actors.size )
-    ()
-  } 
-}
-
 case class Join
 case class Joined
 
@@ -52,11 +36,12 @@ class GlimpseCompiler extends Actor {
   val toParse = Buffer[IntermediateResult]()
   val toProcess = Buffer[IntermediateResult]()
   var classPathResolved = false
-  var sourcesRemaining = 0
   var resultsReady = false
+  var sourcesRemaining = 0
   
   val results = Buffer[CompilationResult]()
   val resultsActor = new Actor {
+    var finished = false
     def act() {
       var replyTo : OutputChannel[Any] = null
       loop {
@@ -64,15 +49,18 @@ class GlimpseCompiler extends Actor {
           case result : CompilationResult => 
             results += result
           case Join() =>
-            if (sourcesRemaining > 0) {
+            if (!finished) {
               replyTo = sender
             } else {
               replyTo ! Joined()
+              exit
             }
           case Finished() =>
-            replyTo ! Joined()
-            exit
-
+            finished = true
+            if (replyTo != null) {
+              replyTo ! Joined()
+              exit
+            }
           case _ =>
         }
       }
@@ -99,7 +87,7 @@ class GlimpseCompiler extends Actor {
             toProcess += result
             sourcesRemaining -= 1
           }
-
+          
           if (sourcesRemaining == 0) {
             // Start real processing now
             compileAsts(toProcess)
@@ -119,7 +107,6 @@ class GlimpseCompiler extends Actor {
      */
     val typeProvider = new TypeProvider()
     val macroProvider = new MacroDefinitionProvider()
-    macroProvider.start
     val typeResolver = new TypeResolver(typeProvider, macroProvider)
     val callResolver = new CallResolver(macroProvider)
     val futures = Buffer[scala.actors.Future[_]]()
@@ -211,7 +198,6 @@ class GlimpseCompiler extends Actor {
     this.start()
 
     classPathResolver = new ClassPathResolver(classPaths, this)
-    
 
     // Parse each source file
     for (unit <- units) {
@@ -226,7 +212,7 @@ class GlimpseCompiler extends Actor {
         GlimpseCompiler.this ! Parsed(new IntermediateResult(ast, unit.getViewName(), unit.getSourceName))
       }
     }
-
+    
     resultsActor !? Join()
 //    Waiter.waitForActors(List(resultsActor))
 

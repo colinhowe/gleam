@@ -10,6 +10,8 @@ import scala.actors.Actor._
 class MacroDefinitionProvider extends Actor {
   val macros = Map.empty[String, MSet[MacroDefinition]]
 
+  start()
+  
   private def add(definition : MacroDefinition) {
     val macroSet = 
       if (macros.contains(definition.name)) 
