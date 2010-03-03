@@ -9,6 +9,23 @@ trait ByteCodePatterns {
   protected def getMethodVisitor : MethodVisitor
   private def mv = getMethodVisitor
   
+  def NEW(clazz : Class[_], argClazzes : Class[_]*)(args : => Unit) : Unit = {
+    NEW(Type.getInternalName(clazz), argClazzes:_*)(args)
+  }
+  
+  def NEW(clazzName : String, argClazzes : Class[_]*)(args : => Unit) : Unit = {
+    mv.visitTypeInsn(Opcodes.NEW, clazzName) // args, macro value, arg
+    mv.visitInsn(DUP) // args, args, macro value, arg
+    args
+    mv.visitMethodInsn(
+      INVOKESPECIAL, 
+      clazzName,
+      "<init>", 
+      Type.getMethodDescriptor(Type.VOID_TYPE, argClazzes.map(Type.getType(_)).toArray)
+    )
+    println("D: " + Type.getMethodDescriptor(Type.VOID_TYPE, argClazzes.map(Type.getType(_)).toArray))
+  }
+  
   def getFromScope(name : String) = {
     mv.visitVarInsn(ALOAD, 1) // scope
     mv.visitLdcInsn(name) // name, scope

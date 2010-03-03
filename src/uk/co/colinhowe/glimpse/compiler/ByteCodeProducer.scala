@@ -3,6 +3,7 @@
  */
 package uk.co.colinhowe.glimpse.compiler
 
+import uk.co.colinhowe.glimpse.PropertyReference
 import uk.co.colinhowe.glimpse.infrastructure.DynamicMacro
 import uk.co.colinhowe.glimpse.Generator
 import uk.co.colinhowe.glimpse.compiler.node.PModifier
@@ -16,6 +17,7 @@ import org.objectweb.asm.FieldVisitor
 import org.objectweb.asm.Label
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes._
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 
 import scala.Tuple2
@@ -44,7 +46,6 @@ class ByteCodeProducer(
     val callResolver : CallResolver,
     val resolvedCallsProvider : ResolvedCallsProvider
    ) extends DepthFirstAdapter with Conversions with ByteCodePatterns {
-  private val nodeInitMethodSignature = "(Ljava/util/List;Ljava/lang/String;Ljava/lang/Object;)V"
   private implicit val typeProvider = typeResolver.typeProvider
     
   private var generatorCount : Int = 0
@@ -71,7 +72,9 @@ class ByteCodeProducer(
   val labelsWithLines = MSet[Label]()
   val trailingLabels = new MStack[Option[Label]]()
   
-  protected def getMethodVisitor = methodVisitors.head 
+  protected def getMethodVisitor = { 
+    methodVisitors.head 
+  }
   
   // TODO Refactor out into a seperate class
   // TODO write some tests for this 
@@ -299,18 +302,16 @@ class ByteCodeProducer(
     val l0 = new Label()
     val mv = methodVisitors.head
     mv.visitLabel(l0)
-    mv.visitTypeInsn(NEW, "uk/co/colinhowe/glimpse/PropertyReference")
-    mv.visitInsn(DUP)
     
-    mv.visitLdcInsn(path)
+    NEW(classOf[PropertyReference[_]], classOf[String], classOf[Object]) {
+      mv.visitLdcInsn(path)
+      
+      // Get the value of the property
+      getFromScope("$controller")
+      CHECKCAST(controllers.head)
+      evaluateProperty(node.getIdentifier(), controllers.head)
+    }
     
-    // Get the value of the property
-    getFromScope("$controller")
-    CHECKCAST(controllers.head)
-    evaluateProperty(node.getIdentifier(), controllers.head)
-    
-    mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/glimpse/PropertyReference", "<init>", "(Ljava/lang/String;Ljava/lang/Object;)V")
-
     // Property reference is left on the stack
   }
   
@@ -401,6 +402,7 @@ class ByteCodeProducer(
       // Constructor
       {
         val mv = classWriter.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null)
+        methodVisitors.push(mv)
         mv.visitCode()
   
         // Initialise super class
@@ -410,14 +412,11 @@ class ByteCodeProducer(
         mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/glimpse/View", "<init>", "()V")
     
         // Initialise the scope
-        val l1 = new Label()
-        mv.visitLabel(l1)
         mv.visitVarInsn(ALOAD, 0)
-        mv.visitTypeInsn(NEW, Type.getInternalName(classOf[Scope]))
-        mv.visitInsn(DUP)
-        mv.visitInsn(ACONST_NULL)
-        mv.visitLdcInsn(getOwner(node))
-        mv.visitMethodInsn(INVOKESPECIAL, Type.getInternalName(classOf[Scope]), "<init>", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/lang/Object;)V") 
+        NEW(classOf[Scope], classOf[Scope], classOf[Object]) {
+          mv.visitInsn(ACONST_NULL)
+          mv.visitLdcInsn(getOwner(node))
+        }
         mv.visitFieldInsn(PUTFIELD, viewname, "globalScope", Type.getDescriptor(classOf[Scope]))
         
         val l2 = new Label()
@@ -429,6 +428,7 @@ class ByteCodeProducer(
         mv.visitLocalVariable("this", "L" + viewname + ";", null, l0, l3, 0)
         mv.visitMaxs(0, 0)
         mv.visitEnd()
+        methodVisitors.pop
       } 
       
       // Create the view method
@@ -436,6 +436,7 @@ class ByteCodeProducer(
         // TODO Make this use the classes... currently mess!
         val mv = classWriter.visitMethod(
             ACC_PUBLIC, "view", "(Ljava/lang/Object;)Ljava/util/List;", "(Ljava/lang/Object;)Ljava/util/List<Luk/co/colinhowe/glimpse/Node;>;", null)
+        methodVisitors.push(mv)
         mv.visitCode()
         
         val l0 = new Label()
@@ -449,15 +450,10 @@ class ByteCodeProducer(
         mv.visitFieldInsn(GETFIELD, viewname, "globalScope", Type.getDescriptor(classOf[Scope]))
         mv.visitVarInsn(ASTORE, 1)
         
-        val l1 = new Label();
-        mv.visitLabel(l1);
-        mv.visitTypeInsn(NEW, "java/util/LinkedList");
-        mv.visitInsn(DUP);
-        mv.visitMethodInsn(INVOKESPECIAL, "java/util/LinkedList", "<init>", "()V");
+        NEW(classOf[java.util.LinkedList[_]]) { }
         mv.visitVarInsn(ASTORE, 2);
         
         // TODO Stuff goes here
-        methodVisitors.push(mv);
       }
     }
   }
@@ -574,17 +570,17 @@ class ByteCodeProducer(
     // Static constructor
     {
       val mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null)
+      methodVisitors.push(mv)
       mv.visitCode()
 
       // Initialise the instance
-      mv.visitTypeInsn(NEW, className)
-      mv.visitInsn(DUP)
-      mv.visitMethodInsn(INVOKESPECIAL, className, "<init>", "()V")
+      NEW(className) { }
       mv.visitFieldInsn(PUTSTATIC, className, "instance", "Luk/co/colinhowe/glimpse/Macro;")
       
       mv.visitInsn(RETURN)
       mv.visitMaxs(0, 0)
       mv.visitEnd()
+      methodVisitors.pop
     } 
     
     // getInstance method
@@ -647,11 +643,10 @@ class ByteCodeProducer(
       // Create a scope for the macro
       val l0 = new Label()
       mv.visitLabel(l0)
-      mv.visitTypeInsn(NEW, "uk/co/colinhowe/glimpse/infrastructure/Scope")
-      mv.visitInsn(DUP)
-      mv.visitVarInsn(ALOAD, 1)
-      mv.visitLdcInsn(getOwner(node))
-      mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "<init>", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/lang/Object;)V")
+      NEW(classOf[Scope], classOf[Scope], classOf[Object]) {
+        mv.visitVarInsn(ALOAD, 1)
+        mv.visitLdcInsn(getOwner(node))
+      }
       mv.visitVarInsn(ASTORE, 4)
       
       // Put the controller on if needed
@@ -786,17 +781,16 @@ class ByteCodeProducer(
     // TODO Limit starting scopes to only those things that _need_ new scopes
     // If no new variables are created then a new scope isn't needed
     val mv = methodVisitors.head
-    mv.visitTypeInsn(NEW, Type.getInternalName(classOf[Scope]))
-    mv.visitInsn(DUP)
-    putParentScopeOnStack(mv)
-    if (owner != null) {
-      mv.visitLdcInsn(owner)
-    } else {
-      // Get the owner from the parent
-      mv.visitInsn(DUP)
-      mv.visitMethodInsn(INVOKEVIRTUAL, Type.getInternalName(classOf[Scope]), "owner", "()Ljava/lang/Object;"); 
+    NEW(classOf[Scope], classOf[Scope], classOf[Object]) {
+      putParentScopeOnStack(mv)
+      if (owner != null) {
+        mv.visitLdcInsn(owner)
+      } else {
+        // Get the owner from the parent
+        mv.visitInsn(DUP)
+        mv.visitMethodInsn(INVOKEVIRTUAL, Type.getInternalName(classOf[Scope]), "owner", "()Ljava/lang/Object;"); 
+      }
     }
-    mv.visitMethodInsn(INVOKESPECIAL, Type.getInternalName(classOf[Scope]), "<init>", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/lang/Object;)V"); 
     if (store) {
       mv.visitInsn(DUP)
       mv.visitVarInsn(ASTORE, 1)
@@ -911,20 +905,16 @@ class ByteCodeProducer(
     {
       val mv = innerClassWriter.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null)
       mv.visitCode()
+      methodVisitors.push(mv)
 
       // Initialise the instance
-      val l0 = new Label()
-      mv.visitLabel(l0)
-      mv.visitTypeInsn(NEW, fullClassName)
-      mv.visitInsn(DUP)
-      mv.visitMethodInsn(INVOKESPECIAL, fullClassName, "<init>", "()V")
+      NEW(fullClassName) { }
       mv.visitFieldInsn(PUTSTATIC, fullClassName, "instance", "Luk/co/colinhowe/glimpse/Generator;")
       
-      val l1 = new Label()
-      mv.visitLabel(l1)
       mv.visitInsn(RETURN)
       mv.visitMaxs(0, 0)
       mv.visitEnd(); 
+      methodVisitors.pop
     }
     
     // getInstance method
@@ -961,17 +951,15 @@ class ByteCodeProducer(
       // TODO Make this use the classes... currently mess!
       val mv = innerClassWriter.visitMethod(
           ACC_PUBLIC, "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List<Luk/co/colinhowe/glimpse/Node;>;", null)
+      methodVisitors.push(mv)
       mv.visitCode()
       
       val l1 = new Label()
       mv.visitLabel(l1)
-      mv.visitTypeInsn(NEW, "java/util/LinkedList")
-      mv.visitInsn(DUP)
-      mv.visitMethodInsn(INVOKESPECIAL, "java/util/LinkedList", "<init>", "()V")
+      NEW(classOf[java.util.LinkedList[_]]) { }
       mv.visitVarInsn(ASTORE, 2)
       
       // TODO Stuff goes here
-      methodVisitors.push(mv)
       labels.push(l1)
 
       beginScope(getOwner(node))
@@ -1047,7 +1035,7 @@ class ByteCodeProducer(
 //    setLineNumber(mv, startOrContinueLabel(node), lineNumberProvider.getLineNumber(node))
     mv.visitVarInsn(ALOAD, 1) // scope
     mv.visitLdcInsn(node.getIdentifier().getText()) // name, scope
-    mv.visitTypeInsn(NEW, "java/lang/Integer") // Integer, name, scope
+    mv.visitTypeInsn(Opcodes.NEW, "java/lang/Integer") // Integer, name, scope
     mv.visitInsn(DUP) // Integer, Integer, name, scope
     getFromScope(node.getIdentifier().getText()) // value, Integer, Integer, name, scope
     CHECKCAST(classOf[java.lang.Integer])
@@ -1129,10 +1117,8 @@ class ByteCodeProducer(
     //   macro value, arg, arg, ...
     
     // Put all the arguments into a map
-//    val l0 = startLabel(node)
-    mv.visitTypeInsn(NEW, "java/util/HashMap") // args, macro value, arg
-    mv.visitInsn(DUP) // args, args, macro value, arg
-    mv.visitMethodInsn(INVOKESPECIAL, "java/util/HashMap", "<init>", "()V")
+    NEW(classOf[java.util.HashMap[_,_]]) { }
+
     // args, macro value, arg
     CHECKCAST(classOf[java.util.Map[_,_]])
 
@@ -1222,58 +1208,50 @@ class ByteCodeProducer(
     if (node.getExpr == null) {
       mv.visitInsn(ACONST_NULL)
     }
-      
-    mv.visitTypeInsn(NEW, "uk/co/colinhowe/glimpse/Node") // node, value
-    mv.visitInsn(DUP_X1) // node, value, node
-    mv.visitInsn(SWAP) // value, node, node
-      
-    // TODO Expression evaluation should be done way better!
-    if (node.getExpr().isInstanceOf[AGeneratorExpr]) {
-      // TODO Create the generator object :)
-      val generatorExp = node.getExpr().asInstanceOf[AGeneratorExpr]
-
-      val generatorIdentifier = viewname + "$$generator" + generatorIds.get(generatorExp.getGenerator())
-
-      // Stack: generator, node, node
-      mv.visitVarInsn(ALOAD, 1) // scope, generator, node, node
-      mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Generator", "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
-      // nodes, node, node
-      mv.visitLdcInsn(id);  // id, nodes, node, node
-      mv.visitInsn(ACONST_NULL) // null, id, nodes, node, node
-      mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/glimpse/Node", "<init>", nodeInitMethodSignature)
-      // node
-
-      // Set properties on the node
-      addParameters(mv, node)
-      
-      addToNodeListFromStack
-    } else {
-      
-      /*
-       * Output bytecode equivalent to:
-       *   Node n = new Node(null, "\"" + id + "\", \"" + text + "\"")
-       *   nodes.add(n)
-       */
-      
-      // TODO Store the node off in a local variable, n
-      // Then visitLocalVariable in this method.
-      // This is fine as we can limit scope of the variable using labels and all is good
-      
-      // The value is on the top of the stack
-      val l2 = new Label()
-      mv.visitLabel(l2)
-      mv.visitInsn(ACONST_NULL) // null, value, node, node
-      mv.visitInsn(SWAP) // value, null, node, node
-      mv.visitLdcInsn(id) // id, value, null, node, node
-      mv.visitInsn(SWAP) // value, id, null, node, node
-      mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/glimpse/Node", "<init>", nodeInitMethodSignature)
-      // node
-      
-      // Set properties on the node
-      addParameters(mv, node)
-      
-      addToNodeListFromStack
+     
+    NEW(classOf[uk.co.colinhowe.glimpse.Node], classOf[java.util.List[_]], classOf[String], classOf[Object]) {
+      // node, node, value
+      mv.visitInsn(DUP2_X1) // node, node, value, node, node
+      mv.visitInsn(POP) // node, value, node, node
+      mv.visitInsn(POP) // value, node, node
+        
+      // TODO Expression evaluation should be done way better!
+      if (node.getExpr().isInstanceOf[AGeneratorExpr]) {
+        // TODO Create the generator object :)
+        val generatorExp = node.getExpr().asInstanceOf[AGeneratorExpr]
+  
+        val generatorIdentifier = viewname + "$$generator" + generatorIds.get(generatorExp.getGenerator())
+  
+        // Stack: generator, node, node
+        mv.visitVarInsn(ALOAD, 1) // scope, generator, node, node
+        mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Generator", "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
+        // nodes, node, node
+        mv.visitLdcInsn(id);  // id, nodes, node, node
+        mv.visitInsn(ACONST_NULL) // null, id, nodes, node, node
+      } else {
+        
+        /*
+         * Output bytecode equivalent to:
+         *   Node n = new Node(null, "\"" + id + "\", \"" + text + "\"")
+         *   nodes.add(n)
+         */
+        
+        // TODO Store the node off in a local variable, n
+        // Then visitLocalVariable in this method.
+        // This is fine as we can limit scope of the variable using labels and all is good
+        
+        // The value is on the top of the stack
+        mv.visitInsn(ACONST_NULL) // null, value, node, node
+        mv.visitInsn(SWAP) // value, null, node, node
+        mv.visitLdcInsn(id) // id, value, null, node, node
+        mv.visitInsn(SWAP) // value, id, null, node, node
+      }
     }
+      
+    // Set properties on the node
+    addParameters(mv, node)
+    
+    addToNodeListFromStack
   }
   
   
