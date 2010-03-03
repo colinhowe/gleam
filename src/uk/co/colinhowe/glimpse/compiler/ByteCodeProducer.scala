@@ -1196,7 +1196,7 @@ class ByteCodeProducer(
    *   property value -- Property pairs
    *   property name  -|
    */
-  override def outANodeCreate(node : ANodeCreate) {
+  override def caseANodeCreate(node : ANodeCreate) {
     val id = node.getId().getText()
     val mv = methodVisitors.head
     
@@ -1205,15 +1205,11 @@ class ByteCodeProducer(
     // Create the node on the stack ready for setting properties on it
     val l1 = startLabel(node)
     
-    if (node.getExpr == null) {
-      mv.visitInsn(ACONST_NULL)
-    }
-     
     NEW(classOf[uk.co.colinhowe.glimpse.Node], classOf[java.util.List[_]], classOf[String], classOf[Object]) {
-      // node, node, value
-      mv.visitInsn(DUP2_X1) // node, node, value, node, node
-      mv.visitInsn(POP) // node, value, node, node
-      mv.visitInsn(POP) // value, node, node
+      node.getExpr match {
+        case null => mv.visitInsn(ACONST_NULL)
+        case expr => expr.apply(this)
+      }
         
       // TODO Expression evaluation should be done way better!
       if (node.getExpr().isInstanceOf[AGeneratorExpr]) {
@@ -1248,40 +1244,15 @@ class ByteCodeProducer(
       }
     }
       
-    // Set properties on the node
-    addParameters(mv, node)
-    
-    addToNodeListFromStack
-  }
-  
-  
-  /**
-   * Assume that the node is already on the stack and that the node must remain
-   * on the stack afterwards.
-   * 
-   * @param mw
-   * @param node
-   */
-  def addParameters(mv : MethodVisitor, node : ANodeCreate) {
-    // Stack starts like this:
-    // node, values...
+    for (aargument <- node.getArguments) {
+      val argument = aargument.asInstanceOf[AArgument]
 
-    // Add the parameters on
-    // In reverse order as the expressions are added on to 
-    // the call in order which inverts them (due to it being a stack)
-    val reverseArguments = node.getArguments.reverse
-
-    for (_argument <- reverseArguments) {
-      val argument = _argument.asInstanceOf[AArgument]
-
-      val name = argument.getIdentifier().getText()
-      
-      // node, value
-      mv.visitInsn(DUP_X1) // node, value, node
-      mv.visitInsn(SWAP) // value, node, node
-      mv.visitLdcInsn(name) // name, value, node, node
-      mv.visitInsn(SWAP) // value, name, node, node
+      mv.visitInsn(DUP) // node, node
+      mv.visitLdcInsn(argument.getIdentifier().getText()) // name, node, node
+      argument.getExpr.apply(this) // value, name, node, node
       mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/Node", "setAttribute", "(Ljava/lang/String;Ljava/lang/Object;)V")
     }
+    
+    addToNodeListFromStack
   }
 }
