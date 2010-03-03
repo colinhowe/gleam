@@ -1103,23 +1103,16 @@ class ByteCodeProducer(
     mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;")
   }
 
-  override def outAMacroStmt(node : AMacroStmt) {
+  override def caseAMacroStmt(node : AMacroStmt) {
     val mv = methodVisitors.head
     val call = resolvedCallsProvider.get(node) 
 
-    if (node.getExpr == null) {
-      // Load null on to the stack as the value when there is no expression 
-      mv.visitInsn(ACONST_NULL)
-    }
+    // Load the macro and scope onto the stack
+    mv.visitMethodInsn(INVOKESTATIC, call.macro.className, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // macro, value, args
+    mv.visitVarInsn(ALOAD, 1)
 
-    // The arguments will be on the stack already.
-    // The stack will look like:
-    //   macro value, arg, arg, ...
-    
-    // Put all the arguments into a map
+    // Put all the arguments into a map on the stack
     NEW(classOf[java.util.HashMap[_,_]]) { }
-
-    // args, macro value, arg
     CHECKCAST(classOf[java.util.Map[_,_]])
 
     val args = node.getArguments()
@@ -1127,26 +1120,16 @@ class ByteCodeProducer(
     
     for (pargument <- args) {
       val argument = pargument.asInstanceOf[AArgument]
+      mv.visitInsn(DUP) // args, args
 
-      // Shuffle the stack around so the macro value and args are at the bottom
-
-      // args, macro value, arg
-      mv.visitInsn(SWAP) // macro value, args, arg
-      mv.visitInsn(DUP2_X1) // macro value, args, arg, macro value, args
-      mv.visitInsn(POP) // args, arg, macro value, args
-      mv.visitInsn(SWAP) // arg, args, macro value, args
-      
-      // Put the variable name on
       val argName = argument.getIdentifier().getText()
-      mv.visitLdcInsn(argName)
-      // name, arg, args, macro value, args
-      mv.visitInsn(SWAP) // arg, name, args, macro value, args
+      mv.visitLdcInsn(argName) // name, value, args, args
+      argument.getExpr.apply(this) // value, args, args
       
       // Put the variable on the arguments
       mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
-      // object, macro value, args
-      mv.visitInsn(POP) // macro value, args
-      mv.visitInsn(SWAP) // args, macro value
+      // object, args
+      mv.visitInsn(POP) // args
       
       argTypes(argName) = typeResolver.getType(argument.getExpr, typeNameResolver)
     }
@@ -1167,25 +1150,13 @@ class ByteCodeProducer(
       }
     }
     
-    val macroName = node.getIdentifier().getText()
-    
-    // Stack: args, value (string)
-    mv.visitInsn(SWAP) // value, args
-    
-    // Determine what macro to invoke
-    mv.visitMethodInsn(INVOKESTATIC, call.macro.className, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // macro, value, args
-    
-    // macro, value, args
-    mv.visitInsn(DUP_X2) // macro, value, args, macro
-    mv.visitInsn(POP) // value, args, macro
+    node.getExpr match {
+      case null => mv.visitInsn(ACONST_NULL)
+      case expr => expr.apply(this)
+    } 
+    // Stack: value, args, scope, macro
 
-    mv.visitVarInsn(ALOAD, 1) // scope, value, args, macro
-    mv.visitInsn(DUP_X2) // scope, value, args, scope, macro
-    mv.visitInsn(POP) // value, args, scope, macro
-
-    CHECKCAST(classOf[java.lang.Object]) // value, args, scope, macro
     mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Macro", "invoke", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;")
-    
     addAllNodesFromStack
   }
   
