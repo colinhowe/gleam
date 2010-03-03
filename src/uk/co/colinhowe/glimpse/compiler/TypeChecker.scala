@@ -1,6 +1,7 @@
 package uk.co.colinhowe.glimpse.compiler
 
 import uk.co.colinhowe.glimpse.IdentifierNotFoundException
+import uk.co.colinhowe.glimpse.IncompatibleControllerError
 
 import java.lang.reflect.Method
 
@@ -53,7 +54,8 @@ class TypeChecker(
   val genericsInScope = scala.collection.mutable.Map[String,Type]()
   
   var scope : Scope = new Scope(null, "view")
-  var controllerClazz : Class[_] = null
+  var controllers = new MStack[Class[_]]()
+  controllers.push(null)
     
   def getExpressionType(expr : PExpr) : Type = {
     expr match {
@@ -154,10 +156,17 @@ class TypeChecker(
     if (node.getWithDefn != null) {
       scope.add(node.getWithDefn.asInstanceOf[AWithDefn].getContentName().getText(), typeResolver.getType(node.getWithDefn.asInstanceOf[AWithDefn].getContentType, typeNameResolver, genericsInScope))
     }
+    
+    if (node.getController != null) {
+      controllers.push(typeResolver.getType(node.getController.asInstanceOf[AController].getType, typeNameResolver).asInstanceOf[SimpleType].getClazz)
+    } else {
+      controllers.push(null)
+    }
   }
   
   override def outAMacroDefn(node : AMacroDefn) {
     owners.pop
+    controllers.pop
     scope = scope.parentScope
 
     // Clear any generics in scope
@@ -205,7 +214,7 @@ class TypeChecker(
       val argName = arg.getIdentifier().getText()
       argTypes(argName) = typeResolver.getType(arg.getExpr, typeNameResolver)
     }
-
+    
     callResolver.getMatchingMacro(invocation, macroName, argTypes.toMap, typeResolver.getType(invocation.getExpr, typeNameResolver), cascadeIdentifier) match {
       case None =>
         // We should throw up an error that there are no matching macros
@@ -249,9 +258,25 @@ class TypeChecker(
             isFine = false
           }
         }
+          
+        // Check if the view's controller is a match for the macro's controller
+        if (call.macro.controller != null) {
+          if (controllers.head == null) {
+            errors.add(new IncompatibleControllerError(
+                lineNumberProvider.getLineNumber(invocation).get, call.macro.name, null, call.macro.controller))
+            isFine = false
+          } else if (!SimpleType(controllers.head).canBeAssignedTo(call.macro.controller)) {
+            errors.add(new IncompatibleControllerError(
+                lineNumberProvider.getLineNumber(invocation).get, call.macro.name, SimpleType(controllers.head), call.macro.controller))
+            isFine = false
+          }
+        }
         
         if (isFine) {
           resolvedCallsProvider.add(invocation, call)
+        } else {
+          // Remove this node
+          invocation.replaceBy(new AErrorNode)
         }
     }
   }
@@ -336,7 +361,14 @@ class TypeChecker(
     var returnType : Type = null
     for (identifier <- identifiers) {
       val methodName = "get" + capitalise(identifier.getText())
-      val getter = currentType.getMethod(methodName)
+      val getter = try {
+        currentType.getMethod(methodName)
+      } catch {
+        case _ : NoSuchMethodException =>
+          errors += new IdentifierNotFoundError(
+              identifier.getLine, identifier.getText())
+        return null
+      }
       val t = getter.getGenericReturnType()
       
       if (t.isInstanceOf[ParameterizedTypeImpl]) {
@@ -356,14 +388,19 @@ class TypeChecker(
     return returnType
   }
   
-  override def outAControllerPropExpr(node : AControllerPropExpr) { 
-    val returnType = evaluateCompoundProperty(node.getIdentifier, controllerClazz)
-    typeResolver.addType(node, returnType)
+  override def outAControllerPropExpr(node : AControllerPropExpr) {
+    val returnType = evaluateCompoundProperty(node.getIdentifier, controllers.head)
+    if (returnType != null) {
+      typeResolver.addType(node, returnType)
+    } else {
+      node.replaceBy(new AErrorExpr)
+    }
   }
   
   override def outAController(node : AController) {
-    val clazzName = identifierListToString(node.getIdentifier)
-    controllerClazz = getTypeByName(clazzName)
+    if (node.parent.isInstanceOf[AView]) {
+      controllers.push(typeResolver.getType(node.getType, typeNameResolver).asInstanceOf[SimpleType].getClazz)
+    }
   }
   
   

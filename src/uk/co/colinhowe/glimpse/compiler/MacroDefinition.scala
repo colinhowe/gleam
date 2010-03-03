@@ -9,7 +9,8 @@ case class MacroDefinition(
     val isDynamic : Boolean,
     val restrictions : Iterable[Restriction],
     val arguments : Map[String, ArgumentDefinition] = Map(),
-    val isAbstract : Boolean = false) extends Type {
+    val isAbstract : Boolean = false,
+    val controller : Type = null) extends Type {
   
   def hasRuntimeTyping = {
     arguments.exists(arg => arg._2.isRuntimeTyped)

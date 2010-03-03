@@ -9,16 +9,17 @@ object HMacroDefn {
       modifier : PMacroModifier = null,
       generics : Buffer[PGenericDefn] = Buffer(),
       args : Buffer[PArgDefn] = Buffer(),
-      withDefn : AWithDefn = null,
+      withDefn : PWithDefn = null,
       restriction : ARestriction = null,
-      generator : AGenerator = null) = {
+      generator : AGenerator = null,
+      controller : AController = null) = {
     new AMacroDefn(
       modifier,
       new TIdentifier(name), 
       generics, 
       args, 
       withDefn,
-      null,
+      controller,
       restriction,
       generator
     )

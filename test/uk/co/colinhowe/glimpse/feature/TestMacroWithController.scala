@@ -62,7 +62,7 @@ class TestMacroWithController extends TypeCheckerTest {
     """
     macro p with s : string
         controller uk.co.colinhowe.glimpse.compiler.DummyInterface {
-      node p c.someObject
+      node p "ignored"
     }
     p "ignored"
     """ failsWith
@@ -80,7 +80,7 @@ class TestMacroWithController extends TypeCheckerTest {
     controller java.lang.String
     macro p with s : string
         controller uk.co.colinhowe.glimpse.compiler.DummyInterface {
-      node p c.someObject
+      node p "ignored"
     }
     p "ignored"
     """  controller("controller") failsWith

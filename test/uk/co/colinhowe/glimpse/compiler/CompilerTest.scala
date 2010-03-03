@@ -137,7 +137,7 @@ abstract trait CompilerTest {
       printXml(scalaNodes).split("\n").foldLeft("") { _ + "  " + _ + "\n" } +
       "</view>"
     
-    assertEquals(printXml(expectedResult), xml)
+    assertEquals(printXml(expectedResult).replaceAll("\r", ""), xml.replaceAll("\r", ""))
     
     var errors = List[CompilationError]()
     for (result <- results) {

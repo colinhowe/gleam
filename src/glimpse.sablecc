@@ -117,7 +117,7 @@ Productions
       | {qualified} name dot [n1]:newline* identifier {-> [name.identifier, identifier]}
       ;
     
-    controller = controller_token [n1]:newline* name [n2]:newline* {-> New controller([name.identifier])};
+    controller = controller_token [n1]:newline* type [n2]:newline* {-> New controller(type)};
     
     stmt = {node} node_create [n1]:newline+ {-> New stmt.node(node_create)}
          | {macro} identifier opt_args? expr [n1]:newline+ {-> New stmt.macro(identifier, [opt_args.argument], expr)}
@@ -230,7 +230,7 @@ Productions
 Abstract Syntax Tree
     view = import* controller? macro_defn* stmt+;
     
-    controller = identifier*;
+    controller = type;
     
     arg_defn = modifier* type identifier [default]:expr?;
     

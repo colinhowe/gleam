@@ -34,7 +34,8 @@ class TypeProvider {
       case defn : AGenericDefn => new GenericType(defn.getIdentifier().getText(), classOf[Object])
       case qualified : AQualifiedType => getType(qualified, typeNameResolver, additionalTypes)
       case compound : ACompoundType => getType(compound, typeNameResolver, additionalTypes)
-      case _ => null
+      case _ => 
+      null
     }
   }
   
@@ -56,6 +57,7 @@ class TypeProvider {
     
     // TODO Check if this is a generic type
     if (additionalTypes.contains(typeName)) {
+          println("additional " + node)
       return additionalTypes(typeName)
     } else {
       return typeNameResolver.getClassByName(typeName) match {

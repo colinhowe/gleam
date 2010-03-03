@@ -27,13 +27,8 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
     val defn = HMacroDefn(
       "macro",
       modifier = new ADynamicMacroModifier,
-      args = Buffer[PArgDefn](
-        new AArgDefn(
-          Buffer[PModifier](),
-          new ABoolType,
-          new TIdentifier("readonly"),
-          new ATrueExpr
-        )
+      args = Buffer(
+        HAArgDefn(name = "readonly", argType = new ABoolType, default = new ATrueExpr)
       ),
       withDefn = new AWithDefn(
         new TIdentifier("s"),
@@ -236,5 +231,29 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
     val macros = definitionProvider.get("macro")
     val macro = macros.iterator.next
     assert(Set(NameRestriction("top level")) === macro.restrictions)
+  }
+  
+  @Test
+  def detectsController = {
+    val definitionProvider = new MacroDefinitionProvider
+    val finder = new MacroDefinitionFinder(
+        null, 
+        new TypeProvider, 
+        definitionProvider, 
+        null)
+    
+    val defn = HMacroDefn(
+      name = "macro",
+      withDefn = HWithDefn(name = "s", withType = new AStringType()),
+      generator = new AGenerator(),
+      controller = new AController(new AStringType)
+    )
+    
+    finder.outAMacroDefn(defn)
+    definitionProvider !? Join()
+
+    val macros = definitionProvider.get("macro")
+    val macro = macros.iterator.next
+    assert(SimpleType(classOf[String]) === macro.controller)
   }
 }

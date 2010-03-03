@@ -210,7 +210,9 @@ class GlimpseCompiler extends Actor {
     var exception : Exception = null
     for (future <- futures) {
       future() match {
-        case e : Exception => exception = e
+        case e : Exception => 
+          e.printStackTrace
+          exception = e
         case _ =>
       }
     }

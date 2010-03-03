@@ -354,13 +354,17 @@ class ByteCodeProducer(
     var methodName = "get" + capitalise(name)
     var returnType : String = null
     var returnClass : Class[_] = null
+    var isInterface = false
     if (ownerType.isInstanceOf[SimpleType]) {
       returnClass = ownerType.asInstanceOf[SimpleType].clazz.getMethod(methodName).getReturnType()
       returnType = Type.getInternalName(returnClass)
+      isInterface = ownerType.asInstanceOf[SimpleType].clazz.isInterface
     } else {
       throw new IllegalArgumentException("Only support simple types [" + ownerType + "]")
     }
-    mv.visitMethodInsn(INVOKEVIRTUAL, getTypeName(ownerType), methodName, "()L" + returnType + ";")
+    
+    val invokeType = if (isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
+    mv.visitMethodInsn(invokeType, getTypeName(ownerType), methodName, "()L" + returnType + ";")
     
     // Recurse if needed
     if (identifiers.size > 1) {
@@ -500,10 +504,9 @@ class ByteCodeProducer(
     mv.visitVarInsn(ALOAD, 3)
     mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
     
-    val className = identifierListToString(node.getIdentifier)
-    
     // Load the controller class
-    controllerType = new SimpleType(getTypeByName(className))
+    // TODO Worry about this in macros!
+    controllerType = typeResolver.getType(node.getType, typeNameResolver) 
   }
 
   private def defaultConstructor(cw : ClassWriter, className : String, parentClass : String = "java/lang/Object") {
@@ -664,6 +667,14 @@ class ByteCodeProducer(
       mv.visitLdcInsn(getOwner(node))
       mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "<init>", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/lang/Object;)V")
       mv.visitVarInsn(ASTORE, 4)
+      
+      // Put the controller on if needed
+      if (macroDefinition.controller != null) {
+        mv.visitVarInsn(ALOAD, 4) // scope
+        mv.visitLdcInsn("$controller") // name, scope
+        getFromScope("$controller") // value, name, scope
+        mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
+      }
       
       // Put defaults on as appropriate
       for (parg <- node.getArgDefn()) {
@@ -1182,7 +1193,7 @@ class ByteCodeProducer(
         case _ =>
       }
     }
-
+    
     val macroName = node.getIdentifier().getText()
     
     // Stack: args, value (string)
