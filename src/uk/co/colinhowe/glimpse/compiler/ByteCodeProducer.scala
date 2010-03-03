@@ -229,11 +229,7 @@ class ByteCodeProducer(
     mv.visitLabel(l4)
     
     // Push the value on to the scope
-    mv.visitVarInsn(ALOAD, 1) // scope, string, iterator
-    mv.visitInsn(SWAP) // string, scope, iterator
-    mv.visitLdcInsn(node.getIdentifier().getText()) // name, value, scope, iterator
-    mv.visitInsn(SWAP) // value, name, scope, iterator
-    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
+    addToScopeFromStack(node.getIdentifier().getText()) // iterator
     
     // Now invoke the statements in between
     for (pstmt <- node.getStmt()) {
@@ -498,10 +494,9 @@ class ByteCodeProducer(
   override def outAController(node : AController) {
     // The controller will be in register 3... put it on the environment
     val mv = methodVisitors.head
-    mv.visitVarInsn(ALOAD, 1)
-    mv.visitLdcInsn("$controller")
-    mv.visitVarInsn(ALOAD, 3)
-    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
+    addToScope("$controller") {
+      mv.visitVarInsn(ALOAD, 3)
+    }
     
     // Load the controller class
     // TODO Worry about this in macros!
@@ -582,15 +577,11 @@ class ByteCodeProducer(
       mv.visitCode()
 
       // Initialise the instance
-      val l0 = new Label()
-      mv.visitLabel(l0)
       mv.visitTypeInsn(NEW, className)
       mv.visitInsn(DUP)
       mv.visitMethodInsn(INVOKESPECIAL, className, "<init>", "()V")
       mv.visitFieldInsn(PUTSTATIC, className, "instance", "Luk/co/colinhowe/glimpse/Macro;")
       
-      val l1 = new Label()
-      mv.visitLabel(l1)
       mv.visitInsn(RETURN)
       mv.visitMaxs(0, 0)
       mv.visitEnd()
@@ -601,8 +592,6 @@ class ByteCodeProducer(
       val mv = cw.visitMethod(ACC_STATIC | ACC_PUBLIC, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;", null, null)
       mv.visitCode()
 
-      val l1 = new Label()
-      mv.visitLabel(l1)
       mv.visitFieldInsn(GETSTATIC, className, "instance", "Luk/co/colinhowe/glimpse/Macro;")
       mv.visitInsn(ARETURN)
       mv.visitMaxs(0, 0)
@@ -614,8 +603,6 @@ class ByteCodeProducer(
       val mv = cw.visitMethod(ACC_PUBLIC, "getMacroName", "()Ljava/lang/String;", null, null)
       mv.visitCode()
 
-      val l1 = new Label()
-      mv.visitLabel(l1)
       mv.visitLdcInsn(macroDefinition.name)
       mv.visitInsn(ARETURN)
       mv.visitMaxs(0, 0)
@@ -630,8 +617,6 @@ class ByteCodeProducer(
       val mv = cw.visitMethod(ACC_PUBLIC, "getRuntimeTypedArgumentName", "()Ljava/lang/String;", null, null)
       mv.visitCode()
 
-      val l1 = new Label()
-      mv.visitLabel(l1)
       mv.visitLdcInsn(argDefn.name)
       mv.visitInsn(ARETURN)
       mv.visitMaxs(0, 0)
@@ -1049,12 +1034,7 @@ class ByteCodeProducer(
       val l0 = startOrContinueLabel(node)
       setLineNumber(mv, l0, lineNumberProvider.getLineNumber(node))
       mv.visitLabel(l0)
-      mv.visitVarInsn(ALOAD, 1)
-      mv.visitInsn(SWAP) // Value will already be on the stack, so swap it with the scope
-      mv.visitLdcInsn(varname)
-      mv.visitInsn(SWAP) // value, name, scope
-  
-      mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
+      addToScopeFromStack(varname)
     }
     
     // Put this variable and the type of it on to the scope
@@ -1221,14 +1201,6 @@ class ByteCodeProducer(
     mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Macro", "invoke", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;")
     
     addAllNodesFromStack
-  }
-  
-  private def addAllNodesFromStack {
-    val mv = methodVisitors.head
-    mv.visitVarInsn(ALOAD, 2) // list, nodes
-    mv.visitInsn(SWAP) // nodes, list
-    mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "addAll", "(Ljava/util/Collection;)Z")
-    mv.visitInsn(POP)
   }
   
   
