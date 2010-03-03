@@ -25,6 +25,10 @@ public class DummyController implements DummyInterface {
     ages.add(25);
   }
   
+  public String makeMessage(String id) {
+    return id + ".message";
+  }
+  
   
   /**
    * A list of names

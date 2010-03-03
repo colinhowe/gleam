@@ -162,6 +162,7 @@ Productions
          | {constant} number
          | {property} name {-> New expr.property([name.identifier])}
          | {controller_prop} controller_ref dot name {-> New expr.controller_prop([name.identifier])}
+         | {controller_method} controller_ref dot identifier lparen marguments? rparen {-> New expr.controller_method(identifier, [marguments.expr])}
          | {false} false
          | {true} true
          | {invert} bang expr {-> New expr.invert(expr)}
@@ -223,6 +224,11 @@ Productions
       
     argument = identifier colon expr {-> New argument(identifier, expr) };
     
+    marguments {-> expr* } = 
+        {single} expr {-> [expr]}
+      | {multiple} expr comma marguments {-> [expr, marguments.expr] }
+      ;
+      
     forloop = for lparen type identifier in expr rparen lbrace [n1]:newline* stmt+ rbrace {-> New forloop(type, identifier, expr, [stmt]) };
     
     //string_literal = string;
@@ -271,6 +277,7 @@ Abstract Syntax Tree
       | {constant} number
       | {property} identifier*
       | {controller_prop} identifier*
+      | {controller_method} identifier expr*
       | {false} false
       | {true} true
       | {invert} expr

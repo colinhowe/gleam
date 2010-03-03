@@ -1,5 +1,6 @@
 package uk.co.colinhowe.glimpse.compiler
 
+import java.lang.reflect.Method
 import uk.co.colinhowe.glimpse.Generator
 import uk.co.colinhowe.glimpse.compiler.typing.Type
 import uk.co.colinhowe.glimpse.compiler.typing.SimpleType

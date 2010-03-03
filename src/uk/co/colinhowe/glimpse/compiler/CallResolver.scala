@@ -15,6 +15,7 @@ import scala.collection.JavaConversions._
 import uk.co.colinhowe.glimpse.compiler.ArgumentSource._
 
 class CallResolver(provider : MacroDefinitionProvider) extends DepthFirstAdapter {
+
   def getMatchingMacro(node : Node, macroName : String, arguments : Map[String, Type], valueType : Type, cascadeIdentifier : CascadeIdentifier) : Option[ResolvedCall] = {
     val definitions = provider.get(macroName)
     val calls = definitions.map(matches(node, _, arguments, valueType, cascadeIdentifier))

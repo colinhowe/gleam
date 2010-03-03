@@ -55,8 +55,11 @@ class ByteCodeProducer(
   private val classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS)
   private val dynamicMacros = scala.collection.mutable.Set[String]()
   private val macros = scala.collection.mutable.Set[String]()
-  private var controllerType : uk.co.colinhowe.glimpse.compiler.typing.Type = null
   private var inMacro = false
+  private val controllers = new MStack[Class[_]]()
+  controllers.push(null)
+
+  private val methodResolver = new MethodResolver(typeResolver, typeNameResolver)
   
   private val scopes = new MStack[Scope]()
 
@@ -113,6 +116,31 @@ class ByteCodeProducer(
     mv.visitLabel(label)
     trailingLabels.pop
     trailingLabels.push(Some(label))
+  }
+  
+  override def caseAControllerMethodExpr(node : AControllerMethodExpr) {
+    val mv = methodVisitors.head
+  
+    val method = methodResolver.getMatchingMethod(controllers.head, node).get
+    
+    val invokeType = if (controllers.head.isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
+
+    getFromScope("$controller")
+    mv.visitTypeInsn(CHECKCAST, Type.getInternalName(controllers.head))
+    
+    // Load the expressions onto the stack
+    node.getExpr.zip(method.getParameterTypes()).foreach { case(expr, clazz) => 
+      expr.apply(this) 
+      mv.visitTypeInsn(CHECKCAST, Type.getInternalName(clazz))
+    }
+    
+    mv.visitMethodInsn(
+      invokeType,
+      Type.getInternalName(controllers.head),
+      node.getIdentifier.getText,
+      Type.getMethodDescriptor(method)
+    )
+    
   }
   
   override def caseAIfelse(node : AIfelse) {
@@ -300,8 +328,8 @@ class ByteCodeProducer(
     
     // Get the value of the property
     getFromScope("$controller")
-    mv.visitTypeInsn(CHECKCAST, getTypeName(controllerType))
-    evaluateProperty(node.getIdentifier(), controllerType)
+    mv.visitTypeInsn(CHECKCAST, Type.getInternalName(controllers.head))
+    evaluateProperty(node.getIdentifier(), controllers.head)
     
     mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/glimpse/PropertyReference", "<init>", "(Ljava/lang/String;Ljava/lang/Object;)V")
 
@@ -326,7 +354,7 @@ class ByteCodeProducer(
         val ownerType = typeResolver.getType(node.getIdentifier.head, typeNameResolver)
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(ownerType.asInstanceOf[SimpleType].getClazz))
         
-        evaluateProperty(node.getIdentifier.tail, ownerType)
+        evaluateProperty(node.getIdentifier.tail, ownerType.asInstanceOf[SimpleType].getClazz)
       }
     }
     
@@ -340,11 +368,11 @@ class ByteCodeProducer(
     val l1 = new Label()
     mv.visitLabel(l1)
     getFromScope("$controller")
-    mv.visitTypeInsn(CHECKCAST, getTypeName(controllerType))
-    evaluateProperty(node.getIdentifier(), controllerType)
+    mv.visitTypeInsn(CHECKCAST, Type.getInternalName(controllers.head))
+    evaluateProperty(node.getIdentifier(), controllers.head)
   }
   
-  def evaluateProperty(identifiers : Iterable[TIdentifier], ownerType : uk.co.colinhowe.glimpse.compiler.typing.Type) {
+  def evaluateProperty(identifiers : Iterable[TIdentifier], ownerType : Class[_]) {
     val mv = methodVisitors.head
     
     // The controller will be on the stack
@@ -355,34 +383,23 @@ class ByteCodeProducer(
     var returnType : String = null
     var returnClass : Class[_] = null
     var isInterface = false
-    if (ownerType.isInstanceOf[SimpleType]) {
-      returnClass = ownerType.asInstanceOf[SimpleType].clazz.getMethod(methodName).getReturnType()
-      returnType = Type.getInternalName(returnClass)
-      isInterface = ownerType.asInstanceOf[SimpleType].clazz.isInterface
-    } else {
-      throw new IllegalArgumentException("Only support simple types [" + ownerType + "]")
-    }
+
+    returnClass = ownerType.getMethod(methodName).getReturnType()
+    returnType = Type.getInternalName(returnClass)
+    isInterface = ownerType.isInterface
     
     val invokeType = if (isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
-    mv.visitMethodInsn(invokeType, getTypeName(ownerType), methodName, "()L" + returnType + ";")
+    mv.visitMethodInsn(invokeType, Type.getInternalName(ownerType), methodName, "()L" + returnType + ";")
     
     // Recurse if needed
     if (identifiers.size > 1) {
-      evaluateProperty(identifiers.tail, new SimpleType(returnClass))
+      evaluateProperty(identifiers.tail, returnClass)
     }
   }
   
   def capitalise(s : String ) = {
     s.substring(0, 1).toUpperCase() + s.substring(1)
   }
-  
-  def getTypeName(t : uk.co.colinhowe.glimpse.compiler.typing.Type) = {
-    t match {
-      case t : SimpleType => Type.getInternalName(t.clazz)
-      case _ => throw new IllegalArgumentException("Only support simple types")
-    }
-  }
-  
   
   override def inAView(node : AView) {
     // Output a view class only if the view contains something that isn't a macro definition
@@ -506,7 +523,9 @@ class ByteCodeProducer(
     
     // Load the controller class
     // TODO Worry about this in macros!
-    controllerType = typeResolver.getType(node.getType, typeNameResolver) 
+    if (node.parent.isInstanceOf[AView]) {
+      controllers.push(typeResolver.getType(node.getType, typeNameResolver).asInstanceOf[SimpleType].getClazz)
+    }
   }
 
   private def defaultConstructor(cw : ClassWriter, className : String, parentClass : String = "java/lang/Object") {
@@ -752,6 +771,12 @@ class ByteCodeProducer(
       mv.visitLocalVariable("value", "Ljava/lang/String;", null, l0, l6, 3)
       mv.visitLocalVariable("scope", "Luk/co/colinhowe/glimpse/infrastructure/Scope;", null, l0, l6, 4)
     }
+    
+    if (node.getController != null) {
+      controllers.push(typeResolver.getType(node.getController.asInstanceOf[AController].getType, typeNameResolver).asInstanceOf[SimpleType].getClazz)
+    } else {
+      controllers.push(null)
+    }
   }
   
   
@@ -760,8 +785,8 @@ class ByteCodeProducer(
     val className = macroDefinition.className
     inMacro = false
 
-    // Remove the scope
     scopes.pop()
+    controllers.pop
     
     if (!macroDefinition.isDynamic && !macroDefinition.isAbstract) {
       val mv = methodVisitors.pop()
@@ -1334,16 +1359,6 @@ class ByteCodeProducer(
       mv.visitLdcInsn(name) // name, value, node, node
       mv.visitInsn(SWAP) // value, name, node, node
       mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/Node", "setAttribute", "(Ljava/lang/String;Ljava/lang/Object;)V")
-    }
-  }
-
-  def getTypeByName(clazzName : String) : Class[_] = {
-    // Check to see if there is an import for this class name
-    // We don't have to worry about periods as they won't be in the set of
-    // imports anyway
-    typeNameResolver.getClassByName(clazzName) match {
-      case Some(clazz) => clazz
-      case None => this.getClass().getClassLoader().loadClass(clazzName)
     }
   }
 }

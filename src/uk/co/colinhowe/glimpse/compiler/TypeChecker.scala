@@ -1,6 +1,7 @@
 package uk.co.colinhowe.glimpse.compiler
 
 import uk.co.colinhowe.glimpse.IdentifierNotFoundException
+import uk.co.colinhowe.glimpse.MethodNotFoundError
 import uk.co.colinhowe.glimpse.IncompatibleControllerError
 
 import java.lang.reflect.Method
@@ -40,6 +41,7 @@ class TypeChecker(
   val owners = new MStack[String]()
   owners.push("view")
   
+  private val methodResolver = new MethodResolver(typeResolver, typeNameResolver)
   private val cascadeIdentifier = new CascadeIdentifier(
       typeResolver, typeNameResolver, resolvedCallsProvider)
   
@@ -68,6 +70,10 @@ class TypeChecker(
       case _ : APropertyExpr => typeResolver.getType(expr, typeNameResolver)
       case _ : AGeneratorExpr => new SimpleType(classOf[Generator])
       case expr : AControllerPropExpr => typeResolver.getType(expr, typeNameResolver)
+      case expr : AControllerMethodExpr => new SimpleType(
+          methodResolver.getMatchingMethod(controllers.head, expr).get.getReturnType
+        )
+      case _ : AErrorExpr => new SimpleType(classOf[java.lang.Object])
       case _ => throw new IllegalArgumentException("Cannot handle expression[" + expr + ":" + expr.getClass + "]")
     }
   }
@@ -103,6 +109,25 @@ class TypeChecker(
     } catch {
       case _ : IdentifierNotFoundException =>
         errors += new IdentifierNotFoundError(lineNumberProvider.getLineNumber(node).get, node.getIdentifier().getText())
+    }
+  }
+  
+  override def outAControllerMethodExpr(node : AControllerMethodExpr) {
+    // Check that the method matches something
+    val methodOption = methodResolver.getMatchingMethod(controllers.head, node)
+    
+    if (methodOption == None) {
+      val argTypes = node.getExpr.map { expr =>
+        typeResolver.getType(expr, typeNameResolver)
+      }
+      errors += MethodNotFoundError(
+        line = lineNumberProvider.getLineNumber(node).get,
+        identifier = node.getIdentifier.getText,
+        arguments = argTypes.toList
+      )
+      
+      // Remove this node
+      node.replaceBy(new AErrorExpr)
     }
   }
   

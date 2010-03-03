@@ -11,7 +11,7 @@ import uk.co.colinhowe.glimpse.compiler.IdentifierConverter._
 import scala.collection.JavaConversions._
 
 class TypeProvider {
-  
+    
   def getType(node : Node, typeNameResolver : TypeNameResolver, additionalTypes : Map[String, Type] = Map()) : Type = {
     node match {
       case _ : AFalseExpr | 
