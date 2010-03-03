@@ -3,6 +3,7 @@
  */
 package uk.co.colinhowe.glimpse.compiler
 
+import uk.co.colinhowe.glimpse.infrastructure.DynamicMacro
 import uk.co.colinhowe.glimpse.Generator
 import uk.co.colinhowe.glimpse.compiler.node.PModifier
 import java.util.LinkedList
@@ -42,7 +43,7 @@ class ByteCodeProducer(
     val sourcename : String,
     val callResolver : CallResolver,
     val resolvedCallsProvider : ResolvedCallsProvider
-   ) extends DepthFirstAdapter with Conversions {
+   ) extends DepthFirstAdapter with Conversions with ByteCodePatterns {
   private val nodeInitMethodSignature = "(Ljava/util/List;Ljava/lang/String;Ljava/lang/Object;)V"
   private implicit val typeProvider = typeResolver.typeProvider
     
@@ -69,6 +70,8 @@ class ByteCodeProducer(
   val errors = scala.collection.mutable.Buffer[CompilationError]()
   val labelsWithLines = MSet[Label]()
   val trailingLabels = new MStack[Option[Label]]()
+  
+  protected def getMethodVisitor = methodVisitors.head 
   
   // TODO Refactor out into a seperate class
   // TODO write some tests for this 
@@ -126,12 +129,12 @@ class ByteCodeProducer(
     val invokeType = if (controllers.head.isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
 
     getFromScope("$controller")
-    mv.visitTypeInsn(CHECKCAST, Type.getInternalName(controllers.head))
+    CHECKCAST(controllers.head)
     
     // Load the expressions onto the stack
     node.getExpr.zip(method.getParameterTypes()).foreach { case(expr, clazz) => 
       expr.apply(this) 
-      mv.visitTypeInsn(CHECKCAST, Type.getInternalName(clazz))
+      CHECKCAST(clazz)
     }
     
     mv.visitMethodInsn(
@@ -153,7 +156,7 @@ class ByteCodeProducer(
     }
 
     // Assume boolean on the stack that can be cast to a bool
-    mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean")
+    CHECKCAST(classOf[java.lang.Boolean])
     mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z")
     
     // Jump to the end if the expression is false
@@ -249,14 +252,9 @@ class ByteCodeProducer(
     outAForloop(node)
   }
   
-  def outputClass(cw : ClassWriter, name : String) {
+  def outputClass(cw : ClassWriter, file : File) {
     val bytes = cw.toByteArray()
     
-    // Output the class to a class file!
-    // TODO Use some sort of factory to provide output methods
-    val file = new File("temp/" + name + ".class")
-//    file.deleteOnExit();
-      
     val stream = new FileOutputStream(file)
     try {
       stream.write(bytes)
@@ -264,6 +262,8 @@ class ByteCodeProducer(
       stream.close()
     }
   }
+  
+  def outputClass(cw : ClassWriter, name : String) { outputClass(cw, new File("temp/" + name + ".class")) } 
   
   override def outAView(node : AView) {
     if (node.getStmt().size() > 0) {
@@ -293,26 +293,8 @@ class ByteCodeProducer(
       
       scopes.pop()
       
-      val bytes = classWriter.toByteArray()
-      
-      // Output the class to a class file!
-      val file = new File(outputFileName)
-//      file.deleteOnExit();
-        
-      val stream = new FileOutputStream(file)
-      try {
-        stream.write(bytes)
-      } finally {
-        stream.close()
-      }
+      outputClass(classWriter, new File(outputFileName))
     }
-  }
-  
-  private def getFromScope(name : String) = {
-    val mv = methodVisitors.head
-    mv.visitVarInsn(ALOAD, 1) // scope
-    mv.visitLdcInsn(name) // name, scope
-    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
   }
   
   override def outAPropertyrefExpr(node : APropertyrefExpr) {
@@ -328,7 +310,7 @@ class ByteCodeProducer(
     
     // Get the value of the property
     getFromScope("$controller")
-    mv.visitTypeInsn(CHECKCAST, Type.getInternalName(controllers.head))
+    CHECKCAST(controllers.head)
     evaluateProperty(node.getIdentifier(), controllers.head)
     
     mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/glimpse/PropertyReference", "<init>", "(Ljava/lang/String;Ljava/lang/Object;)V")
@@ -352,7 +334,7 @@ class ByteCodeProducer(
       if (node.getIdentifier().size() > 1) {
         // Cast as appropriate
         val ownerType = typeResolver.getType(node.getIdentifier.head, typeNameResolver)
-        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(ownerType.asInstanceOf[SimpleType].getClazz))
+        CHECKCAST(ownerType.asInstanceOf[SimpleType].getClazz)
         
         evaluateProperty(node.getIdentifier.tail, ownerType.asInstanceOf[SimpleType].getClazz)
       }
@@ -368,7 +350,7 @@ class ByteCodeProducer(
     val l1 = new Label()
     mv.visitLabel(l1)
     getFromScope("$controller")
-    mv.visitTypeInsn(CHECKCAST, Type.getInternalName(controllers.head))
+    CHECKCAST(controllers.head)
     evaluateProperty(node.getIdentifier(), controllers.head)
   }
   
@@ -859,7 +841,7 @@ class ByteCodeProducer(
     inMacro = false
     beginScope(null, false, mv => {
       getFromScope("$ownerscope")
-      mv.visitTypeInsn(CHECKCAST, "uk/co/colinhowe/glimpse/infrastructure/Scope")
+      CHECKCAST(classOf[Scope])
     })
     inMacro = true
     
@@ -897,7 +879,7 @@ class ByteCodeProducer(
     getFromScope(generatorArgumentName)
     
     // The generator will be on the stack
-    mv.visitTypeInsn(CHECKCAST, "uk/co/colinhowe/glimpse/Generator")
+    CHECKCAST(classOf[Generator])
 
     // invoke the generator
     mv.visitInsn(SWAP)
@@ -1052,7 +1034,7 @@ class ByteCodeProducer(
   override def outAInvertExpr(node : AInvertExpr) {
     // Assume that a Boolean is on the stack
     val mv = methodVisitors.head
-    mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean")
+    CHECKCAST(classOf[java.lang.Boolean])
     mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z")
     mv.visitLdcInsn(1)
     mv.visitInsn(IXOR) // 1 ^ x is equivalent to !x
@@ -1088,7 +1070,7 @@ class ByteCodeProducer(
     mv.visitTypeInsn(NEW, "java/lang/Integer") // Integer, name, scope
     mv.visitInsn(DUP) // Integer, Integer, name, scope
     getFromScope(node.getIdentifier().getText()) // value, Integer, Integer, name, scope
-    mv.visitTypeInsn(CHECKCAST, "java/lang/Integer")
+    CHECKCAST(classOf[java.lang.Integer])
     mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Integer", "intValue", "()I")
     mv.visitInsn(ICONST_1) // 1, value, Integer, Integer, name, scope
     mv.visitInsn(IADD) // value+1, Integer, Integer, name, scope
@@ -1117,7 +1099,7 @@ class ByteCodeProducer(
     mv.visitMethodInsn(INVOKESTATIC, sourceClassName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
     
     mv.visitMethodInsn(INVOKESTATIC, dynamicMacroName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
-    mv.visitTypeInsn(CHECKCAST, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro")
+    CHECKCAST(classOf[DynamicMacro])
     mv.visitInsn(SWAP)
     mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", "setToInvoke", "(Luk/co/colinhowe/glimpse/Macro;)V")
   }
@@ -1172,7 +1154,7 @@ class ByteCodeProducer(
     mv.visitInsn(DUP) // args, args, macro value, arg
     mv.visitMethodInsn(INVOKESPECIAL, "java/util/HashMap", "<init>", "()V")
     // args, macro value, arg
-    mv.visitTypeInsn(CHECKCAST, "java/util/Map") // args, macro value, arg
+    CHECKCAST(classOf[java.util.Map[_,_]])
 
     val args = node.getArguments()
     val argTypes = MMap[String, GType]()
@@ -1235,7 +1217,7 @@ class ByteCodeProducer(
     mv.visitInsn(DUP_X2) // scope, value, args, scope, macro
     mv.visitInsn(POP) // value, args, scope, macro
 
-    mv.visitTypeInsn(CHECKCAST, "java/lang/Object") // value, args, scope, macro
+    CHECKCAST(classOf[java.lang.Object]) // value, args, scope, macro
     mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Macro", "invoke", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;")
     
     addAllNodesFromStack
