@@ -1246,10 +1246,7 @@ class ByteCodeProducer(
       // Set properties on the node
       addParameters(mv, node)
       
-      mv.visitVarInsn(ALOAD, 2) // list, node
-      mv.visitInsn(SWAP) // node, list
-      mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "add", "(Ljava/lang/Object;)Z")
-      mv.visitInsn(POP)
+      addToNodeListFromStack
     } else {
       
       /*
@@ -1275,13 +1272,7 @@ class ByteCodeProducer(
       // Set properties on the node
       addParameters(mv, node)
       
-      // node
-      
-      mv.visitVarInsn(ALOAD, 2) // list, node
-      mv.visitInsn(SWAP) // node, list
-      mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "add", "(Ljava/lang/Object;)Z")
-      // boolean
-      mv.visitInsn(POP)
+      addToNodeListFromStack
     }
   }
   

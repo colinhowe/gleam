@@ -7,12 +7,19 @@ import org.objectweb.asm.Type
 
 trait ByteCodePatterns {
   protected def getMethodVisitor : MethodVisitor
+  private def mv = getMethodVisitor
   
   def getFromScope(name : String) = {
-    val mv = getMethodVisitor
     mv.visitVarInsn(ALOAD, 1) // scope
     mv.visitLdcInsn(name) // name, scope
     mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
+  }
+  
+  def addToNodeListFromStack = {
+    mv.visitVarInsn(ALOAD, 2) // list, node
+    mv.visitInsn(SWAP) // node, list
+    mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "add", "(Ljava/lang/Object;)Z")
+    mv.visitInsn(POP)
   }
   
   /**
@@ -20,7 +27,6 @@ trait ByteCodePatterns {
    * Assumes the value is on the stack already.
    */
   def addToScopeFromStack(identifier : String) = {
-    val mv = getMethodVisitor
     mv.visitVarInsn(ALOAD, 1) // scope, string
     mv.visitInsn(SWAP) // string, scope
     mv.visitLdcInsn(identifier) // name, value, scope
@@ -33,7 +39,6 @@ trait ByteCodePatterns {
    * The value is placed on the stack from the given function.
    */
   def addToScope(identifier : String)(value : => Unit) = {
-    val mv = getMethodVisitor
     mv.visitVarInsn(ALOAD, 1)
     mv.visitLdcInsn(identifier)
     value
@@ -47,7 +52,6 @@ trait ByteCodePatterns {
   
   
   def addAllNodesFromStack {
-    val mv = getMethodVisitor
     mv.visitVarInsn(ALOAD, 2) // list, nodes
     mv.visitInsn(SWAP) // nodes, list
     mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "addAll", "(Ljava/util/Collection;)Z")
