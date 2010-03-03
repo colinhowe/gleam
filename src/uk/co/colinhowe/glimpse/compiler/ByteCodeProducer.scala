@@ -1207,40 +1207,30 @@ class ByteCodeProducer(
     
     NEW(classOf[uk.co.colinhowe.glimpse.Node], classOf[java.util.List[_]], classOf[String], classOf[Object]) {
       node.getExpr match {
-        case null => mv.visitInsn(ACONST_NULL)
-        case expr => expr.apply(this)
-      }
+        case null => 
+          mv.visitInsn(ACONST_NULL)
+          mv.visitLdcInsn(id)
+          mv.visitInsn(ACONST_NULL)
         
-      // TODO Expression evaluation should be done way better!
-      if (node.getExpr().isInstanceOf[AGeneratorExpr]) {
-        // TODO Create the generator object :)
-        val generatorExp = node.getExpr().asInstanceOf[AGeneratorExpr]
-  
-        val generatorIdentifier = viewname + "$$generator" + generatorIds.get(generatorExp.getGenerator())
-  
-        // Stack: generator, node, node
-        mv.visitVarInsn(ALOAD, 1) // scope, generator, node, node
-        mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Generator", "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
-        // nodes, node, node
-        mv.visitLdcInsn(id);  // id, nodes, node, node
-        mv.visitInsn(ACONST_NULL) // null, id, nodes, node, node
-      } else {
+        case expr : AGeneratorExpr => 
+          expr.apply(this)
+
+          val generatorIdentifier = viewname + "$$generator" + generatorIds.get(expr.getGenerator())
+          // Stack: generator, node, node
+          mv.visitVarInsn(ALOAD, 1) // scope, generator, node, node
+          mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Generator", "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
+          // nodes, node, node
+          mv.visitLdcInsn(id);  // id, nodes, node, node
+          mv.visitInsn(ACONST_NULL) // null, id, nodes, node, node
         
-        /*
-         * Output bytecode equivalent to:
-         *   Node n = new Node(null, "\"" + id + "\", \"" + text + "\"")
-         *   nodes.add(n)
-         */
-        
-        // TODO Store the node off in a local variable, n
-        // Then visitLocalVariable in this method.
-        // This is fine as we can limit scope of the variable using labels and all is good
-        
-        // The value is on the top of the stack
-        mv.visitInsn(ACONST_NULL) // null, value, node, node
-        mv.visitInsn(SWAP) // value, null, node, node
-        mv.visitLdcInsn(id) // id, value, null, node, node
-        mv.visitInsn(SWAP) // value, id, null, node, node
+        case expr => 
+          // TODO Store the node off in a local variable, n
+          // Then visitLocalVariable in this method.
+          // This is fine as we can limit scope of the variable using labels and all is good
+          
+          mv.visitInsn(ACONST_NULL) // null, node, node
+          mv.visitLdcInsn(id) // id, null, node, node
+          expr.apply(this) // value, id, null, node, node
       }
     }
       
