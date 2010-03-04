@@ -6,6 +6,8 @@ package uk.co.colinhowe.glimpse.compiler
 import uk.co.colinhowe.glimpse.PropertyReference
 import uk.co.colinhowe.glimpse.infrastructure.DynamicMacro
 import uk.co.colinhowe.glimpse.Generator
+import uk.co.colinhowe.glimpse.Macro
+import uk.co.colinhowe.glimpse.{ Node => GNode }
 import uk.co.colinhowe.glimpse.compiler.node.PModifier
 import java.util.LinkedList
 import uk.co.colinhowe.glimpse.compiler.typing.GenericType
@@ -125,12 +127,8 @@ class ByteCodeProducer(
   }
   
   override def caseAControllerMethodExpr(node : AControllerMethodExpr) {
-    val mv = methodVisitors.head
-  
     val method = methodResolver.getMatchingMethod(controllers.head, node).get
     
-    val invokeType = if (controllers.head.isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
-
     getFromScope("$controller")
     CHECKCAST(controllers.head)
     
@@ -140,13 +138,7 @@ class ByteCodeProducer(
       CHECKCAST(clazz)
     }
     
-    mv.visitMethodInsn(
-      invokeType,
-      Type.getInternalName(controllers.head),
-      node.getIdentifier.getText,
-      Type.getMethodDescriptor(method)
-    )
-    
+    INVOKE(controllers.head, node.getIdentifier.getText, Type.getMethodDescriptor(method))
   }
   
   override def caseAIfelse(node : AIfelse) {
@@ -160,7 +152,7 @@ class ByteCodeProducer(
 
     // Assume boolean on the stack that can be cast to a bool
     CHECKCAST(classOf[java.lang.Boolean])
-    mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z")
+    INVOKE(classOf[java.lang.Boolean], "booleanValue", "()Z")
     
     // Jump to the end if the expression is false
     val endLabel = startLabel(null)
@@ -213,7 +205,7 @@ class ByteCodeProducer(
     }
 
     // The iterable should be on the top of the stack
-    mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "iterator", "()Ljava/util/Iterator;")
+    INVOKE(classOf[java.util.List[_]], "iterator", "()Ljava/util/Iterator;")
 
     val l2 = new Label()
     setLineNumber(mv, l2, lineNumberProvider.getLineNumber(node))
@@ -224,7 +216,7 @@ class ByteCodeProducer(
     setLineNumber(mv, l3, lineNumberProvider.getLineNumber(node))
 
     mv.visitInsn(DUP) // iterator, iterator
-    mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Iterator", "next", "()Ljava/lang/Object;") // object, iterator
+    INVOKE(classOf[java.util.Iterator[_]], "next", "()Ljava/lang/Object;") // object, iterator
 
     // TODO Check the type of the expression against what we get
 
@@ -242,7 +234,7 @@ class ByteCodeProducer(
     // iterator
     mv.visitLabel(l2)
     mv.visitInsn(DUP) // iterator, iterator
-    mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Iterator", "hasNext", "()Z")
+    INVOKE(classOf[java.util.Iterator[_]], "hasNext", "()Z")
     mv.visitJumpInsn(IFNE, l3)
     
     // iterator
@@ -367,8 +359,7 @@ class ByteCodeProducer(
     returnType = Type.getInternalName(returnClass)
     isInterface = ownerType.isInterface
     
-    val invokeType = if (isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
-    mv.visitMethodInsn(invokeType, Type.getInternalName(ownerType), methodName, "()L" + returnType + ";")
+    INVOKE(ownerType, methodName, "()L" + returnType + ";")
     
     // Recurse if needed
     if (identifiers.size > 1) {
@@ -654,7 +645,7 @@ class ByteCodeProducer(
         mv.visitVarInsn(ALOAD, 4) // scope
         mv.visitLdcInsn("$controller") // name, scope
         getFromScope("$controller") // value, name, scope
-        mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
+        INVOKE(classOf[Scope], "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
       }
       
       // Put defaults on as appropriate
@@ -666,7 +657,7 @@ class ByteCodeProducer(
           mv.visitVarInsn(ALOAD, 4) // scope
           mv.visitLdcInsn(arg.getIdentifier.getText) // name, scope
           arg.getDefault.apply(this) // value, name, scope
-          mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
+          INVOKE(classOf[Scope], "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
         }
       }
       
@@ -674,7 +665,7 @@ class ByteCodeProducer(
       for ((name, arg) <- macroDefinition.arguments) {
         mv.visitVarInsn(ALOAD, 2) // argmap
         mv.visitLdcInsn(name) // name, argmap
-        mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "containsKey", "(Ljava/lang/Object;)Z")
+        INVOKE(classOf[java.util.Map[_,_]], "containsKey", "(Ljava/lang/Object;)Z")
 
         // contained, name
         val endAdd = new Label()
@@ -685,10 +676,10 @@ class ByteCodeProducer(
         mv.visitVarInsn(ALOAD, 2) // argmap , scope
         mv.visitLdcInsn(name) // name, argmap, scope
         mv.visitInsn(DUP_X1) // name, argmap, name, scope
-        mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "get", "(Ljava/lang/Object;)Ljava/lang/Object;")
+        INVOKE(classOf[java.util.Map[_,_]], "get", "(Ljava/lang/Object;)Ljava/lang/Object;")
         // value, name, scope
         mv.visitLdcInsn(0)
-        mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;Z)V")
+        INVOKE(classOf[Scope], "add", "(Ljava/lang/String;Ljava/lang/Object;Z)V")
         mv.visitLabel(endAdd)
       }
       
@@ -700,10 +691,10 @@ class ByteCodeProducer(
 
           mv.visitVarInsn(ALOAD, 4) // scope
           mv.visitLdcInsn(name) // name, scope
-          mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
+          INVOKE(classOf[Scope], "get", "(Ljava/lang/String;)Ljava/lang/Object;")
 
           mv.visitLdcInsn(1) // true, value, name, scope
-          mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;Z)V")
+          INVOKE(classOf[Scope], "add", "(Ljava/lang/String;Ljava/lang/Object;Z)V")
         }
       }
       
@@ -713,7 +704,7 @@ class ByteCodeProducer(
         mv.visitLdcInsn("$ownerscope") // name, scope
         mv.visitVarInsn(ALOAD, 1) // parent scope, name, scope
         mv.visitLdcInsn(1) // true, parent scope, name, scope
-        mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;Z)V")
+        INVOKE(classOf[Scope], "add", "(Ljava/lang/String;Ljava/lang/Object;Z)V")
       }
       
       // Put the content onto the scope
@@ -722,7 +713,7 @@ class ByteCodeProducer(
         val valueName = node.getWithDefn.asInstanceOf[AWithDefn].getContentName().getText()
         mv.visitLdcInsn(valueName) // name, scope
         mv.visitVarInsn(ALOAD, 3) // value, name, scope
-        mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
+        INVOKE(classOf[Scope], "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
       }
       
       val l6 = new Label()
@@ -751,7 +742,7 @@ class ByteCodeProducer(
     controllers.pop
     
     if (!macroDefinition.isDynamic && !macroDefinition.isAbstract) {
-      val mv = methodVisitors.pop()
+      val mv = methodVisitors.head
 
       // The generator will be on the stack
       val generatorId = generatorIds.get(node.getGenerator())
@@ -759,13 +750,15 @@ class ByteCodeProducer(
 
       // generator
       mv.visitVarInsn(ALOAD, 4) // scope, generator
-      mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Generator", "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
+      INVOKE(classOf[Generator], "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
       // nodes
   
       mv.visitInsn(ARETURN)
   
       mv.visitMaxs(4, 7)
       mv.visitEnd()
+      
+      methodVisitors.pop
     }
     
     val cw = classWriters.pop()
@@ -788,7 +781,7 @@ class ByteCodeProducer(
       } else {
         // Get the owner from the parent
         mv.visitInsn(DUP)
-        mv.visitMethodInsn(INVOKEVIRTUAL, Type.getInternalName(classOf[Scope]), "owner", "()Ljava/lang/Object;"); 
+        INVOKE(classOf[Scope], "owner", "()Ljava/lang/Object;") 
       }
     }
     if (store) {
@@ -846,7 +839,7 @@ class ByteCodeProducer(
       // name, value, scope, scope, ...
       mv.visitInsn(SWAP) // value, name, scope, scope, ...
 
-      mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
+      INVOKE(classOf[Scope], "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
     }
     // Ends with the scope at the top of the stack
     
@@ -862,7 +855,7 @@ class ByteCodeProducer(
 
     // invoke the generator
     mv.visitInsn(SWAP)
-    mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Generator", "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
+    INVOKE(classOf[Generator], "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
 
     addAllNodesFromStack
     
@@ -1008,7 +1001,7 @@ class ByteCodeProducer(
     // Assume that a Boolean is on the stack
     val mv = methodVisitors.head
     CHECKCAST(classOf[java.lang.Boolean])
-    mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z")
+    INVOKE(classOf[java.lang.Boolean], "booleanValue", "()Z")
     mv.visitLdcInsn(1)
     mv.visitInsn(IXOR) // 1 ^ x is equivalent to !x
     mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;")
@@ -1039,11 +1032,11 @@ class ByteCodeProducer(
     mv.visitInsn(DUP) // Integer, Integer, name, scope
     getFromScope(node.getIdentifier().getText()) // value, Integer, Integer, name, scope
     CHECKCAST(classOf[java.lang.Integer])
-    mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Integer", "intValue", "()I")
+    INVOKE(classOf[java.lang.Integer], "intValue", "()I")
     mv.visitInsn(ICONST_1) // 1, value, Integer, Integer, name, scope
     mv.visitInsn(IADD) // value+1, Integer, Integer, name, scope
     mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Integer", "<init>", "(I)V") // Integer, name, scope
-    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "replace", "(Ljava/lang/String;Ljava/lang/Object;)V")
+    INVOKE(classOf[Scope], "replace", "(Ljava/lang/String;Ljava/lang/Object;)V")
   }
   
   private def outDynamicMacroAssignment(node : AAssignmentStmt) {
@@ -1069,7 +1062,7 @@ class ByteCodeProducer(
     mv.visitMethodInsn(INVOKESTATIC, dynamicMacroName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
     CHECKCAST(classOf[DynamicMacro])
     mv.visitInsn(SWAP)
-    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", "setToInvoke", "(Luk/co/colinhowe/glimpse/Macro;)V")
+    INVOKE(classOf[DynamicMacro], "setToInvoke", "(Luk/co/colinhowe/glimpse/Macro;)V")
   }
   
   override def outAAssignmentStmt(node : AAssignmentStmt) {
@@ -1088,7 +1081,7 @@ class ByteCodeProducer(
   
       mv.visitLdcInsn(node.getIdentifier().getText()) // name, scope, value
       mv.visitInsn(SWAP) // value, name, scope
-      mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "replace", "(Ljava/lang/String;Ljava/lang/Object;)V")
+      INVOKE(classOf[Scope], "replace", "(Ljava/lang/String;Ljava/lang/Object;)V")
     }
   }
   
@@ -1127,7 +1120,7 @@ class ByteCodeProducer(
       argument.getExpr.apply(this) // value, args, args
       
       // Put the variable on the arguments
-      mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
+      INVOKE(classOf[java.util.Map[_,_]], "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
       // object, args
       mv.visitInsn(POP) // args
       
@@ -1143,7 +1136,7 @@ class ByteCodeProducer(
           getFromScope("$" + name) // value, name, args
           
           // Put the variable on the arguments
-          mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
+          INVOKE(classOf[java.util.Map[_,_]], "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
           // object
           mv.visitInsn(POP) // <empty>
         case _ =>
@@ -1156,7 +1149,7 @@ class ByteCodeProducer(
     } 
     // Stack: value, args, scope, macro
 
-    mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Macro", "invoke", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;")
+    INVOKE(classOf[Macro], "invoke", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;")
     addAllNodesFromStack
   }
   
@@ -1189,7 +1182,7 @@ class ByteCodeProducer(
           val generatorIdentifier = viewname + "$$generator" + generatorIds.get(expr.getGenerator())
           // Stack: generator, node, node
           mv.visitVarInsn(ALOAD, 1) // scope, generator, node, node
-          mv.visitMethodInsn(INVOKEINTERFACE, "uk/co/colinhowe/glimpse/Generator", "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
+          INVOKE(classOf[Generator], "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
           // nodes, node, node
           mv.visitLdcInsn(id);  // id, nodes, node, node
           mv.visitInsn(ACONST_NULL) // null, id, nodes, node, node
@@ -1211,7 +1204,7 @@ class ByteCodeProducer(
       mv.visitInsn(DUP) // node, node
       mv.visitLdcInsn(argument.getIdentifier().getText()) // name, node, node
       argument.getExpr.apply(this) // value, name, node, node
-      mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/Node", "setAttribute", "(Ljava/lang/String;Ljava/lang/Object;)V")
+      INVOKE(classOf[GNode], "setAttribute", "(Ljava/lang/String;Ljava/lang/Object;)V")
     }
     
     addToNodeListFromStack

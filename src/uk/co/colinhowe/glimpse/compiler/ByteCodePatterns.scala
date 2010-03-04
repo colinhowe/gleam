@@ -23,7 +23,11 @@ trait ByteCodePatterns {
       "<init>", 
       Type.getMethodDescriptor(Type.VOID_TYPE, argClazzes.map(Type.getType(_)).toArray)
     )
-    println("D: " + Type.getMethodDescriptor(Type.VOID_TYPE, argClazzes.map(Type.getType(_)).toArray))
+  }
+  
+  def INVOKE(clazz : Class[_], method : String, descriptor : String) = {
+    val invokeType = if (clazz.isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
+    mv.visitMethodInsn(invokeType, Type.getInternalName(clazz), method, descriptor)
   }
   
   def getFromScope(name : String) = {
