@@ -15,7 +15,7 @@ trait ByteCodePatterns {
   
   def NEW(clazzName : String, argClazzes : Class[_]*)(args : => Unit) : Unit = {
     mv.visitTypeInsn(Opcodes.NEW, clazzName) // args, macro value, arg
-    mv.visitInsn(DUP) // args, args, macro value, arg
+    DUP // args, args, macro value, arg
     args
     mv.visitMethodInsn(
       INVOKESPECIAL, 
@@ -24,6 +24,9 @@ trait ByteCodePatterns {
       Type.getMethodDescriptor(Type.VOID_TYPE, argClazzes.map(Type.getType(_)).toArray)
     )
   }
+  
+  def DUP = getMethodVisitor.visitInsn(Opcodes.DUP)
+  def POP = getMethodVisitor.visitInsn(Opcodes.POP)
   
   def INVOKE(clazz : Class[_], method : String, descriptor : String) = {
     val invokeType = if (clazz.isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
@@ -40,7 +43,7 @@ trait ByteCodePatterns {
     mv.visitVarInsn(ALOAD, 2) // list, node
     mv.visitInsn(SWAP) // node, list
     mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "add", "(Ljava/lang/Object;)Z")
-    mv.visitInsn(POP)
+    POP
   }
   
   /**
@@ -76,6 +79,6 @@ trait ByteCodePatterns {
     mv.visitVarInsn(ALOAD, 2) // list, nodes
     mv.visitInsn(SWAP) // nodes, list
     mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "addAll", "(Ljava/util/Collection;)Z")
-    mv.visitInsn(POP)
+    POP
   }
 }

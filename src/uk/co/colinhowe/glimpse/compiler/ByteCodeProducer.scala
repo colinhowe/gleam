@@ -215,7 +215,7 @@ class ByteCodeProducer(
     mv.visitLabel(l3)
     setLineNumber(mv, l3, lineNumberProvider.getLineNumber(node))
 
-    mv.visitInsn(DUP) // iterator, iterator
+    DUP // iterator, iterator
     INVOKE(classOf[java.util.Iterator[_]], "next", "()Ljava/lang/Object;") // object, iterator
 
     // TODO Check the type of the expression against what we get
@@ -233,12 +233,12 @@ class ByteCodeProducer(
     
     // iterator
     mv.visitLabel(l2)
-    mv.visitInsn(DUP) // iterator, iterator
+    DUP // iterator, iterator
     INVOKE(classOf[java.util.Iterator[_]], "hasNext", "()Z")
     mv.visitJumpInsn(IFNE, l3)
     
     // iterator
-    mv.visitInsn(POP)
+    POP
 
     outAForloop(node)
   }
@@ -344,31 +344,18 @@ class ByteCodeProducer(
   }
   
   def evaluateProperty(identifiers : Iterable[TIdentifier], ownerType : Class[_]) {
-    val mv = methodVisitors.head
-    
     // The controller will be on the stack
     val name = identifiers.head.getText
     
-    /// Determine the method return type
-    var methodName = "get" + capitalise(name)
-    var returnType : String = null
-    var returnClass : Class[_] = null
-    var isInterface = false
-
-    returnClass = ownerType.getMethod(methodName).getReturnType()
-    returnType = Type.getInternalName(returnClass)
-    isInterface = ownerType.isInterface
-    
+    var methodName = "get" + name.capitalize
+    var returnClass = ownerType.getMethod(methodName).getReturnType()
+    var returnType = Type.getInternalName(returnClass)
     INVOKE(ownerType, methodName, "()L" + returnType + ";")
     
     // Recurse if needed
     if (identifiers.size > 1) {
       evaluateProperty(identifiers.tail, returnClass)
     }
-  }
-  
-  def capitalise(s : String ) = {
-    s.substring(0, 1).toUpperCase() + s.substring(1)
   }
   
   override def inAView(node : AView) {
@@ -780,12 +767,12 @@ class ByteCodeProducer(
         mv.visitLdcInsn(owner)
       } else {
         // Get the owner from the parent
-        mv.visitInsn(DUP)
+        DUP
         INVOKE(classOf[Scope], "owner", "()Ljava/lang/Object;") 
       }
     }
     if (store) {
-      mv.visitInsn(DUP)
+      DUP
       mv.visitVarInsn(ASTORE, 1)
     }
     
@@ -805,11 +792,14 @@ class ByteCodeProducer(
     }
   }
   
-  override def outAIncludeStmt(node : AIncludeStmt) {
+  override def caseAArgument(node : AArgument) {
+    methodVisitors.head.visitLdcInsn(node.getIdentifier().getText())
+    node.getExpr.apply(this)
+  }
+  
+  override def caseAIncludeStmt(node : AIncludeStmt) {
     val mv = methodVisitors.head
     
-    val include = node.getIncludeA().asInstanceOf[AIncludeA]
-
     inMacro = false
     beginScope(null, false, mv => {
       getFromScope("$ownerscope")
@@ -818,37 +808,18 @@ class ByteCodeProducer(
     inMacro = true
     
     // Populate the scope with any arguments
-    // The arguments will be on the stack like so: scope, name, value, name, value
-
-    // For each argument we need to transform the stack to be like:
-    //   value, name, scope, scope, ...
-    
-    // Starts as scope, name, value, name, value
-    // Process the arguments in reverse order as the values
-    // will have been added on to the stack in forward order
-    val reverseArguments = include.getArguments.reverse
-
-    for (pargument <- reverseArguments) {
+    for (pargument <- node.getArgument) {
       // TODO Check types
-      mv.visitInsn(DUP_X1) // scope, value, scope, ...
-      mv.visitInsn(DUP_X1) // scope, value, scope, scope, ...
-      mv.visitInsn(POP) // value, scope, scope, ...
-      
-      val arg = pargument.asInstanceOf[AArgument]
-      mv.visitLdcInsn(arg.getIdentifier().getText())
-      // name, value, scope, scope, ...
-      mv.visitInsn(SWAP) // value, name, scope, scope, ...
-
+      DUP // scope, scope, ...
+      pargument.apply(this) // value, name, scope, scope
       INVOKE(classOf[Scope], "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
     }
     // Ends with the scope at the top of the stack
     
-    val generatorArgumentName = include.getTheInclude().getText()
-    
     // Pull the generator from the scope
     val l1 = new Label()
     mv.visitLabel(l1)
-    getFromScope(generatorArgumentName)
+    getFromScope(node.getIdentifier.getText)
     
     // The generator will be on the stack
     CHECKCAST(classOf[Generator])
@@ -1029,7 +1000,7 @@ class ByteCodeProducer(
     mv.visitVarInsn(ALOAD, 1) // scope
     mv.visitLdcInsn(node.getIdentifier().getText()) // name, scope
     mv.visitTypeInsn(Opcodes.NEW, "java/lang/Integer") // Integer, name, scope
-    mv.visitInsn(DUP) // Integer, Integer, name, scope
+    DUP // Integer, Integer, name, scope
     getFromScope(node.getIdentifier().getText()) // value, Integer, Integer, name, scope
     CHECKCAST(classOf[java.lang.Integer])
     INVOKE(classOf[java.lang.Integer], "intValue", "()I")
@@ -1108,37 +1079,26 @@ class ByteCodeProducer(
     NEW(classOf[java.util.HashMap[_,_]]) { }
     CHECKCAST(classOf[java.util.Map[_,_]])
 
-    val args = node.getArguments()
-    val argTypes = MMap[String, GType]()
-    
-    for (pargument <- args) {
-      val argument = pargument.asInstanceOf[AArgument]
-      mv.visitInsn(DUP) // args, args
-
-      val argName = argument.getIdentifier().getText()
-      mv.visitLdcInsn(argName) // name, value, args, args
-      argument.getExpr.apply(this) // value, args, args
-      
-      // Put the variable on the arguments
+    // Put the variables onto the argument map
+    for (argument <- node.getArguments()) {
+      DUP // args, args
+      argument.apply(this)
       INVOKE(classOf[java.util.Map[_,_]], "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
-      // object, args
-      mv.visitInsn(POP) // args
-      
-      argTypes(argName) = typeResolver.getType(argument.getExpr, typeNameResolver)
+      POP // args
     }
     
     // Fill in any missing arguments from cascades
     for ((name, source) <- call.argumentSources) {
       source match {
         case Cascade =>
-          mv.visitInsn(DUP) // args
+          DUP // args
           mv.visitLdcInsn(name) // name, args
           getFromScope("$" + name) // value, name, args
           
           // Put the variable on the arguments
           INVOKE(classOf[java.util.Map[_,_]], "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
           // object
-          mv.visitInsn(POP) // <empty>
+          POP // <empty>
         case _ =>
       }
     }
@@ -1198,12 +1158,9 @@ class ByteCodeProducer(
       }
     }
       
-    for (aargument <- node.getArguments) {
-      val argument = aargument.asInstanceOf[AArgument]
-
-      mv.visitInsn(DUP) // node, node
-      mv.visitLdcInsn(argument.getIdentifier().getText()) // name, node, node
-      argument.getExpr.apply(this) // value, name, node, node
+    for (argument <- node.getArguments) {
+      DUP // node, node
+      argument.apply(this) // value, name, node, node
       INVOKE(classOf[GNode], "setAttribute", "(Ljava/lang/String;Ljava/lang/Object;)V")
     }
     
