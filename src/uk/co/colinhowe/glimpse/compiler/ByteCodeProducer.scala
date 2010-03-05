@@ -37,16 +37,18 @@ import uk.co.colinhowe.glimpse.compiler.IdentifierConverter._
 import uk.co.colinhowe.glimpse.compiler.typing.{ Type => GType }
 
 import ArgumentSource._
+import uk.co.colinhowe.glimpse.ClassOutputter
+import uk.co.colinhowe.glimpse.OutputClass
 
 class ByteCodeProducer(
     val viewname : String, 
     val lineNumberProvider : LineNumberProvider,
     val typeResolver : TypeResolver, 
-    val outputFileName : String,
     implicit val typeNameResolver : TypeNameResolver,
     val sourcename : String,
     val callResolver : CallResolver,
-    val resolvedCallsProvider : ResolvedCallsProvider
+    val resolvedCallsProvider : ResolvedCallsProvider,
+    val classOutputter : ClassOutputter
    ) extends DepthFirstAdapter with Conversions with ByteCodePatterns {
   private implicit val typeProvider = typeResolver.typeProvider
     
@@ -243,19 +245,6 @@ class ByteCodeProducer(
     outAForloop(node)
   }
   
-  def outputClass(cw : ClassWriter, file : File) {
-    val bytes = cw.toByteArray()
-    
-    val stream = new FileOutputStream(file)
-    try {
-      stream.write(bytes)
-    } finally {
-      stream.close()
-    }
-  }
-  
-  def outputClass(cw : ClassWriter, name : String) { outputClass(cw, new File("temp/" + name + ".class")) } 
-  
   override def outAView(node : AView) {
     if (node.getStmt().size() > 0) {
       trailingLabels.pop
@@ -284,7 +273,7 @@ class ByteCodeProducer(
       
       scopes.pop()
       
-      outputClass(classWriter, new File(outputFileName))
+      classOutputter ! OutputClass(classWriter.toByteArray, viewname)
     }
   }
   
@@ -751,7 +740,7 @@ class ByteCodeProducer(
     val cw = classWriters.pop()
     cw.visitEnd()
 
-    outputClass(cw, className)
+    classOutputter ! OutputClass(cw.toByteArray, className)
   }
   
   private def beginScope(
@@ -961,7 +950,7 @@ class ByteCodeProducer(
     
     // Write the bytes out
     val generatorIdentifier = viewname + "$" + generatorName
-    outputClass(cw, generatorIdentifier)
+    classOutputter ! OutputClass(cw.toByteArray, generatorIdentifier)
     
     // Get the instance of the generator
     mv = methodVisitors.head
