@@ -24,13 +24,14 @@ import uk.co.colinhowe.glimpse.compiler.parser.Parser
 import scala.actors.Future
 import uk.co.colinhowe.glimpse.ClassOutputter
 import uk.co.colinhowe.glimpse.ParserController
+import uk.co.colinhowe.glimpse.ExceptionHandler
 import uk.co.colinhowe.glimpse.Parse
 
 case class Join
 case class Joined
 
 case class Parsed(result : IntermediateResult)
-case class Errored(e : Exception)
+case class Errored(e : Throwable)
 case class Finished
 
 class GlimpseCompiler extends Actor {
@@ -45,10 +46,12 @@ class GlimpseCompiler extends Actor {
   var sourcesRemaining = 0
   val classOutputter = new ClassOutputter("temp/")
   classOutputter.start
+  private val errorHandler = new ExceptionHandler
+  errorHandler.start
 
   val results = Buffer[CompilationResult]()
   val resultsActor = new Actor {
-    var exception : Exception = null
+    var exception : Throwable = null
     var finished = false
     def act() {
       var replyTo : OutputChannel[Any] = null
@@ -246,7 +249,7 @@ class GlimpseCompiler extends Actor {
 
     classPathResolver = new ClassPathResolver(classPaths, this)
 
-    val parserController = new ParserController(this)
+    val parserController = new ParserController(this, errorHandler)
     parserController.start
     
     // Parse each source file
@@ -260,6 +263,10 @@ class GlimpseCompiler extends Actor {
 
     if (resultsActor.exception != null) {
       throw resultsActor.exception
+    }
+    
+    if (errorHandler.exceptions.size > 0) {
+      throw errorHandler.exceptions(0)
     }
     
     debug("Done")

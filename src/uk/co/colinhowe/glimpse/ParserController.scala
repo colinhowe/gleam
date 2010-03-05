@@ -18,30 +18,20 @@ import scala.actors.Actor
 
 case class Parse(unit : CompilationUnit)
 
-class ParserController(compiler : GlimpseCompiler) extends Actor {
-  def act() {
-    loop {
-      react {
-        // TODO Extract actors out into a new class that captures and passes on errors
-        case message : Parse => parse(message)
-        case Finished() => exit
-      }
-    }
+class ParserController(compiler : GlimpseCompiler, exceptionHandler : ExceptionHandler) extends CompilationController(exceptionHandler) {
+  def handleMessage = {
+    case message : Parse => parse(message)
+    case Finished() => exit
   }
   
   def parse(message : Parse) {
-    try {
-      // create lexer
-      val lexer = new Lexer(new PushbackReader(new BufferedReader(new StringReader(message.unit.getSource)), 204800))
-      
-      // parse program
-      val parser = new Parser(lexer)
-      val ast = parser.parse()
+    // create lexer
+    val lexer = new Lexer(new PushbackReader(new BufferedReader(new StringReader(message.unit.getSource)), 204800))
     
-      compiler ! Parsed(new IntermediateResult(ast, message.unit.getViewName, message.unit.getSourceName))
-    } catch {
-      case e : Exception => 
-        compiler ! Errored(e)
-    }
+    // parse program
+    val parser = new Parser(lexer)
+    val ast = parser.parse()
+  
+    compiler ! Parsed(new IntermediateResult(ast, message.unit.getViewName, message.unit.getSourceName))
   }
 }
