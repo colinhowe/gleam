@@ -786,9 +786,19 @@ class ByteCodeProducer(
     node.getExpr.apply(this)
   }
   
+  
   override def caseAIncludeStmt(node : AIncludeStmt) {
     val mv = methodVisitors.head
     
+    // Pull the generator from the scope
+    val l1 = new Label()
+    mv.visitLabel(l1)
+    getFromScope(node.getIdentifier.getText)
+    
+    // The generator will be on the stack
+    CHECKCAST(classOf[Generator])
+
+    // Get the scope
     inMacro = false
     beginScope(null, false, mv => {
       getFromScope("$ownerscope")
@@ -805,16 +815,6 @@ class ByteCodeProducer(
     }
     // Ends with the scope at the top of the stack
     
-    // Pull the generator from the scope
-    val l1 = new Label()
-    mv.visitLabel(l1)
-    getFromScope(node.getIdentifier.getText)
-    
-    // The generator will be on the stack
-    CHECKCAST(classOf[Generator])
-
-    // invoke the generator
-    mv.visitInsn(SWAP)
     INVOKE(classOf[Generator], "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
 
     addAllNodesFromStack
@@ -1017,15 +1017,13 @@ class ByteCodeProducer(
         defn.arguments == dynamicMacroDefinition.arguments)
     val sourceClassName = sourceMacroDefinition.get.className
     
-    mv.visitMethodInsn(INVOKESTATIC, sourceClassName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
-    
     mv.visitMethodInsn(INVOKESTATIC, dynamicMacroName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
     CHECKCAST(classOf[DynamicMacro])
-    mv.visitInsn(SWAP)
+    mv.visitMethodInsn(INVOKESTATIC, sourceClassName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
     INVOKE(classOf[DynamicMacro], "setToInvoke", "(Luk/co/colinhowe/glimpse/Macro;)V")
   }
   
-  override def outAAssignmentStmt(node : AAssignmentStmt) {
+  override def caseAAssignmentStmt(node : AAssignmentStmt) {
     val mv = methodVisitors.head
     
     // This could be a dynamic macro assignment
@@ -1035,12 +1033,10 @@ class ByteCodeProducer(
     if (dynamicMacros.contains(destinationVariable)) {
       outDynamicMacroAssignment(node)
     } else {
-      // The value will be sitting on the stack
-      mv.visitVarInsn(ALOAD, 1) // scope, value
-      mv.visitInsn(SWAP) // value, scope
+      mv.visitVarInsn(ALOAD, 1) // scope
   
-      mv.visitLdcInsn(node.getIdentifier().getText()) // name, scope, value
-      mv.visitInsn(SWAP) // value, name, scope
+      mv.visitLdcInsn(node.getIdentifier().getText()) // name, scope
+      node.getExpr.apply(this) // value, name, scope
       INVOKE(classOf[Scope], "replace", "(Ljava/lang/String;Ljava/lang/Object;)V")
     }
   }
