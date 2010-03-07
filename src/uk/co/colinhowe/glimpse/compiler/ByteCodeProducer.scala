@@ -1128,10 +1128,6 @@ class ByteCodeProducer(
           mv.visitInsn(ACONST_NULL) // null, id, nodes, node, node
         
         case expr => 
-          // TODO Store the node off in a local variable, n
-          // Then visitLocalVariable in this method.
-          // This is fine as we can limit scope of the variable using labels and all is good
-          
           mv.visitInsn(ACONST_NULL) // null, node, node
           mv.visitLdcInsn(id) // id, null, node, node
           expr.apply(this) // value, id, null, node, node
