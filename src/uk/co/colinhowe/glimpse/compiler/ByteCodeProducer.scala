@@ -184,7 +184,7 @@ class ByteCodeProducer(
     // we don't like leave primitive types on the stack
     // This is inefficient but it simplifies implementation
     mv.visitInsn(integerLoadInstruction)
-    mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;")
+    INVOKESTATIC(classOf[java.lang.Boolean], "valueOf", "(Z)Ljava/lang/Boolean;")
   }
   
   override def outAFalseExpr(node : AFalseExpr) = putBooleanOnStack(ICONST_0)
@@ -954,7 +954,7 @@ class ByteCodeProducer(
     
     // Get the instance of the generator
     mv = methodVisitors.head
-    mv.visitMethodInsn(INVOKESTATIC, generatorIdentifier, "getInstance", "()Luk/co/colinhowe/glimpse/Generator;") // macro, value, args
+    mv.visitMethodInsn(Opcodes.INVOKESTATIC, generatorIdentifier, "getInstance", "()Luk/co/colinhowe/glimpse/Generator;") // macro, value, args
   }
 
   override def outAInvertExpr(node : AInvertExpr) {
@@ -964,7 +964,7 @@ class ByteCodeProducer(
     INVOKE(classOf[java.lang.Boolean], "booleanValue", "()Z")
     mv.visitLdcInsn(1)
     mv.visitInsn(IXOR) // 1 ^ x is equivalent to !x
-    mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;")
+    INVOKESTATIC(classOf[java.lang.Boolean], "valueOf", "(Z)Ljava/lang/Boolean;")
   }
   
   override def outAVarDefn(node : AVarDefn) {
@@ -1017,9 +1017,9 @@ class ByteCodeProducer(
         defn.arguments == dynamicMacroDefinition.arguments)
     val sourceClassName = sourceMacroDefinition.get.className
     
-    mv.visitMethodInsn(INVOKESTATIC, dynamicMacroName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
+    mv.visitMethodInsn(Opcodes.INVOKESTATIC, dynamicMacroName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
     CHECKCAST(classOf[DynamicMacro])
-    mv.visitMethodInsn(INVOKESTATIC, sourceClassName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
+    mv.visitMethodInsn(Opcodes.INVOKESTATIC, sourceClassName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
     INVOKE(classOf[DynamicMacro], "setToInvoke", "(Luk/co/colinhowe/glimpse/Macro;)V")
   }
   
@@ -1042,14 +1042,11 @@ class ByteCodeProducer(
   }
   
   override def outAConstantExpr(node : AConstantExpr) {
-    val mv = methodVisitors.head
-    val i = Integer.valueOf(node.getNumber().getText())
-    mv.visitLdcInsn(i)
-
+    LDC(Integer.valueOf(node.getNumber().getText()))
     // Up-cast to an Integer
     // we don't like leaving primitive types on the stack
     // This is inefficient but it simplifies implementation
-    mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;")
+    INVOKESTATIC(classOf[java.lang.Integer], "valueOf", "(I)Ljava/lang/Integer;")
   }
 
   override def caseAMacroStmt(node : AMacroStmt) {
@@ -1057,7 +1054,7 @@ class ByteCodeProducer(
     val call = resolvedCallsProvider.get(node) 
 
     // Load the macro and scope onto the stack
-    mv.visitMethodInsn(INVOKESTATIC, call.macro.className, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // macro, value, args
+    mv.visitMethodInsn(Opcodes.INVOKESTATIC, call.macro.className, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // macro, value, args
     mv.visitVarInsn(ALOAD, 1)
 
     // Put all the arguments into a map on the stack

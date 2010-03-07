@@ -25,12 +25,18 @@ trait ByteCodePatterns {
     )
   }
   
+  def LDC(value : String) = getMethodVisitor.visitLdcInsn(value)
+  def LDC(value : Integer) = getMethodVisitor.visitLdcInsn(value)
   def DUP = getMethodVisitor.visitInsn(Opcodes.DUP)
   def POP = getMethodVisitor.visitInsn(Opcodes.POP)
   
   def INVOKE(clazz : Class[_], method : String, descriptor : String) = {
     val invokeType = if (clazz.isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
     mv.visitMethodInsn(invokeType, Type.getInternalName(clazz), method, descriptor)
+  }
+  
+  def INVOKESTATIC(clazz : Class[_], method : String, descriptor : String) = {
+    mv.visitMethodInsn(Opcodes.INVOKESTATIC, Type.getInternalName(clazz), method, descriptor)
   }
   
   def getFromScope(name : String) = {
