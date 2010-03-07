@@ -13,6 +13,7 @@ import uk.co.colinhowe.glimpse.compiler.ArgumentDefinition
 import uk.co.colinhowe.glimpse.compiler.Restriction
 import uk.co.colinhowe.glimpse.TypeCheckError
 import uk.co.colinhowe.glimpse.MacroNotFoundError
+import uk.co.colinhowe.glimpse.IdentifierNotFoundError
 import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
 import org.junit.Assert._
 
@@ -21,7 +22,7 @@ class TestTypeChecker extends TypeCheckerTest {
   @Test
   def assignStringToIntFails  = {   
     """    
-    var x = 1    x = "a"
+    var x = 1     x = "a"
     """ failsWith
     TypeCheckError(
         line = 3, 
@@ -169,6 +170,35 @@ class TestTypeChecker extends TypeCheckerTest {
           Map[String, ArgumentDefinition]()
         )
       )
+    )
+  }
+  
+  
+  @Test
+  def assignToUndeclaredVariable  = {   
+    """    
+    var x = 1 
+    y = 2 
+    """ failsWith
+    IdentifierNotFoundError(
+      line = 3, 
+      identifier = "y"
+    )
+  }
+  
+  
+  // TODO Some refactoring is needed to make this test not needed
+  @Test
+  def assignToUndeclaredVariableInMacro = {   
+    """    
+    macro p with s : string {
+      y = 2 
+    } 
+    p "hi" 
+    """ failsWith
+    IdentifierNotFoundError(
+      line = 3, 
+      identifier = "y"
     )
   }
 }

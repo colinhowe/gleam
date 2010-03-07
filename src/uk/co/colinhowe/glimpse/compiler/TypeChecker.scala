@@ -112,6 +112,16 @@ class TypeChecker(
     }
   }
   
+  def casePStmt(node : PStmt) {
+    try {
+      node.apply(this)
+    } catch {
+      case e : IdentifierNotFoundException =>
+        node.replaceBy(new AErrorNode)
+        errors += new IdentifierNotFoundError(lineNumberProvider.getLineNumber(node).get, e.identifier)
+    }
+  }
+  
   override def outAControllerMethodExpr(node : AControllerMethodExpr) {
     // Check that the method matches something
     val methodOption = methodResolver.getMatchingMethod(controllers.head, node)
@@ -140,17 +150,6 @@ class TypeChecker(
   
   implicit def toImmutableMap[K, V](mutable : scala.collection.Map[K, V]) = scala.collection.immutable.Map[K, V]() ++ mutable
   
-  override def inAGenerator(node : AGenerator) {
-    scope = new Scope(scope, owners.head)
-    for (parg <- node.getArgDefn) {
-      val arg = parg.asInstanceOf[AArgDefn]
-      scope.add(arg.getIdentifier().getText(), typeResolver.getType(arg.getType(), typeNameResolver, genericsInScope))
-    }
-  }
-  
-  override def outAGenerator(node : AGenerator) {
-    scope = scope.parentScope
-  }
   
   override def inAForloop(node : AForloop) {
     scope = new Scope(scope, owners.head)
@@ -475,5 +474,42 @@ class TypeChecker(
         errors.add(new TypeCheckError(lineNumberProvider.getLineNumber(node).get, lhsType, rhsType))
       }
     }
+  }
+  
+  
+  override def caseAView(node : AView) {
+    inAView(node)
+
+    node.getImport.foreach(_.apply(this))
+
+    if(node.getController != null) {
+      node.getController().apply(this)
+    }
+
+    node.getMacroDefn.foreach(_.apply(this))
+
+    node.getStmt.foreach(casePStmt(_))
+
+    outAView(node)
+  }
+  
+  
+  override def caseAGenerator(node : AGenerator) {
+    inAGenerator(node)
+    node.getArgDefn.foreach(_.apply(this))
+    node.getStmt.foreach(casePStmt(_))
+    outAGenerator(node)
+  }
+
+  override def inAGenerator(node : AGenerator) {
+    scope = new Scope(scope, owners.head)
+    for (parg <- node.getArgDefn) {
+      val arg = parg.asInstanceOf[AArgDefn]
+      scope.add(arg.getIdentifier().getText(), typeResolver.getType(arg.getType(), typeNameResolver, genericsInScope))
+    }
+  }
+  
+  override def outAGenerator(node : AGenerator) {
+    scope = scope.parentScope
   }
 }
