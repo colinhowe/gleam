@@ -26,7 +26,7 @@ class ParserController(compiler : GlimpseCompiler, exceptionHandler : ExceptionH
   
   def parse(message : Parse) {
     // create lexer
-    val lexer = new Lexer(new PushbackReader(new BufferedReader(new StringReader(message.unit.getSource)), 204800))
+    val lexer = new Lexer(new PushbackReader(message.unit.getReader, 204800))
     
     // parse program
     val parser = new Parser(lexer)

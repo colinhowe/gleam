@@ -1,5 +1,7 @@
 package uk.co.colinhowe.glimpse.compiler;
 
+import java.io.Reader;
+
 public abstract class CompilationUnit {
   private final String viewName;
   private final String sourceName;
@@ -10,7 +12,7 @@ public abstract class CompilationUnit {
     this.sourceName = sourceName;
   }
 
-  public abstract String getSource();
+  public abstract Reader getReader();
 
   public String getViewName() {
     return viewName;

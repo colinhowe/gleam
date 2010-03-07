@@ -1,5 +1,8 @@
 package uk.co.colinhowe.glimpse.compiler;
 
+import java.io.Reader;
+import java.io.StringReader;
+
 public class StringCompilationUnit extends CompilationUnit {
   private final String source;
   
@@ -8,7 +11,7 @@ public class StringCompilationUnit extends CompilationUnit {
     this.source = source;
   }
 
-  public String getSource() {
-    return source;
+  public Reader getReader() {
+    return new StringReader(source);
   }
 }
