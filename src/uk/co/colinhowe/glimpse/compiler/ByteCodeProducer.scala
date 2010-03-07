@@ -988,14 +988,12 @@ class ByteCodeProducer(
 //    setLineNumber(mv, startOrContinueLabel(node), lineNumberProvider.getLineNumber(node))
     mv.visitVarInsn(ALOAD, 1) // scope
     mv.visitLdcInsn(node.getIdentifier().getText()) // name, scope
-    mv.visitTypeInsn(Opcodes.NEW, "java/lang/Integer") // Integer, name, scope
-    DUP // Integer, Integer, name, scope
-    getFromScope(node.getIdentifier().getText()) // value, Integer, Integer, name, scope
+    getFromScope(node.getIdentifier().getText()) // value, name, scope
     CHECKCAST(classOf[java.lang.Integer])
     INVOKE(classOf[java.lang.Integer], "intValue", "()I")
-    mv.visitInsn(ICONST_1) // 1, value, Integer, Integer, name, scope
-    mv.visitInsn(IADD) // value+1, Integer, Integer, name, scope
-    mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Integer", "<init>", "(I)V") // Integer, name, scope
+    mv.visitInsn(ICONST_1) // 1, value, name, scope
+    mv.visitInsn(IADD) // value+1, name, scope
+    INVOKESTATIC(classOf[Integer], "valueOf", "(I)Ljava/lang/Integer;") // value+1, name, scope
     INVOKE(classOf[Scope], "replace", "(Ljava/lang/String;Ljava/lang/Object;)V")
   }
   
