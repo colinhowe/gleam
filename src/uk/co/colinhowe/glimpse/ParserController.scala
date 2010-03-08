@@ -1,4 +1,5 @@
 package uk.co.colinhowe.glimpse
+import uk.co.colinhowe.glimpse.compiler.parser.ParserException
 
 import java.io.BufferedReader
 import java.io.PushbackReader
@@ -21,17 +22,36 @@ case class Parse(unit : CompilationUnit)
 class ParserController(compiler : GlimpseCompiler, exceptionHandler : ExceptionHandler) extends CompilationController(exceptionHandler) {
   def handleMessage = {
     case message : Parse => parse(message)
-    case Finished() => exit
+    case Finished() => 
+      compiler ! Finished()
+      exit
   }
   
   def parse(message : Parse) {
     // create lexer
-    val lexer = new Lexer(new PushbackReader(message.unit.getReader, 204800))
+    val reader = new PushbackReader(message.unit.getReader, 204800)
+    val lexer = new Lexer(reader)
     
     // parse program
     val parser = new Parser(lexer)
-    val ast = parser.parse()
+    
+    try {
+      val ast = parser.parse()
   
-    compiler ! Parsed(new IntermediateResult(ast, message.unit.getViewName, message.unit.getSourceName))
+      compiler ! Parsed(new IntermediateResult(ast, message.unit.getViewName, message.unit.getSourceName))
+    } catch {
+      case e : ParserException =>
+        // Expect the error to look like [line, position] blahblah
+        val openBracket = e.getMessage().indexOf("[")
+        val comma = e.getMessage().indexOf(",")
+        val closeBracket = e.getMessage().indexOf("]")
+        val lineNumber = Integer.parseInt(e.getMessage().substring(openBracket + 1, comma))
+        val parseMessage = e.getMessage().substring(closeBracket + 2)
+        exceptionHandler ! CompilationException(ParseError(message.unit, lineNumber, parseMessage))
+    } finally {
+      if (reader != null) {
+        reader.close
+      }
+    }
   }
 }

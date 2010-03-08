@@ -43,7 +43,6 @@ class GlimpseCompiler extends Actor {
   val toProcess = Buffer[IntermediateResult]()
   var classPathResolved = false
   var resultsReady = false
-  var sourcesRemaining = 0
   val classOutputter = new ClassOutputter("temp/")
   classOutputter.start
   private val errorHandler = new ExceptionHandler
@@ -88,36 +87,30 @@ class GlimpseCompiler extends Actor {
     println("[" + Thread.currentThread + "] [" + time + "] " + line)
   }
   
+  var finished = false
+  
   def act() {
     loop {
       react {
         case ClassPathResolver.Resolved => 
           classPathResolved = true
-          toParse.foreach(GlimpseCompiler.this ! Parsed(_))
+          if (finished) {
+            compileAsts(toProcess)
+            exit
+          }          
           
         case Errored(e) =>
           e.printStackTrace
-          sourcesRemaining -= 1
           
-          if (sourcesRemaining == 0) {
-            // Start real processing now
+        case Finished() =>
+          finished = true
+          if (classPathResolved) {
             compileAsts(toProcess)
             exit
-          }
+          }          
           
         case Parsed(result) => 
-          if (!classPathResolved) {
-            toParse += result
-          } else {
-            toProcess += result
-            sourcesRemaining -= 1
-          }
-          
-          if (sourcesRemaining == 0) {
-            // Start real processing now
-            compileAsts(toProcess)
-            exit
-          }
+          toProcess += result
       }
     }
   }
@@ -182,6 +175,7 @@ class GlimpseCompiler extends Actor {
           case Finished() => 
             println("Phase 2 finished")
             classOutputter !? Join()
+            errorHandler !? Join()
             println("Informing results actor")
             resultsActor ! Finished()
             exit
@@ -244,7 +238,6 @@ class GlimpseCompiler extends Actor {
   }
   
   def compile(units : java.util.List[CompilationUnit], classPaths : java.util.List[String]) : java.util.List[CompilationResult] = {
-    sourcesRemaining = units.size
     this.start()
 
     classPathResolver = new ClassPathResolver(classPaths, this)

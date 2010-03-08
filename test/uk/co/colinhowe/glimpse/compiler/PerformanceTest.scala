@@ -24,5 +24,7 @@ object PerformanceTest {
     }
     val end = System.currentTimeMillis
     System.out.println((end - start) + "\tms")
+    
+    // Shutdown the actors subsystem
   }
 }
