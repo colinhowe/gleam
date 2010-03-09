@@ -131,8 +131,7 @@ class ByteCodeProducer(
   override def caseAControllerMethodExpr(node : AControllerMethodExpr) {
     val method = methodResolver.getMatchingMethod(controllers.head, node).get
     
-    getFromScope("$controller")
-    CHECKCAST(controllers.head)
+    getFromScope("$controller", controllers.head)
     
     // Load the expressions onto the stack
     node.getExpr.zip(method.getParameterTypes()).foreach { case(expr, clazz) => 
@@ -288,8 +287,7 @@ class ByteCodeProducer(
       mv.visitLdcInsn(path)
       
       // Get the value of the property
-      getFromScope("$controller")
-      CHECKCAST(controllers.head)
+      getFromScope("$controller", controllers.head)
       evaluateProperty(node.getIdentifier(), controllers.head)
     }
     
@@ -327,8 +325,7 @@ class ByteCodeProducer(
     // Get the value from the scope
     val l1 = new Label()
     mv.visitLabel(l1)
-    getFromScope("$controller")
-    CHECKCAST(controllers.head)
+    getFromScope("$controller", controllers.head)
     evaluateProperty(node.getIdentifier(), controllers.head)
   }
   
@@ -788,21 +785,13 @@ class ByteCodeProducer(
   
   
   override def caseAIncludeStmt(node : AIncludeStmt) {
-    val mv = methodVisitors.head
-    
     // Pull the generator from the scope
-    val l1 = new Label()
-    mv.visitLabel(l1)
-    getFromScope(node.getIdentifier.getText)
-    
-    // The generator will be on the stack
-    CHECKCAST(classOf[Generator])
+    getFromScope(node.getIdentifier.getText, classOf[Generator])
 
     // Get the scope
     inMacro = false
     beginScope(null, false, mv => {
-      getFromScope("$ownerscope")
-      CHECKCAST(classOf[Scope])
+      getFromScope("$ownerscope", classOf[Scope])
     })
     inMacro = true
     
@@ -988,8 +977,8 @@ class ByteCodeProducer(
 //    setLineNumber(mv, startOrContinueLabel(node), lineNumberProvider.getLineNumber(node))
     mv.visitVarInsn(ALOAD, 1) // scope
     mv.visitLdcInsn(node.getIdentifier().getText()) // name, scope
-    getFromScope(node.getIdentifier().getText()) // value, name, scope
-    CHECKCAST(classOf[java.lang.Integer])
+    getFromScope(node.getIdentifier().getText(), classOf[java.lang.Integer]) 
+    // value, name, scope
     INVOKE(classOf[java.lang.Integer], "intValue", "()I")
     mv.visitInsn(ICONST_1) // 1, value, name, scope
     mv.visitInsn(IADD) // value+1, name, scope

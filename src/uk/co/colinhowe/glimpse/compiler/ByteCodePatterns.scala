@@ -39,10 +39,15 @@ trait ByteCodePatterns {
     mv.visitMethodInsn(Opcodes.INVOKESTATIC, Type.getInternalName(clazz), method, descriptor)
   }
   
-  def getFromScope(name : String) = {
+  def getFromScope(name : String) : Unit = {
     mv.visitVarInsn(ALOAD, 1) // scope
     mv.visitLdcInsn(name) // name, scope
     mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
+  }
+  
+  def getFromScope(name : String, expectedClass : Class[_]) : Unit = {
+    getFromScope(name)
+    CHECKCAST(expectedClass)
   }
   
   def addToNodeListFromStack = {
