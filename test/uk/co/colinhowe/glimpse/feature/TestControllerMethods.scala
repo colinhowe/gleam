@@ -20,7 +20,8 @@ class TestControllerMethods extends TypeCheckerTest {
   def withArgsInvocation = {
     """
     controller uk.co.colinhowe.glimpse.compiler.DummyController
-    node p c.makeMessage("hi")
+    node p with string
+    p c.makeMessage("hi")
     """ controller(new DummyController) compilesTo 
     <view><p>hi.message</p></view>
   }
@@ -29,7 +30,8 @@ class TestControllerMethods extends TypeCheckerTest {
   def onInterface = {
     """
     controller uk.co.colinhowe.glimpse.compiler.DummyInterface
-    node p c.getSomeString()
+    node p with java.lang.Object
+    p c.getSomeString()
     """ controller(new DummyController) compilesTo 
     <view><p>someString</p></view>
   }
@@ -38,8 +40,9 @@ class TestControllerMethods extends TypeCheckerTest {
   def withLocalVariableInvocation = {
     """
     controller uk.co.colinhowe.glimpse.compiler.DummyController
+    node p with string
     var x = "hi"
-    node p c.makeMessage(x)
+    p c.makeMessage(x)
     """ controller(new DummyController) compilesTo 
     <view><p>hi.message</p></view>
   }
@@ -48,7 +51,8 @@ class TestControllerMethods extends TypeCheckerTest {
   def withoutArgsInvocation = {
     """
     controller uk.co.colinhowe.glimpse.compiler.DummyController
-    node p c.getName()
+    node p with string
+    p c.getName()
     """ controller(new DummyController) compilesTo 
     <view><p>Name of the controller</p></view>
   }
@@ -57,9 +61,7 @@ class TestControllerMethods extends TypeCheckerTest {
   def returnValueTyping = {
     """
     controller uk.co.colinhowe.glimpse.compiler.DummyController
-    macro p with s : string {
-      node p s
-    }
+    node p with string
     var message = c.makeMessage("hi")
     p message
     """ controller(new DummyController) compilesTo 
@@ -70,13 +72,11 @@ class TestControllerMethods extends TypeCheckerTest {
   def nonexistentMethod = {
     """
     controller uk.co.colinhowe.glimpse.compiler.DummyController
-    macro p with s : string {
-      node p s
-    }
+    node p with string
     var message = c.makeCompileFailure()
     """ controller(new DummyController) failsWith
     MethodNotFoundError(
-      line = 6,
+      line = 4,
       identifier = "makeCompileFailure",
       arguments = List()
     )
@@ -86,13 +86,11 @@ class TestControllerMethods extends TypeCheckerTest {
   def incorrectArgumentsToMethod = {
     """
     controller uk.co.colinhowe.glimpse.compiler.DummyController
-    macro p with s : string {
-      node p s
-    }
+    node p with string
     var message = c.makeMessage(4)
     """ controller(new DummyController) failsWith
     MethodNotFoundError(
-      line = 6,
+      line = 4,
       identifier = "makeMessage",
       arguments = List(SimpleType(classOf[Integer]))
     )
@@ -102,14 +100,12 @@ class TestControllerMethods extends TypeCheckerTest {
   def incorrectVariableToMethod = {
     """
     controller uk.co.colinhowe.glimpse.compiler.DummyController
-    macro p with s : string {
-      node p s
-    }
+    node p with string
     var x = 4
     var message = c.makeMessage(x)
     """ controller(new DummyController) failsWith
     MethodNotFoundError(
-      line = 7,
+      line = 5,
       identifier = "makeMessage",
       arguments = List(SimpleType(classOf[Integer]))
     )

@@ -22,10 +22,52 @@ class MacroDefinitionFinder(
 
   override def outAMacroDefn(node : AMacroDefn) = {
     val defn : MacroDefinition = node
-    macroProvider ! defn
+    macroProvider ! (node, defn)
 
     // Clear any generics in scope
     genericsInScope.clear();
+  }
+  
+  override def outANodeDefn(node : ANodeDefn) = {
+    
+    // TODO This is duplicated in macro definition conversion
+    val contentType = if (node.getType != null) {
+      typeProvider.getType(node.getType, typeNameResolver)
+    } else {
+      null
+    }
+    
+    // TODO This is duplicated in macro definition conversion
+    val arguments = node.getArgDefn().foldLeft(Map[String, ArgumentDefinition]())({ (args, parg) =>
+      val arg = parg.asInstanceOf[AArgDefn]
+      val cascade = arg.getModifier.exists { _.isInstanceOf[ACascadeModifier] }
+      val isRuntimeTyped = arg.getModifier.exists { _.isInstanceOf[ARuntimetypedModifier] }
+      args + (arg.getIdentifier().getText() -> ArgumentDefinition(
+          arg.getIdentifier().getText(), 
+          typeProvider.getType(arg.getType(), typeNameResolver, Map()),
+          cascade, 
+          arg.getDefault != null,
+          isRuntimeTyped))
+    })
+    
+    // TODO This is duplicated in macro definition conversion
+    val restrictions = if (node.getRestriction != null) {
+      node.getRestriction.asInstanceOf[ARestriction].getIdentifier.foldLeft(Set[Restriction]())({
+        (set, identifier) => set + NameRestriction(identifier.getText)})
+    } else {
+      Set[Restriction]()
+    }
+    
+    val defn : MacroDefinition = MacroDefinition(
+      name = node.getName.getText,
+      valueType = contentType,
+      isDynamic = false,
+      isNodeDefn = true,
+      restrictions = restrictions,
+      arguments = arguments
+    )
+
+    macroProvider ! (node, defn)
   }
   
   

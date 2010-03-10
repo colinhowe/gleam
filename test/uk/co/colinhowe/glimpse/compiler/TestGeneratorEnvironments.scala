@@ -15,11 +15,13 @@ class TestGeneratorEnvironments extends CompilerTest {
   @Test
   def basicChanges = {   
     """
+    node div with generator
+    node p with int
     var x = 4
-    node div {
+    div {
       x++
     }
-    node p x
+    p x
     """ compilesTo 
     <view><div /><p>5</p></view>
   }
@@ -27,8 +29,10 @@ class TestGeneratorEnvironments extends CompilerTest {
   @Test
   def changesInMacroInvokation = {   
     """
+    node div_node with generator
+    node p with int
     macro div with g : generator {
-      node div {
+      div_node {
         include g
       }   
     }
@@ -36,48 +40,51 @@ class TestGeneratorEnvironments extends CompilerTest {
     div {
       x++
     }
-    node p x
+    p x
     """ compilesTo 
-    <view><div /><p>5</p></view>
+    <view><div_node /><p>5</p></view>
   }
   
   @Test
   def macroArgumentsSafe = {   
     """
+    node p_node(value : int) with string
     macro p(value : int) with s : string {
       value++
-      node p(value: value) s
+      p_node(value: value) s
     }
     var y = 10
     p(value: y) "hi"
     p(value: y) "hi2"
     """ compilesTo 
-    <view><p value="11">hi</p><p value="11">hi2</p></view>
+    <view><p_node value="11">hi</p_node><p_node value="11">hi2</p_node></view>
   }
   
   @Test
   def generatorArgumentsSafe = {   
     """
+    node p_node with int
     macro p with g : generator(value : int) {
       var x = 4
       include g(value: x) 
-      node p x
+      p_node x
     }
     p { value : int =>
       value++
     }
     """ compilesTo 
-    <view><p>4</p></view>
+    <view><p_node>4</p_node></view>
   }
   
   @Test
   def singleGeneratorArgument = {   
     """
+    node p with int
     macro p with g : generator(value : int) {
       include g(v1: 1) 
     }
     p { v1 : int =>
-      node p v1
+      p v1
     }
     """ compilesTo 
     <view><p>1</p></view>
@@ -86,12 +93,13 @@ class TestGeneratorEnvironments extends CompilerTest {
   @Test
   def generatorArguments = {   
     """
+    node p with int
     macro p with g : generator(value : int) {
       include g(v1: 1, v2: 2) 
     }
     p { v1 : int, v2 : int =>
-      node p v1
-      node p v2
+      p v1
+      p v2
     }
     """ compilesTo 
     <view><p>1</p><p>2</p></view>
@@ -101,7 +109,6 @@ class TestGeneratorEnvironments extends CompilerTest {
   def cannotBindOutsideMacroGenerator = {   
     """
     macro p with g : generator {
-      node p "hi"
       y++
     }
     var y = 4
@@ -112,12 +119,14 @@ class TestGeneratorEnvironments extends CompilerTest {
   @Test
   def variableHiding = {   
     """
+    node div with generator
+    node p with int
     var x = 4
-    node div {
+    div {
       var x = 2
-      node p x
+      p x
     }
-    node p x
+    p x
     """ compilesTo 
     <view><div><p>2</p></div><p>4</p></view>
   }

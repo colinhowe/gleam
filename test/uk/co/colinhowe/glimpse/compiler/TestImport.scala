@@ -15,7 +15,8 @@ class TestImport extends CompilerTest {
     """
     import uk.co.colinhowe.glimpse.compiler.DummyController
     controller DummyController
-    node h1 c.name
+    node h1 with string
+    h1 c.name
     """ controller(new DummyController) compilesTo
     <view><h1>Name of the controller</h1></view>
   }
@@ -25,7 +26,8 @@ class TestImport extends CompilerTest {
     """
     import uk.co.colinhowe.glimpse.compiler.*
     controller DummyController
-    node h1 c.name
+    node h1 with string
+    h1 c.name
     """ controller(new DummyController) compilesTo
     <view><h1>Name of the controller</h1></view>
   }
@@ -35,11 +37,9 @@ class TestImport extends CompilerTest {
     """
     import java.lang.Object
     
-    macro p(o : Object) with s : string {
-      node p s
-    }
+    node p(o : Object) with string
     p(o : "object") "hi"
     """ compilesTo
-    <view><p>hi</p></view>
+    <view><p o="object">hi</p></view>
   }
 } 

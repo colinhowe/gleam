@@ -16,6 +16,8 @@ import scala.actors.OutputChannel
 import scala.actors.Futures._
 import scala.collection.mutable.Buffer
 
+import uk.co.colinhowe.glimpse.CompilationController
+import uk.co.colinhowe.glimpse.CompilationException
 import uk.co.colinhowe.glimpse.CompilationError
 import uk.co.colinhowe.glimpse.CompilationResult
 import uk.co.colinhowe.glimpse.compiler.lexer.Lexer
@@ -56,8 +58,6 @@ class GlimpseCompiler extends Actor {
       var replyTo : OutputChannel[Any] = null
       loop {
         react {
-          case Errored(e) => exception = e
-          
           case result : CompilationResult => 
             results += result
           case Join() =>
@@ -75,7 +75,7 @@ class GlimpseCompiler extends Actor {
               replyTo ! Joined()
               exit
             }
-          case _ =>
+          case _ => 
         }
       }
     }
@@ -124,63 +124,60 @@ class GlimpseCompiler extends Actor {
     }
   }
   
-  private class Phase2Controller extends Actor {
-    def act() {
-      loop {
-        react {
-          case intermediate : IntermediateResult =>
-            println("Intermediate: " + intermediate)
-            try {
-              val viewname = intermediate.viewName.replaceAll("-", "_")
-              val ast = intermediate.ast
-              
-              val errors = scala.collection.mutable.Buffer[CompilationError]() ++ intermediate.errors
-              
-              // Run the type checker
-              val typeChecker = new TypeChecker(intermediate.lineNumberProvider, macroProvider, typeResolver, intermediate.typeNameResolver, callResolver)
-              ast.apply(typeChecker)
-              errors ++ typeChecker.errors
-              
-              // Compile all the nodes down to java
-              val bcp = new ByteCodeProducer(
-                  viewname, 
-                  intermediate.lineNumberProvider, 
-                  typeResolver, 
-                  intermediate.typeNameResolver, 
-                  intermediate.sourcename,
-                  callResolver,
-                  typeChecker.resolvedCallsProvider,
-                  classOutputter)
-              ast.apply(bcp)
-              errors ++ bcp.errors
-              
-              // Output the errors
-              for (error <- errors) {
-                System.out.println(error)
-              }
-              
-              // Output the view as a file only if needed
-              val file = new File("temp/" + viewname + ".class")
-              val result = new CompilationResult(viewname, file)
-              for (error <- errors) {
-                result.addError(error)
-              }
-              println("Informing results actor")
-              resultsActor ! result
-            } catch {
-              case e : Exception => e.printStackTrace
-                println("Informing results actor of exception")
-                resultsActor ! Errored(e)
-            }
-          case Finished() => 
-            println("Phase 2 finished")
-            classOutputter !? Join()
-            errorHandler !? Join()
-            println("Informing results actor")
-            resultsActor ! Finished()
-            exit
+  private class Phase2Controller(errorHandler : ExceptionHandler) extends CompilationController(errorHandler) {
+    def handleMessage = {
+      case intermediate : IntermediateResult =>
+        println("Intermediate: " + intermediate)
+        try {
+          val viewname = intermediate.viewName.replaceAll("-", "_")
+          val ast = intermediate.ast
+          
+          val errors = scala.collection.mutable.Buffer[CompilationError]() ++ intermediate.errors
+          
+          // Run the type checker
+          val typeChecker = new TypeChecker(intermediate.lineNumberProvider, macroProvider, typeResolver, intermediate.typeNameResolver, callResolver)
+          ast.apply(typeChecker)
+          errors ++ typeChecker.errors
+          
+          // Compile all the nodes down to java
+          val bcp = new ByteCodeProducer(
+              viewname, 
+              intermediate.lineNumberProvider, 
+              typeResolver, 
+              intermediate.typeNameResolver, 
+              intermediate.sourcename,
+              callResolver,
+              typeChecker.resolvedCallsProvider,
+              classOutputter,
+              macroProvider)
+          ast.apply(bcp)
+          errors ++ bcp.errors
+          
+          // Output the errors
+          for (error <- errors) {
+            System.out.println(error)
+          }
+          
+          // Output the view as a file only if needed
+          val file = new File("temp/" + viewname + ".class")
+          val result = new CompilationResult(viewname, file)
+          for (error <- errors) {
+            result.addError(error)
+          }
+          println("Informing results actor")
+          resultsActor ! result
+        } catch {
+          case e : Exception => e.printStackTrace
+            println("Informing results actor of exception")
+            resultsActor ! Errored(e)
         }
-      }
+      case Finished() => 
+        println("Phase 2 finished")
+        classOutputter !? Join()
+        errorHandler !? Join()
+        println("Informing results actor")
+        resultsActor ! Finished()
+        exit
     }
   }
     
@@ -189,42 +186,42 @@ class GlimpseCompiler extends Actor {
   val typeResolver = new TypeResolver(typeProvider, macroProvider)
   val callResolver = new CallResolver(macroProvider)
     
-  private class Phase1Controller(phase2 : Phase2Controller) extends Actor {
+  private class Phase1Controller(phase2 : Phase2Controller, errorHandler : ExceptionHandler) extends CompilationController(errorHandler) {
     val intermediates = Buffer[IntermediateResult]()
     
-    def act() {
-      
-      loop {
-        react {
-          case intermediate : IntermediateResult =>
-            println("Intermediate: " + intermediate)
-            val ast = intermediate.ast
-            intermediate.typeNameResolver = new TypeNameResolver(ast, classPathResolver)
-            ast.apply(intermediate.lineNumberProvider)
-    
-            val finder = new MacroDefinitionFinder(intermediate.lineNumberProvider, typeProvider, macroProvider, intermediate.typeNameResolver)
-            ast.apply(finder)
-            intermediate.errors ++ finder.errors
-    
-            intermediate.ast.apply(typeResolver)
-            
-            intermediates += intermediate
+    def handleMessage = {
+      case intermediate : IntermediateResult =>
+        println("Intermediate: " + intermediate)
+        val ast = intermediate.ast
+        intermediate.typeNameResolver = new TypeNameResolver(ast, classPathResolver)
+        ast.apply(intermediate.lineNumberProvider)
 
-          case Finished() => 
-            println("Starting phase 2")
-            macroProvider !? Join()
-            typeResolver.stop
-            intermediates.foreach(phase2 ! _)
-            phase2 ! Finished() 
-            exit
+        val finder = new MacroDefinitionFinder(intermediate.lineNumberProvider, typeProvider, macroProvider, intermediate.typeNameResolver)
+        ast.apply(finder)
+        intermediate.errors ++ finder.errors
+
+        // Output the errors
+        for (error <- intermediate.errors) {
+          System.out.println(error)
         }
-      }
+        
+        intermediate.ast.apply(typeResolver)
+        
+        intermediates += intermediate
+
+      case Finished() => 
+        println("Starting phase 2")
+        macroProvider !? Join()
+        typeResolver.stop
+        intermediates.foreach(phase2 ! _)
+        phase2 ! Finished() 
+        exit
     }
   }
   
-  private val phase2 = new Phase2Controller()
+  private val phase2 = new Phase2Controller(errorHandler)
   phase2.start
-  private val phase1 = new Phase1Controller(phase2)
+  private val phase1 = new Phase1Controller(phase2, errorHandler)
   phase1.start
   
   private def compileAsts(intermediates : Iterable[IntermediateResult]) {

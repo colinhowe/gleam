@@ -9,9 +9,10 @@ class TestPropertyReference extends CompilerTest {
     """
     controller uk.co.colinhowe.glimpse.compiler.DummyController
     
+    node span with java.lang.Object
     macro field(p : ref) with s : string {
-      node span p.path 
-      node span p.value
+      span p.path 
+      span p.value
     }
     
     field(p: @c.name) "ignored"

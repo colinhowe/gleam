@@ -126,18 +126,21 @@ class TypeChecker(
     // Check that the method matches something
     val methodOption = methodResolver.getMatchingMethod(controllers.head, node)
     
-    if (methodOption == None) {
-      val argTypes = node.getExpr.map { expr =>
-        typeResolver.getType(expr, typeNameResolver)
-      }
-      errors += MethodNotFoundError(
-        line = lineNumberProvider.getLineNumber(node).get,
-        identifier = node.getIdentifier.getText,
-        arguments = argTypes.toList
-      )
-      
-      // Remove this node
-      node.replaceBy(new AErrorExpr)
+    methodOption match {
+      case None =>
+        val argTypes = node.getExpr.map { expr =>
+          typeResolver.getType(expr, typeNameResolver)
+        }
+        errors += MethodNotFoundError(
+          line = lineNumberProvider.getLineNumber(node).get,
+          identifier = node.getIdentifier.getText,
+          arguments = argTypes.toList
+        )
+        
+        // Remove this node
+        node.replaceBy(new AErrorExpr)
+      case Some(method) =>
+        typeResolver.addType(node, new SimpleType(method.getReturnType))
     }
   }
   
@@ -333,38 +336,32 @@ class TypeChecker(
   }
   
   override def outAPropertyExpr(node : APropertyExpr) {
-    try {
-      // Get the type from the variable
-      // TODO Move this in to the resolver?
-      val name = identifierListToString(node.getIdentifier)
-      
-        // TODO Make this handle multiple types of the same macro
-      val macrosWithName = macroProvider.get(name).iterator
-      if (macrosWithName.hasNext) {
+    // Get the type from the variable
+    // TODO Move this in to the resolver?
+    val name = identifierListToString(node.getIdentifier)
+    
+      // TODO Make this handle multiple types of the same macro
+    val macrosWithName = macroProvider.get(name).iterator
+    if (macrosWithName.hasNext) {
+      typeResolver.addType(
+          node, 
+          macrosWithName.next()) 
+    } else {
+      if (node.getIdentifier.size == 1) {
         typeResolver.addType(
             node, 
-            macrosWithName.next()) 
+            scope.get(name).asInstanceOf[Type])
       } else {
-        if (node.getIdentifier.size == 1) {
-          typeResolver.addType(
-              node, 
-              scope.get(name).asInstanceOf[Type])
-        } else {
-          val ownerType = scope.get(node.getIdentifier.head.getText).asInstanceOf[Type]
-          typeResolver.addType(
-              node.getIdentifier.head, 
-              ownerType)
-          
-          val returnType = evaluateCompoundProperty(node.getIdentifier.tail, ownerType.asInstanceOf[SimpleType].clazz)
-          typeResolver.addType(
-              node, 
-              returnType)
-        }
+        val ownerType = scope.get(node.getIdentifier.head.getText).asInstanceOf[Type]
+        typeResolver.addType(
+            node.getIdentifier.head, 
+            ownerType)
+        
+        val returnType = evaluateCompoundProperty(node.getIdentifier.tail, ownerType.asInstanceOf[SimpleType].clazz)
+        typeResolver.addType(
+            node, 
+            returnType)
       }
-    } catch {
-      case e : IdentifierNotFoundException =>
-        errors.add(IdentifierNotFoundError(lineNumberProvider.getLineNumber(node).get, e.identifier))
-        replaceWithErrorNode(node)
     }
   }
   
@@ -486,7 +483,7 @@ class TypeChecker(
       node.getController().apply(this)
     }
 
-    node.getMacroDefn.foreach(_.apply(this))
+    node.getDefn.foreach(_.apply(this))
 
     node.getStmt.foreach(casePStmt(_))
 

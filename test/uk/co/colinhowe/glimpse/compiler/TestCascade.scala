@@ -9,45 +9,26 @@ class TestCascade extends TypeCheckerTest {
   @Test
   def immediateCalls = { 
     """
+    node f(readonly : bool) with string
     macro field(readonly: bool) with s : string {
-      node field(readonly: readonly) s
+      f(readonly: readonly) s
     }
     macro fieldset(cascade readonly: bool) with s : string {
       field "someField"
     }
     fieldset(readonly: true) "ignored"
     """ compilesTo 
-    <view><field readonly="true">someField</field></view>
+    <view><f readonly="true">someField</f></view>
   }
   
   
   @Test
   def insideNodeGenerators = { 
     """
+    node f(readonly : bool) with string
+    node div with generator
     macro field(readonly: bool) with s : string {
-      node field(readonly: readonly) s
-    }
-    macro fieldset(cascade readonly: bool) with s : string {
-      node div {
-        field "someField"
-      }
-    }
-    fieldset(readonly: true) "ignored"
-    """ compilesTo 
-    <view><div><field readonly="true">someField</field></div></view>
-  }
-  
-  
-  @Test
-  def insideMacroGenerators = { 
-    """
-    macro div with g : generator {
-      node div {
-        include g
-      }
-    }
-    macro field(readonly: bool) with s : string {
-      node field(readonly: readonly) s
+      f(readonly: readonly) s
     }
     macro fieldset(cascade readonly: bool) with s : string {
       div {
@@ -56,20 +37,46 @@ class TestCascade extends TypeCheckerTest {
     }
     fieldset(readonly: true) "ignored"
     """ compilesTo 
-    <view><div><field readonly="true">someField</field></div></view>
+    <view><div><f readonly="true">someField</f></div></view>
+  }
+  
+  
+  @Test
+  def insideMacroGenerators = { 
+    """
+    node f(readonly : bool) with string
+    node d with generator
+    macro div with g : generator {
+      d {
+        include g
+      }
+    }
+    macro field(readonly: bool) with s : string {
+      f(readonly: readonly) s
+    }
+    macro fieldset(cascade readonly: bool) with s : string {
+      div {
+        field "someField"
+      }
+    }
+    fieldset(readonly: true) "ignored"
+    """ compilesTo 
+    <view><d><f readonly="true">someField</f></d></view>
   }
   
   
   @Test
   def insideIncludes = { 
     """
+    node f(readonly : bool) with string
+    node d with generator
     macro div with g : generator {
-      node div {
+      d {
         include g
       }
     }
     macro field(readonly: bool) with s : string {
-      node field(readonly: readonly) s
+      f(readonly: readonly) s
     }
     macro fieldset(cascade readonly: bool) with g : generator {
       div {
@@ -80,25 +87,27 @@ class TestCascade extends TypeCheckerTest {
       field "hi"
     }
     """ compilesTo 
-    <view><div><field readonly="true">hi</field></div></view>
+    <view><d><f readonly="true">hi</f></d></view>
   }
   
   
   @Test
   def noCascadeIntoOtherMacros = { 
     """
+    node x(readonly : bool) with string
+    node p with string
     macro div with g : generator {
-      node x(readonly: readonly) "x"
+      x(readonly: readonly) "x"
     }
     macro fieldset(cascade readonly: bool) with s : string {
       div {
-        node p "fail"
+        p "fail"
       }
     }
     fieldset(readonly: true) "fail"
     """ failsWith
     IdentifierNotFoundError(
-      line = 3,
+      line = 5,
       identifier = "readonly"
     )
   }
@@ -107,8 +116,10 @@ class TestCascade extends TypeCheckerTest {
   @Test
   def innerVariableSameNameButNoCascade = { 
     """
+    node f(readonly : bool) with string
+    node d with generator
     macro div(readonly : bool) with g : generator {
-      node div {
+      d {
         include g
       }
     }
@@ -116,7 +127,7 @@ class TestCascade extends TypeCheckerTest {
       include g
     }
     macro field(readonly : bool) with s : string {
-      node field(readonly: readonly) s
+      f(readonly: readonly) s
     }
     fieldset(readonly: true) {
       div(readonly: false) {
@@ -124,15 +135,17 @@ class TestCascade extends TypeCheckerTest {
       }
     }
     """ compilesTo 
-    <view><div><field readonly="true">name</field></div></view>
+    <view><d><f readonly="true">name</f></d></view>
   }
   
   
   @Test
   def innerVariableSameNameAndCascade = { 
     """
+    node f(readonly : bool) with string
+    node d with generator
     macro div(cascade readonly : bool) with g : generator {
-      node div {
+      d {
         include g
       }
     }
@@ -140,7 +153,7 @@ class TestCascade extends TypeCheckerTest {
       include g
     }
     macro field(readonly : bool) with s : string {
-      node field(readonly: readonly) s
+      f(readonly: readonly) s
     }
     fieldset(readonly: true) {
       div(readonly: false) {
@@ -148,15 +161,17 @@ class TestCascade extends TypeCheckerTest {
       }
     }
     """ compilesTo 
-    <view><div><field readonly="false">name</field></div></view>
+    <view><d><f readonly="false">name</f></d></view>
   }
   
   
   @Test
   def innerVariableWithCascadeName = { 
     """
+    node f(readonly : bool) with string
+    node d with generator
     macro div(cascade readonly : bool) with g : generator {
-      node div {
+      d {
         include g
       }
     }
@@ -164,7 +179,7 @@ class TestCascade extends TypeCheckerTest {
       include g
     }
     macro field(readonly : bool) with s : string {
-      node field(readonly: readonly) s
+      f(readonly: readonly) s
     }
     fieldset(readonly: true) {
       var readonly = false
@@ -173,6 +188,6 @@ class TestCascade extends TypeCheckerTest {
       }
     }
     """ compilesTo 
-    <view><div><field readonly="true">name</field></div></view>
+    <view><d><f readonly="true">name</f></d></view>
   }
 }

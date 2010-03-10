@@ -113,6 +113,17 @@ abstract trait CompilerTest {
   def checkCompilation(compilationSet : CompilationSet, expectedResult : scala.xml.Elem) {
     val results = compile(compilationSet)
     
+    var errors = List[CompilationError]()
+    
+    for (result <- results) {
+      for (error <- result.getErrors()) {
+        errors = error.asInstanceOf[CompilationError] :: errors
+      }
+    }
+    if (errors.size > 0) {
+      assertEquals("Got errors [" + errors + "]", 0, errors.size)
+    }
+    
     // Load the source
     val classesDir = new File("temp/")
 
@@ -138,17 +149,6 @@ abstract trait CompilerTest {
       "</view>"
     
     assertEquals(printXml(expectedResult).replaceAll("\r", ""), xml.replaceAll("\r", ""))
-    
-    var errors = List[CompilationError]()
-    for (result <- results) {
-      for (error <- result.getErrors()) {
-        errors = error.asInstanceOf[CompilationError] :: errors
-      }
-    }
-    
-    if (errors.size > 0) {
-      assertEquals("Got errors [" + errors + "]", 0, errors.size)
-    }
   }
  
   def printXml(nodes : List[Node]) : String = {

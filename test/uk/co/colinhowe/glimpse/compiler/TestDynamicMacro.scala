@@ -16,8 +16,10 @@ class TestDynamicMacro extends TypeCheckerTest {
   def noArguments = {  
     """
     dynamic macro dynamo with g : generator 
+    node d with generator
+    node p with string
     macro div with g : generator {
-      node div {
+      d {
         include g
       }   
     }
@@ -25,12 +27,12 @@ class TestDynamicMacro extends TypeCheckerTest {
     dynamo = div
     
     dynamo {
-      node p "Inside"
+      p "Inside"
     }
     """ compilesTo <view>
-      <div>
+      <d>
         <p>Inside</p>
-      </div>
+      </d>
     </view>
   }
     
@@ -38,31 +40,33 @@ class TestDynamicMacro extends TypeCheckerTest {
   def arguments = {   
     """
     dynamic macro dynamo(value : int) with s : string 
+    node x(value : int) with string
     macro p(value : int) with s : string {
-      node p(value: value) s   
+      x(value: value) s   
     }
     
     dynamo = p
     
     dynamo(value: 2) "hi"
     """ compilesTo <view>
-      <p value="2">hi</p>
+      <x value="2">hi</x>
     </view>
   }
     
   @Test
   def valueNameMismatchOk = {   
     """
+    node x with string
     dynamic macro dynamo with str : string
     macro p with s : string {
-      node p s
+      x s
     }
     
     dynamo = p
     
     dynamo "hi"
     """ compilesTo <view>
-      <p>hi</p>
+      <x>hi</x>
     </view>
   }
     
@@ -71,13 +75,13 @@ class TestDynamicMacro extends TypeCheckerTest {
     """
     dynamic macro dynamo with g : generator 
     macro p with s : string {
-      node p s   
+      var x = 1
     }
     
     dynamo = p
     
     dynamo {
-      node p "hi"
+      var x = 1
     }
     """ failsWith
     DynamicMacroMismatchError(
@@ -90,7 +94,7 @@ class TestDynamicMacro extends TypeCheckerTest {
     """
     dynamic macro dynamo(value : int) with s : string 
     macro p with s : string {
-      node p s   
+      var x = 1
     }
     
     dynamo = p
@@ -101,5 +105,4 @@ class TestDynamicMacro extends TypeCheckerTest {
         line = 7, 
         dynamicMacro = "dynamo") // TODO Add some details to this error
   }
-
 }

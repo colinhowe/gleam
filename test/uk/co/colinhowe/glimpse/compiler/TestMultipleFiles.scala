@@ -14,14 +14,11 @@ class TestMultipleFiles extends CompilerTest {
   @Test
   def twoFiles = {   
     """
-    macro div with g : generator {
-      node div {
-        include g
-      }   
-    }
+    node div with generator
     """ and """
+    node p with string
     div {
-      node p "Inside"
+      p "Inside"
     }
     """ compilesTo <view>
       <div>

@@ -20,13 +20,14 @@ class TestDoubleDispatch extends TypeCheckerTest {
       
     abstract macro dd(runtime typed o : java.lang.Object) with s : string
         
+    node p(o : string) with string
     macro dd(runtime typed o : string) with s : string {
-      node dd(o: o) "Success"      
+      p(o: o) "Success"      
     }      
     
     dd(o: c.someString) "ignored"
     """ controller(new DummyController) compilesTo
-    <view><dd o="someString">Success</dd></view>
+    <view><p o="someString">Success</p></view>
   }
   
   @Test
@@ -36,13 +37,14 @@ class TestDoubleDispatch extends TypeCheckerTest {
       
     abstract macro dd(runtime typed o : java.lang.Object) with s : string
         
+    node p(o : java.lang.Number) with string
     macro dd(runtime typed o : java.lang.Number) with s : string {
-      node dd(o: o) "Success"
+      p(o: o) "Success"
     }      
     
     dd(o: c.someBigInteger) "ignored"
     """ controller(new DummyController) compilesTo
-    <view><dd o="5">Success</dd></view>
+    <view><p o="5">Success</p></view>
   }
   
   @Test
@@ -52,16 +54,17 @@ class TestDoubleDispatch extends TypeCheckerTest {
       
     abstract macro dd(runtime typed o : java.lang.Object) with s : string
         
+    node p(o : java.lang.Object) with string
     macro dd(runtime typed o : java.lang.Number) with s : string {
-      node dd(o: o) "Number"
+      p(o: o) "Number"
     }
         
     macro dd(runtime typed o : java.math.BigInteger) with s : string {
-      node dd(o: o) "BigInteger"
+      p(o: o) "BigInteger"
     }
     
     dd(o: c.someBigInteger) "ignored"
     """ controller(new DummyController) compilesTo
-    <view><dd o="5">BigInteger</dd></view>
+    <view><p o="5">BigInteger</p></view>
   }
 }

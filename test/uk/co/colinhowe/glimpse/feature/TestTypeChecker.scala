@@ -66,7 +66,7 @@ class TestTypeChecker extends TypeCheckerTest {
     ;
     """
     macro p(v : int) with s : string {
-      node p s 
+      var x = 1
     }
     p(v: "1") "1"
     """ failsWith
@@ -86,7 +86,7 @@ class TestTypeChecker extends TypeCheckerTest {
   def validCallToMacro = {
     """
     macro p(v : int) with s : string {
-      node p s 
+       
     }
     p(v: 1) "1"
     """ succeeds
@@ -97,7 +97,7 @@ class TestTypeChecker extends TypeCheckerTest {
   def macroWithoutValue = {
     """
     macro p(v : int) {
-      node p v 
+       
     }
     p(v: 1)
     """ succeeds
@@ -112,22 +112,22 @@ class TestTypeChecker extends TypeCheckerTest {
     ;
     """
     macro p(v : int) with s : string {
-      node p s 
+      var x = 1
     }
     p(v: 1) {
-      node div "hi"
+      var x = 1
     }
     """ failsWith
     MacroNotFoundError(
       line = 5,      name = "p",      argumentTypes = Map[String, Type](        "v" -> SimpleType(classOf[Integer])      ),      valueType = SimpleType(classOf[Generator]),      definitionsFound = Set[MacroDefinition](definition)    )
   }  
-  @Test  def incrementOnString = {     """    var x = "1"    x++    node h1 x    """ failsWith    TypeCheckError(        line = 3,         expectedType = new SimpleType(classOf[Integer]),         actualType = new SimpleType(classOf[String]))  }
+  @Test  def incrementOnString = {     """    var x = "1"    x++    """ failsWith    TypeCheckError(        line = 3,         expectedType = new SimpleType(classOf[Integer]),         actualType = new SimpleType(classOf[String]))  }
   
   @Test
   def macroWithoutValueCalledWithValue = {   
     """
     macro br {
-      node br
+      var x = 1
     }
     br "hi"
     """ failsWith
@@ -151,13 +151,11 @@ class TestTypeChecker extends TypeCheckerTest {
   @Test
   def macroWithValueCalledWithoutValue = {   
     """
-    macro br with s : string {
-      node br s
-    }
+    node br with string
     br
     """ failsWith
     MacroNotFoundError(
-      line = 5,
+      line = 3,
       name = "br",
       argumentTypes = Map[String, Type](),
       valueType = null,

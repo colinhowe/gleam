@@ -93,12 +93,21 @@ Ignored Tokens
     multi_line_comment;
 
 Productions 
-    view = newline* import* controller? macro_defn* stmt* 
-      {-> New view([import], controller, [macro_defn], [stmt])};
+    view = newline* import* controller? defn* stmt* 
+      {-> New view([import], controller, [defn], [stmt])};
     
     with_defn {-> with_defn} =
       with [n1]:newline* [content_name]:identifier [n2]:newline* colon [n3]:newline* [content_type]:type [n4]:newline* [gen_args]:arg_defns?
       {-> New with_defn(content_name, content_type, [])};
+    
+    with_type_only {-> type} =
+      with [n1]:newline* [content_type]:type [n2]:newline*
+      {-> content_type };
+    
+    defn = 
+        {noded} node_defn
+      | {macrod} macro_defn
+      ;
     
     macro_defn =       
         {static} macro [n1]:newline* [name]:identifier [n2]:newline* [generic_defns]:generic_defns? [macro_args]:arg_defns? with_defn? controller? restriction? generator [n3]:newline* 
@@ -106,6 +115,11 @@ Productions
       | {no_impl} macro_modifier [n1]:newline* macro [n2]:newline* [name]:identifier [n3]:newline* [generic_defns]:generic_defns? [macro_args]:arg_defns? with_defn? controller? restriction? 
         {-> New macro_defn(macro_modifier, name, [generic_defns.generic_defn], [macro_args.arg_defn], with_defn, controller, restriction, Null)}
       ;
+    
+    node_defn =
+      node [n1]:newline* [name]:identifier [n2]:newline* [args]:arg_defns? with_type_only? restriction?
+      {-> New node_defn(name, [args.arg_defn], with_type_only.type, restriction) }
+      ; 
       
     macro_modifier =
         {dynamic} dynamic {-> New macro_modifier.dynamic()}
@@ -119,8 +133,7 @@ Productions
     
     controller = controller_token [n1]:newline* type [n2]:newline* {-> New controller(type)};
     
-    stmt = {node} node_create [n1]:newline+ {-> New stmt.node(node_create)}
-         | {macro} identifier opt_args? expr [n1]:newline+ {-> New stmt.macro(identifier, [opt_args.argument], expr)}
+    stmt = {macro} identifier opt_args? expr [n1]:newline+ {-> New stmt.macro(identifier, [opt_args.argument], expr)}
          | {macro_noexpr} identifier opt_args? [n1]:newline+ {-> New stmt.macro(identifier, [opt_args.argument], Null)}
          | {include} include [the_include]:identifier opt_args? [n1]:newline+ {-> New stmt.include(the_include, [opt_args.argument])}
          | {var_defn} var_defn [n1]:newline+ {-> New stmt.var_defn(var_defn)}
@@ -190,10 +203,6 @@ Productions
       
     generic_defn = identifier {-> New generic_defn(identifier) };
       
-    node_create {-> node_create} = 
-        node identifier opt_args? expr? {-> New node_create(identifier, [opt_args.argument], expr) }
-      ;
-      
     arg_defns {-> arg_defn* } = lparen arg_defns2 rparen {-> [arg_defns2.arg_defn] };
     
     arg_defns2 {-> arg_defn*} = 
@@ -232,7 +241,12 @@ Productions
     //string_literal = string;
                      
 Abstract Syntax Tree
-    view = import* controller? macro_defn* stmt+;
+    view = import* controller? defn* stmt+;
+    
+    defn = 
+        {noded} node_defn
+      | {macrod} macro_defn
+      ;    
     
     controller = type;
     
@@ -254,8 +268,7 @@ Abstract Syntax Tree
       
     restriction = identifier*;
     
-    stmt = {node}  node_create
-         | {macro} identifier [arguments]:argument* expr?
+    stmt = {macro} identifier [arguments]:argument* expr?
          | {include} identifier argument*
          | {var_defn} var_defn
          | {increment} identifier
@@ -300,18 +313,18 @@ Abstract Syntax Tree
       | {wildcard} identifier*
       ;
       
-    node_create = 
-      [id]:identifier [arguments]:argument* [expr]:expr? 
-      ;
-      
     generator = arg_defn* stmt+;
     
     forloop = type identifier expr stmt+;
     
     macro_defn = macro_modifier? [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* with_defn? controller? restriction? generator?;
     
+    node_defn = [name]:identifier [arg_defn]:arg_defn* type? restriction? ;
+    
     include_a = [the_include]:identifier  [arguments]:argument*;
     
     with_defn = 
       [content_name]:identifier [content_type]:type [gen_args]:arg_defn*;
+    
+    with_type_only = [content_type]:type;
     

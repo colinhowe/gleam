@@ -47,7 +47,7 @@ class ParserController(compiler : GlimpseCompiler, exceptionHandler : ExceptionH
         val closeBracket = e.getMessage().indexOf("]")
         val lineNumber = Integer.parseInt(e.getMessage().substring(openBracket + 1, comma))
         val parseMessage = e.getMessage().substring(closeBracket + 2)
-        exceptionHandler ! CompilationException(ParseError(message.unit, lineNumber, parseMessage))
+        exceptionHandler ! CompilationException(ParseError(message.unit, lineNumber, e.getToken.getPos, parseMessage))
     } finally {
       if (reader != null) {
         reader.close

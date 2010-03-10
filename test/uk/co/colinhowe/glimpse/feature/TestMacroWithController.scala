@@ -19,26 +19,28 @@ class TestMacroWithController extends TypeCheckerTest {
   def basicMacroController = {
     """
     controller uk.co.colinhowe.glimpse.compiler.DummyController
+    node x with java.lang.Object
     macro p with s : string
         controller uk.co.colinhowe.glimpse.compiler.DummyController {
-      node p c.someString
+      x c.someString
     }
     p "ignored"
     """ controller(new DummyController) compilesTo 
-    <view><p>someString</p></view>
+    <view><x>someString</x></view>
   }
   
   @Test
   def interfaceAsMacroController = {
     """
     controller uk.co.colinhowe.glimpse.compiler.DummyController
+    node x with java.lang.Object
     macro p with s : string
         controller uk.co.colinhowe.glimpse.compiler.DummyInterface {
-      node p c.someString
+      x c.someString
     }
     p "ignored"
     """ controller(new DummyController) compilesTo
-    <view><p>someString</p></view>
+    <view><x>someString</x></view>
   }
   
   @Test
@@ -47,7 +49,7 @@ class TestMacroWithController extends TypeCheckerTest {
     controller uk.co.colinhowe.glimpse.compiler.DummyController
     macro p with s : string
         controller uk.co.colinhowe.glimpse.compiler.DummyInterface {
-      node p c.someObject
+      var x = c.someObject
     }
     p "ignored"
     """ controller(new DummyController) failsWith
@@ -60,14 +62,15 @@ class TestMacroWithController extends TypeCheckerTest {
   @Test
   def callMacroWithoutController = {
     """
+    node x with string
     macro p with s : string
         controller uk.co.colinhowe.glimpse.compiler.DummyInterface {
-      node p "ignored"
+      x "ignored"
     }
     p "ignored"
     """ failsWith
     IncompatibleControllerError(
-      line = 6,
+      line = 7,
       name = "p",
       controllerFound = null,
       controllerNeeded = SimpleType(classOf[DummyInterface])
@@ -80,7 +83,7 @@ class TestMacroWithController extends TypeCheckerTest {
     controller java.lang.String
     macro p with s : string
         controller uk.co.colinhowe.glimpse.compiler.DummyInterface {
-      node p "ignored"
+      var x = 1
     }
     p "ignored"
     """  controller("controller") failsWith

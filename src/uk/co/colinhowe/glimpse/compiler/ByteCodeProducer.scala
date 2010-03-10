@@ -48,7 +48,8 @@ class ByteCodeProducer(
     val sourcename : String,
     val callResolver : CallResolver,
     val resolvedCallsProvider : ResolvedCallsProvider,
-    val classOutputter : ClassOutputter
+    val classOutputter : ClassOutputter,
+    val macroDefinitionProvider : MacroDefinitionProvider
    ) extends DepthFirstAdapter with Conversions with ByteCodePatterns {
   private implicit val typeProvider = typeResolver.typeProvider
     
@@ -740,6 +741,191 @@ class ByteCodeProducer(
     classOutputter ! OutputClass(cw.toByteArray, className)
   }
   
+  
+  override def caseANodeDefn(node : ANodeDefn) {
+    val macroDefinition = macroDefinitionProvider.getByNode(node)
+    val className = macroDefinition.className
+    val macroName = macroDefinition.name
+     
+    // Create a new top level class
+    val cw = new ClassWriter(ClassWriter.COMPUTE_MAXS)
+    
+    // Create the signature for the macro
+    val args = scala.collection.mutable.Set[(String, String)]()
+    for (parg <- node.getArgDefn()) {
+      val arg = parg.asInstanceOf[AArgDefn]
+      val argName = arg.getIdentifier().toString()
+      args.add((argName, arg.getType().toString()))
+    }
+
+    // Get the name of the macro
+    macros.add(macroName)
+
+    val parentClass = "java/lang/Object"
+    val interfaces = Array[String]("uk/co/colinhowe/glimpse/Macro")
+
+    cw.visit(V1_6, ACC_SUPER + ACC_PUBLIC, className, null, parentClass, interfaces)
+    cw.visitSource(sourcename, null)
+
+    // Instance field for the macro
+    val fv = cw.visitField(ACC_PRIVATE + ACC_STATIC, "instance", "Luk/co/colinhowe/glimpse/Macro;", null, null)
+    fv.visitEnd()
+    
+    // Static constructor
+    {
+      val mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null)
+      mv.visitCode()
+      methodVisitors.push(mv)
+
+      // Initialise the instance
+      NEW(className) { }
+      mv.visitFieldInsn(PUTSTATIC, className, "instance", "Luk/co/colinhowe/glimpse/Macro;")
+      
+      mv.visitInsn(RETURN)
+      mv.visitMaxs(0, 0)
+      mv.visitEnd()
+      methodVisitors.pop
+    } 
+    
+    // getInstance method
+    {
+      val mv = cw.visitMethod(ACC_STATIC | ACC_PUBLIC, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;", null, null)
+      mv.visitCode()
+      methodVisitors.push(mv)
+
+      mv.visitFieldInsn(GETSTATIC, className, "instance", "Luk/co/colinhowe/glimpse/Macro;")
+      mv.visitInsn(ARETURN)
+      mv.visitMaxs(0, 0)
+      mv.visitEnd();
+      methodVisitors.pop
+    } 
+    
+    defaultConstructor(cw, className, parentClass)
+    
+    // Invoke method
+    {
+      val mv = cw.visitMethod(ACC_PUBLIC, 
+          "invoke", 
+          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;",
+          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;Ljava/lang/Object;)Ljava/util/List<Luk/co/colinhowe/glimpse/Node;>;", null)
+      methodVisitors.push(mv)
+      mv.visitCode()
+      
+      val l0 = new Label
+      mv.visitLabel(l0)
+
+      // Put defaults on to the argument map as needed
+      for (parg <- node.getArgDefn) {
+        val arg = parg.asInstanceOf[AArgDefn]
+        
+        // Put on a default if needed
+        if (arg.getDefault != null) {
+          mv.visitVarInsn(ALOAD, 2) // argmap
+          mv.visitLdcInsn(arg.getIdentifier.getText) // name, argmap
+          INVOKE(classOf[java.util.Map[_,_]], "containsKey", "(Ljava/lang/Object;)Z")
+
+          val dontAdd = new Label()
+          mv.visitJumpInsn(IFNE, dontAdd)
+
+          mv.visitVarInsn(ALOAD, 2) // argmap
+          mv.visitLdcInsn(arg.getIdentifier.getText) // name, argmap
+          arg.getDefault.apply(this)
+          INVOKE(classOf[java.util.Map[_,_]], "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
+          POP
+
+          mv.visitLabel(dontAdd)
+        }
+      }
+      
+      // Variables
+      // 0 -> this
+      // 1 -> caller scope
+      // 2 -> argument map
+      // 3 -> content
+      
+      NEW(classOf[java.util.LinkedList[_]]) { }
+      DUP
+      
+      NEW(classOf[uk.co.colinhowe.glimpse.Node], classOf[java.util.List[_]], classOf[String], classOf[Object]) {
+        node.getType match {
+          case null => 
+            mv.visitInsn(ACONST_NULL)
+            mv.visitLdcInsn(macroName)
+            mv.visitInsn(ACONST_NULL)
+          
+          case _ : AGeneratorType => 
+            mv.visitVarInsn(ALOAD, 3) // value, id, null
+            
+            // Create a new scope for cascades
+            NEW(classOf[Scope], classOf[Scope], classOf[Object]) {
+              mv.visitVarInsn(ALOAD, 1)
+              mv.visitLdcInsn(getOwner(node))
+            }
+            mv.visitVarInsn(ASTORE, 4)
+
+            // Put cascade arguments on the caller's scope as needed
+            for ((name, arg) <- macroDefinition.arguments) {
+              if (arg.cascade) {
+                mv.visitVarInsn(ALOAD, 1) // scope
+                mv.visitLdcInsn("$" + name) // name, scope
+      
+                // Grab the variable from the argument map
+                mv.visitVarInsn(ALOAD, 2) // argmap
+                mv.visitLdcInsn(name) // name, argmap
+                INVOKE(classOf[java.util.Map[_,_]], "get", "(Ljava/lang/Object;)Ljava/lang/Object;")
+
+                mv.visitLdcInsn(1) // true, value, name, scope
+                INVOKE(classOf[Scope], "add", "(Ljava/lang/String;Ljava/lang/Object;Z)V")
+              }
+            }
+            
+            mv.visitVarInsn(ALOAD, 4) // scope
+            INVOKE(classOf[Generator], "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
+            mv.visitLdcInsn(macroName);  // id, nodes, node, node
+            mv.visitInsn(ACONST_NULL) // null, id, nodes, node, node
+          
+          case _ => 
+            mv.visitInsn(ACONST_NULL) // null, node, node
+            mv.visitLdcInsn(macroName) // id, null, node, node
+            mv.visitVarInsn(ALOAD, 3) // value, id, null
+        }
+      }
+      
+      for (parg <- node.getArgDefn) {
+        val arg = parg.asInstanceOf[AArgDefn]
+    
+        DUP
+        mv.visitVarInsn(ALOAD, 2) // argmap
+        mv.visitLdcInsn(arg.getIdentifier.getText) // name, argmap
+        mv.visitInsn(DUP_X1) // name, argmap, name
+        INVOKE(classOf[java.util.Map[_,_]], "get", "(Ljava/lang/Object;)Ljava/lang/Object;")
+        INVOKE(classOf[GNode], "setAttribute", "(Ljava/lang/String;Ljava/lang/Object;)V")
+      }
+      
+      mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "add", "(Ljava/lang/Object;)Z")
+      POP
+
+      mv.visitInsn(ARETURN)
+
+      val l6 = new Label()
+      mv.visitLabel(l6)
+
+      mv.visitLocalVariable("this", "Lcheese/HelloWorld;", null, l0, l6, 0)
+      mv.visitLocalVariable("callerScope", "Luk/co/colinhowe/glimpse/infrastructure/Scope;", null, l0, l6, 1)
+      mv.visitLocalVariable("_args", "Ljava/util/Map;", "Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;", l0, l6, 2)
+      mv.visitLocalVariable("value", "Ljava/lang/String;", null, l0, l6, 3)
+      mv.visitLocalVariable("scope", "Luk/co/colinhowe/glimpse/infrastructure/Scope;", null, l0, l6, 4)
+
+      mv.visitMaxs(4, 7)
+      mv.visitEnd()
+      methodVisitors.pop
+    }
+    
+    cw.visitEnd()
+
+    classOutputter ! OutputClass(cw.toByteArray, className)
+  }
+  
   private def beginScope(
       owner : String, 
       store : Boolean = true, 
@@ -1082,53 +1268,53 @@ class ByteCodeProducer(
     addAllNodesFromStack
   }
   
-  
-  /**
-   * When we come in to this method we expect the following stack:
-   *   value
-   *   property value -- Property pairs
-   *   property name  -|
-   */
-  override def caseANodeCreate(node : ANodeCreate) {
-    val id = node.getId().getText()
-    val mv = methodVisitors.head
-    
-    // Start creating the node
-    // Load up the node list ready for adding the node to
-    // Create the node on the stack ready for setting properties on it
-    val l1 = startLabel(node)
-    
-    NEW(classOf[uk.co.colinhowe.glimpse.Node], classOf[java.util.List[_]], classOf[String], classOf[Object]) {
-      node.getExpr match {
-        case null => 
-          mv.visitInsn(ACONST_NULL)
-          mv.visitLdcInsn(id)
-          mv.visitInsn(ACONST_NULL)
-        
-        case expr : AGeneratorExpr => 
-          expr.apply(this)
-
-          val generatorIdentifier = viewname + "$$generator" + generatorIds.get(expr.getGenerator())
-          // Stack: generator, node, node
-          mv.visitVarInsn(ALOAD, 1) // scope, generator, node, node
-          INVOKE(classOf[Generator], "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
-          // nodes, node, node
-          mv.visitLdcInsn(id);  // id, nodes, node, node
-          mv.visitInsn(ACONST_NULL) // null, id, nodes, node, node
-        
-        case expr => 
-          mv.visitInsn(ACONST_NULL) // null, node, node
-          mv.visitLdcInsn(id) // id, null, node, node
-          expr.apply(this) // value, id, null, node, node
-      }
-    }
-      
-    for (argument <- node.getArguments) {
-      DUP // node, node
-      argument.apply(this) // value, name, node, node
-      INVOKE(classOf[GNode], "setAttribute", "(Ljava/lang/String;Ljava/lang/Object;)V")
-    }
-    
-    addToNodeListFromStack
-  }
+//  
+//  /**
+//   * When we come in to this method we expect the following stack:
+//   *   value
+//   *   property value -- Property pairs
+//   *   property name  -|
+//   */
+//  override def caseANodeCreate(node : ANodeCreate) {
+//    val id = node.getId().getText()
+//    val mv = methodVisitors.head
+//    
+//    // Start creating the node
+//    // Load up the node list ready for adding the node to
+//    // Create the node on the stack ready for setting properties on it
+//    val l1 = startLabel(node)
+//    
+//    NEW(classOf[uk.co.colinhowe.glimpse.Node], classOf[java.util.List[_]], classOf[String], classOf[Object]) {
+//      node.getExpr match {
+//        case null => 
+//          mv.visitInsn(ACONST_NULL)
+//          mv.visitLdcInsn(id)
+//          mv.visitInsn(ACONST_NULL)
+//        
+//        case expr : AGeneratorExpr => 
+//          expr.apply(this)
+//
+//          val generatorIdentifier = viewname + "$$generator" + generatorIds.get(expr.getGenerator())
+//          // Stack: generator, node, node
+//          mv.visitVarInsn(ALOAD, 1) // scope, generator, node, node
+//          INVOKE(classOf[Generator], "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
+//          // nodes, node, node
+//          mv.visitLdcInsn(id);  // id, nodes, node, node
+//          mv.visitInsn(ACONST_NULL) // null, id, nodes, node, node
+//        
+//        case expr => 
+//          mv.visitInsn(ACONST_NULL) // null, node, node
+//          mv.visitLdcInsn(id) // id, null, node, node
+//          expr.apply(this) // value, id, null, node, node
+//      }
+//    }
+//      
+//    for (argument <- node.getArguments) {
+//      DUP // node, node
+//      argument.apply(this) // value, name, node, node
+//      INVOKE(classOf[GNode], "setAttribute", "(Ljava/lang/String;Ljava/lang/Object;)V")
+//    }
+//    
+//    addToNodeListFromStack
+//  }
 }

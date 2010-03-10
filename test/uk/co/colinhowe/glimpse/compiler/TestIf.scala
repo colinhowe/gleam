@@ -16,10 +16,11 @@ class TestIf extends TypeCheckerTest {
   @Test
   def simpleIf = {   
     """
+    node h1 with bool
     if (false) {
-      node h1 false
+      h1 false
     }
-    node h1 true
+    h1 true
     """ compilesTo 
     <view><h1>true</h1></view>
   }
@@ -27,12 +28,13 @@ class TestIf extends TypeCheckerTest {
   @Test
   def ifElseWithIfFalse = {   
     """
+    node h1 with java.lang.Object
     if (false) {
-      node h1 false
+      h1 false
     } else {
-      node h1 "else"
+      h1 "else"
     }
-    node h1 true
+    h1 true
     """ compilesTo 
     <view><h1>else</h1><h1>true</h1></view>
   }
@@ -40,12 +42,13 @@ class TestIf extends TypeCheckerTest {
   @Test
   def ifElseWithIfTrue = {   
     """
+    node h1 with java.lang.Object
     if (true) {
-      node h1 "true"
+      h1 "true"
     } else {
-      node h1 "else"
+      h1 "else"
     }
-    node h1 true
+    h1 true
     """ compilesTo 
     <view><h1>true</h1><h1>true</h1></view>
   }
@@ -53,13 +56,14 @@ class TestIf extends TypeCheckerTest {
   @Test
   def ifWithVariable = {   
     """
+    node h1 with java.lang.Object
     var even = false
     if (even) {
-      node h1 false
+      h1 false
     } else {
-      node h1 "else"
+      h1 "else"
     }
-    node h1 true
+    h1 true
     """ compilesTo 
     <view><h1>else</h1><h1>true</h1></view>
   }

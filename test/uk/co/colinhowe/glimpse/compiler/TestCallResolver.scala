@@ -21,7 +21,7 @@ class TestCallResolver extends AssertionsForJUnit {
   new AView(
     Buffer[PImport](),
     null,
-    Buffer[PMacroDefn](),
+    Buffer[PDefn](),
     Buffer[PStmt](topLevelInvocation)
   )
   

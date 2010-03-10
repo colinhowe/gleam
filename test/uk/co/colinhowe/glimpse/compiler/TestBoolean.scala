@@ -18,8 +18,8 @@ class TestBoolean extends TypeCheckerTest {
   @Test
   def booleanDeclaration = {   
     """    
-    var x = false
-    node h1 x
+    node h1 with bool    var x = false
+    h1 x
     """ compilesTo 
     <view><h1>false</h1></view>
   }
@@ -27,11 +27,11 @@ class TestBoolean extends TypeCheckerTest {
   @Test
   def inversion = { 
     """
-    var x = false
+    node h1 with bool    var x = false
     x = !x
-    node h1 x
+    h1 x
     x = !x
-    node h1 x
+    h1 x
     """ compilesTo 
     <view><h1>true</h1><h1>false</h1></view>
   }
@@ -57,11 +57,11 @@ class TestBoolean extends TypeCheckerTest {
   @Test
   def asMacroArgument = {   
     """    
-    macro b(value : bool) with s : string {
-      node b(value: value) s
+    node p(value : bool) with string    macro b(value : bool) with s : string {
+      p(value: value) s
     }
     b(value: false) "hi"
     """ compilesTo 
-    <view><b value="false">hi</b></view>
+    <view><p value="false">hi</p></view>
   }
 }

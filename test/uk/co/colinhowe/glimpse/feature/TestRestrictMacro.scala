@@ -17,7 +17,7 @@ class TestRestrictMacro extends TypeCheckerTest {
     """
     macro p with s : string
         restrict to div {
-      node p s
+      var x = 1
     }
     p "fail"
     """ failsWith
@@ -35,12 +35,13 @@ class TestRestrictMacro extends TypeCheckerTest {
   @Test
   def passTopLevelRestriction = {
     """
+    node x with string
     macro p with s : string
         restrict to top level {
-      node p s
+      x s
     }
     p "fail"
-    """ compilesTo <view><p>fail</p></view>
+    """ compilesTo <view><x>fail</x></view>
   }
   
   @Test
@@ -48,7 +49,7 @@ class TestRestrictMacro extends TypeCheckerTest {
     """
     macro p with s : string
         restrict to top level {
-      node p s
+      var x = 1
     }
     macro div with g : generator {
       include g
@@ -71,15 +72,16 @@ class TestRestrictMacro extends TypeCheckerTest {
   @Test
   def passRestrictionInMacroDefn = {
     """
+    node x with string
     macro p with s : string
         restrict to div {
-      node p s
+      x s
     }
     macro div with s : string {
       p "inside div"
     }
     div "ignored"
-    """ compilesTo <view><p>inside div</p></view>
+    """ compilesTo <view><x>inside div</x></view>
   }
   
   @Test
@@ -87,7 +89,7 @@ class TestRestrictMacro extends TypeCheckerTest {
     """
     macro p with s : string
         restrict to section {
-      node p s
+      var x = 1
     }
     macro div with s : string {
       p "inside div"
@@ -108,15 +110,16 @@ class TestRestrictMacro extends TypeCheckerTest {
   @Test
   def passMultipleRestrictions = {
     """
+    node x with string
     macro p with s : string
         restrict to div, top level {
-      node p s
+      x s
     }
     macro div with s : string {
       p "inside div"
     }
     
     p "fail"
-    """ compilesTo <view><p>fail</p></view>
+    """ compilesTo <view><x>fail</x></view>
   }
 }

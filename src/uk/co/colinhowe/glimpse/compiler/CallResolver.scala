@@ -27,6 +27,7 @@ class CallResolver(provider : MacroDefinitionProvider) extends DepthFirstAdapter
     node match {
       case stmt : AMacroStmt => stmt.toString
       case defn : AMacroDefn => defn.getName.getText
+      case defn : ANodeDefn => defn.getName.getText
       case view : AView => "top level"
       case node : Node => getParent(node.parent)
     }
@@ -60,6 +61,7 @@ class CallResolver(provider : MacroDefinitionProvider) extends DepthFirstAdapter
   }
   
   private def matches(node : Node, definition : MacroDefinition, arguments : Map[String, Type], valueType : Type, cascadeIdentifier : CascadeIdentifier) : Option[ResolvedCall] = {
+    
     // Ignore any definitions that have runtime typing but are not abstract
     if (definition.hasRuntimeTyping && !definition.isAbstract) {
       return None

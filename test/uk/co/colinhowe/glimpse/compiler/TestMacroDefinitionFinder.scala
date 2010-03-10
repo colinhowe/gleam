@@ -256,4 +256,40 @@ class TestMacroDefinitionFinder extends AssertionsForJUnit {
     val macro = macros.iterator.next
     assert(SimpleType(classOf[String]) === macro.controller)
   }
+  
+  @Test
+  def detectsNodeDefinition = {
+    val definitionProvider = new MacroDefinitionProvider
+    val finder = new MacroDefinitionFinder(
+        null, 
+        new TypeProvider, 
+        definitionProvider, 
+        null)
+    
+    val defn = HNodeDefn(
+      "node",
+      args = Buffer[PArgDefn](
+        new AArgDefn(
+          Buffer[PModifier](),
+          new ABoolType,
+          new TIdentifier("readonly"),
+          new ATrueExpr
+        )
+      ),
+      valueType = new AStringType()
+    )
+    
+    finder.outANodeDefn(defn)
+    definitionProvider !? Join()
+
+    val macros = definitionProvider.get("node")
+    
+    val macro = macros.iterator.next
+    assert(true === macro.isNodeDefn)
+    assert(
+      ArgumentDefinition("readonly", SimpleType(classOf[java.lang.Boolean]), false, true) 
+      ===
+      macro.arguments("readonly")
+    )
+  }
 }

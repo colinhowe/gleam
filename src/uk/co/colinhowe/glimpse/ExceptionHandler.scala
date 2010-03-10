@@ -8,15 +8,23 @@ import scala.collection.mutable.Buffer
 import uk.co.colinhowe.glimpse.compiler.Join
 import uk.co.colinhowe.glimpse.compiler.Joined
 
-case class CompilationException(error : CompilationError)
+case class CompilationException(error : CompilationError) extends Exception
 
 class ExceptionHandler extends Actor {
   val exceptions = Buffer[Throwable]()
+  val errors = Buffer[CompilationError]()
   
   def act() {
     loop {
       react {
-        case Errored(e) => exceptions += e
+        case Errored(e) => 
+          e.printStackTrace
+          exceptions += e
+        case CompilationException(error) =>
+          System.err.println(error)
+          errors += error
+        case t : Throwable =>
+          exceptions += t
         case Join() =>
           reply(Joined)
           exit

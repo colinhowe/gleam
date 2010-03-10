@@ -6,13 +6,15 @@ import scala.collection.mutable.Map
 import scala.collection.mutable.{ Set => MSet}
 import scala.actors.Actor
 import scala.actors.Actor._
+import uk.co.colinhowe.glimpse.compiler.node._
 
 class MacroDefinitionProvider extends Actor {
   val macros = Map.empty[String, MSet[MacroDefinition]]
+  val macrosByNode = Map.empty[Node, MacroDefinition]
 
   start()
   
-  private def add(definition : MacroDefinition) {
+  private def add(node : Node, definition : MacroDefinition) {
     val macroSet = 
       if (macros.contains(definition.name)) 
         macros(definition.name)
@@ -21,6 +23,8 @@ class MacroDefinitionProvider extends Actor {
     
     macroSet.add(definition)
     macros(definition.name) = macroSet
+    
+    macrosByNode(node) = definition
   }
   
   def get(name : String) : Set[MacroDefinition] = {
@@ -30,11 +34,13 @@ class MacroDefinitionProvider extends Actor {
     }
   }
   
+  def getByNode(node : ANodeDefn) : MacroDefinition = macrosByNode(node)
+  
   def act() {
     loop {
       react {
-        case definition : MacroDefinition =>
-          add(definition)
+        case (node : Node, definition : MacroDefinition) =>
+          add(node, definition)
         case Join() =>
           reply(Joined())
           exit

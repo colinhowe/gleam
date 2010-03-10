@@ -84,8 +84,6 @@ trait ByteCodePatterns {
     getMethodVisitor.visitTypeInsn(Opcodes.CHECKCAST, Type.getInternalName(clazz))
   }
   
-  
-  
   def addAllNodesFromStack {
     mv.visitVarInsn(ALOAD, 2) // list, nodes
     mv.visitInsn(SWAP) // nodes, list

@@ -14,102 +14,113 @@ class TestMacro extends CompilerTest {
   @Test
   def generator = {   
     """
+    node d with generator
+    node p with string
     macro div with g : generator {
-      node div {
+      d {
         include g
       }   
     }
     div {
-      node p "Inside"
+      p "Inside"
     }
     """ compilesTo <view>
-      <div>
+      <d>
         <p>Inside</p>
-      </div>
+      </d>
     </view>
   }
   
   @Test
   def generatorInMacroStmt = {   
     """
+    node d with generator
+    node p with string
     macro panel with g : generator {
       div {
         include g
       }
     }
     macro div with g : generator {
-      node div {
+      d {
         include g
       }   
     }
     panel {
-      node p "Inside"
+      p "Inside"
     }
     """ compilesTo <view>
-      <div>
+      <d>
         <p>Inside</p>
-      </div>
+      </d>
     </view>
   }
   
   @Test
   def string = {   
     """
+    node x with string
     macro p with s : string {
-      node p s
+      x s
     }
     p "Hi"
     """ compilesTo <view>
-      <p>Hi</p>
+      <x>Hi</x>
     </view>
   }
   
   @Test
   def macroWithStringArguments = {   
     """
+    node x(value : int) with string
     macro p(value : int) with s : string {
-      node p(value: value) s
+      x(value: value) s
     }
     p(value: 4) "hi"
     """ compilesTo 
-    <view><p value="4">hi</p></view>
+    <view><x value="4">hi</x></view>
   }
   
   @Test
   def macroWithGeneratorArguments = {   
     """
+    node d(value : int) with generator
+    node span with string
     macro div(value : int) with g : generator {
-      node div(value: value) {
+      d(value: value) {
         include g
       }
     }
     div(value: 4) {
-      node span "hi"
+      span "hi"
     }
     """ compilesTo 
-    <view><div value="4"><span>hi</span></div></view>
+    <view><d value="4"><span>hi</span></d></view>
   }
   
   @Test
   def macroCallWithPropertyAsValue = {   
     """
+    node x(value: int) with string
     macro p(value : int) with s : string {
-      node p(value: value) s
+      x(value: value) s
     }
     var hiString = "hi"
     p(value: 4) hiString
     """ compilesTo 
-    <view><p value="4">hi</p></view>
+    <view><x value="4">hi</x></view>
   }
   
   @Test
   def macroWithOverloadedValue = {   
     """
+    node x with string
+    node x with generator
     macro p with s : string {
-      node p s
+      x s
     }
     macro p with g : generator {
-      node p {
+      x {
         include g
       }
     }
@@ -118,18 +129,19 @@ class TestMacro extends CompilerTest {
       p "generator"
     }
     """ compilesTo 
-    <view><p>string</p><p><p>generator</p></p></view>
+    <view><x>string</x><x><x>generator</x></x></view>
   }
   
   @Test
   def macroWithNoValue = {   
     """
+    node t
     macro br {
-      node br
+      t
     }
     br
     br
     """ compilesTo 
-    <view><br /><br /></view>
+    <view><t /><t /></view>
   }
 }

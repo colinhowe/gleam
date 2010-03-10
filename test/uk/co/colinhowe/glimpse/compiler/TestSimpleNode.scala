@@ -14,16 +14,57 @@ class TestSimpleNode extends CompilerTest {
   @Test
   def basic = {   
     """
-    node h1 "title"
+    node h1 with string
+
+    h1 "title"
     """ compilesTo 
     <view><h1>title</h1></view>
   }
   
   @Test
+  def withDefaults = {   
+    """
+    node h1(class : string = "someClass") with string
+
+    h1 "title"
+    """ compilesTo 
+    <view><h1 class="someClass">title</h1></view>
+  }
+  
+  @Test
+  def cascade = {   
+    """
+    node field_group(cascade readonly : bool) with generator
+    node field(readonly : bool) with string
+
+    field_group(readonly: true) {
+      field "hi"
+    }
+    """ compilesTo 
+    <view><field_group readonly="true"><field readonly="true">hi</field></field_group></view>
+  }
+  
+  @Test
+  def cascadeAndDefault = {   
+    """
+    node field_group(cascade readonly : bool = false) with generator
+    node field(readonly : bool) with string
+
+    field_group {
+      field "hi"
+    }
+    """ compilesTo 
+    <view><field_group readonly="false"><field readonly="false">hi</field></field_group></view>
+  }
+  
+  @Test
   def compound = {   
     """
-    node div {
-      node h1 "title"
+    node div with generator
+    node h1 with string
+
+    div {
+      h1 "title"
     }
     """ compilesTo 
     <view>
@@ -36,7 +77,9 @@ class TestSimpleNode extends CompilerTest {
   @Test
   def basicWithArguments = {   
     """
-    node h1(name: "theName") "title"
+    node h1(name: string) with string
+
+    h1(name: "theName") "title"
     """ compilesTo 
     <view><h1 name="theName">title</h1></view>
   }
@@ -44,8 +87,11 @@ class TestSimpleNode extends CompilerTest {
   @Test
   def compoundWithArguments = {   
     """
-    node div(name: "theName") {
-      node h1 "title"
+    node div(name: string) with generator
+    node h1 with string
+
+    div(name: "theName") {
+      h1 "title"
     }
     """ compilesTo 
     <view>
@@ -58,7 +104,8 @@ class TestSimpleNode extends CompilerTest {
   @Test
   def multiLineString = {   
     """
-    node h1 ""
+    node h1 with string
+    h1 ""
         title
     ""
     """ compilesTo 
@@ -68,10 +115,11 @@ class TestSimpleNode extends CompilerTest {
   @Test
   def twoMultiLineStrings = {   
     """
-    node h1 ""
+    node h1 with string
+    h1 ""
       title
     ""
-    node h1 ""
+    h1 ""
       title2
     ""
     """ compilesTo 
@@ -81,7 +129,8 @@ class TestSimpleNode extends CompilerTest {
   @Test
   def multiLineStringWithQuotes = {   
     """
-    node h1 ""
+    node h1 with string
+    h1 ""
       "title"
         indented
     ""

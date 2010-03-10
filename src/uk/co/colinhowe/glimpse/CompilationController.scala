@@ -14,7 +14,9 @@ import scala.util.control.ControlException
 abstract class CompilationController(exceptionHandler : ExceptionHandler) extends Actor {
   def handleMessage : PartialFunction[Any, Unit]
 
-  def defaultHandler : PartialFunction[Any, Unit] = { case m => throw new RuntimeException("Unhandled message [" + m + "]") }
+  def defaultHandler : PartialFunction[Any, Unit] = { 
+    case m => throw new RuntimeException("Unhandled message [" + m + "]") 
+  }
   
   def handler = handleMessage.orElse(defaultHandler)
   
@@ -27,6 +29,7 @@ abstract class CompilationController(exceptionHandler : ExceptionHandler) extend
           } catch {
             case _ : ControlException => 
             case e => 
+              println("oh noes!")
               exceptionHandler ! Errored(e)
           }
       }

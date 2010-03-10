@@ -14,4 +14,8 @@ public class StringCompilationUnit extends CompilationUnit {
   public Reader getReader() {
     return new StringReader(source);
   }
+  
+  public String toString() {
+    return "StringCompilationUnit(" + this.getViewName() + ")";
+  }
 }

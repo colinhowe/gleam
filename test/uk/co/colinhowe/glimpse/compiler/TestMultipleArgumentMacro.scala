@@ -14,12 +14,13 @@ class TestMultipleArgumentMacro extends CompilerTest {
   @Test
   def nameArgument = {   
     """
+    node x(name : string) with string
     macro p(name : string) with s : string {
-      node p(name: name) s
+      x(name: name) s
     }
     p(name: "div1") "hi"
     """ compilesTo <view>
-      <p name="div1">hi</p>
+      <x name="div1">hi</x>
     </view>
   }
 }
