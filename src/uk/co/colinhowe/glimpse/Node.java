@@ -41,4 +41,8 @@ public class Node {
   public Map<String, Object> getAttributes() {
     return attributes;
   }
+  
+  public Object getAttribute(String key) {
+    return attributes.get(key);
+  }
 }
