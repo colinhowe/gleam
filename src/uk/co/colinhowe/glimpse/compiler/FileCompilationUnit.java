@@ -19,4 +19,8 @@ public class FileCompilationUnit extends CompilationUnit {
       throw new RuntimeException(e);
     }
   }
+  
+  public String toString() {
+    return "File(" + path + ")";
+  }
 }
