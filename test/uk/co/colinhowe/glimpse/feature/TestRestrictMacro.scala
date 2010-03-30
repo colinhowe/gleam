@@ -122,4 +122,15 @@ class TestRestrictMacro extends TypeCheckerTest {
     p "fail"
     """ compilesTo <view><x>fail</x></view>
   }
+  
+  @Test
+  def passNodeRestriction = {
+    """
+    node list with generator
+    node item with string restrict to list
+    list {
+      item "hi"
+    }
+    """ compilesTo <view><list><item>hi</item></list></view>
+  }
 }

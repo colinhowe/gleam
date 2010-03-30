@@ -25,7 +25,7 @@ class CallResolver(provider : MacroDefinitionProvider) extends DepthFirstAdapter
   
   private def getParent(node : Node) : String = {
     node match {
-      case stmt : AMacroStmt => stmt.toString
+      case stmt : AMacroStmt => stmt.getIdentifier.getText
       case defn : AMacroDefn => defn.getName.getText
       case defn : ANodeDefn => defn.getName.getText
       case view : AView => "top level"

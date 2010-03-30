@@ -187,7 +187,7 @@ Productions
     
     var_defn_init {-> expr} = equals expr {-> expr};
     	
-    restriction = restrict to identifiers {-> New restriction([identifiers.identifier])};
+    restriction = restrict to identifiers newline* {-> New restriction([identifiers.identifier])};
     
     identifiers {-> identifier*} = 
         {single} identifier {-> [identifier]}
