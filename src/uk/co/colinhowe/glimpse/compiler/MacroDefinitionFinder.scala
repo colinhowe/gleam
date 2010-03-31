@@ -7,7 +7,7 @@ import uk.co.colinhowe.glimpse.CompilationError
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
 import uk.co.colinhowe.glimpse.MultipleDefinitionError
 
-import scala.collection.mutable.{ ListBuffer, Set => MSet }
+import scala.collection.mutable.{ ListBuffer, Set => MSet, Map => MMap }
 import scala.collection.JavaConversions._
 
 class MacroDefinitionFinder(
@@ -37,6 +37,13 @@ class MacroDefinitionFinder(
       null
     }
     
+      // Add on any generics needed
+    val generics = MMap[String, Type]()
+    for (pgeneric <- node.getGenericDefn) {
+      val generic = pgeneric.asInstanceOf[AGenericDefn]
+      generics(generic.getIdentifier.getText) = new GenericType(generic.getIdentifier().getText(), classOf[Object])
+    }
+    
     // TODO This is duplicated in macro definition conversion
     val arguments = node.getArgDefn().foldLeft(Map[String, ArgumentDefinition]())({ (args, parg) =>
       val arg = parg.asInstanceOf[AArgDefn]
@@ -44,7 +51,7 @@ class MacroDefinitionFinder(
       val isRuntimeTyped = arg.getModifier.exists { _.isInstanceOf[ARuntimetypedModifier] }
       args + (arg.getIdentifier().getText() -> ArgumentDefinition(
           arg.getIdentifier().getText(), 
-          typeProvider.getType(arg.getType(), typeNameResolver, Map()),
+          typeProvider.getType(arg.getType(), typeNameResolver, generics.toMap),
           cascade, 
           arg.getDefault != null,
           isRuntimeTyped))
@@ -68,6 +75,9 @@ class MacroDefinitionFinder(
     )
 
     macroProvider ! (node, defn)
+
+    // Clear any generics in scope
+    genericsInScope.clear();
   }
   
   

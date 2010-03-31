@@ -117,8 +117,8 @@ Productions
       ;
     
     node_defn =
-      node [n1]:newline* [name]:identifier [n2]:newline* [args]:arg_defns? with_type_only? restriction?
-      {-> New node_defn(name, [args.arg_defn], with_type_only.type, restriction) }
+      node [n1]:newline* [name]:identifier [n2]:newline* [generic_defns]:generic_defns? [args]:arg_defns? with_type_only? restriction?
+      {-> New node_defn(name, [generic_defns.generic_defn], [args.arg_defn], with_type_only.type, restriction) }
       ; 
       
     macro_modifier =
@@ -319,7 +319,7 @@ Abstract Syntax Tree
     
     macro_defn = macro_modifier? [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* with_defn? controller? restriction? generator?;
     
-    node_defn = [name]:identifier [arg_defn]:arg_defn* type? restriction? ;
+    node_defn = [name]:identifier [generic_defn]:generic_defn* [arg_defn]:arg_defn* type? restriction? ;
     
     include_a = [the_include]:identifier  [arguments]:argument*;
     
