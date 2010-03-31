@@ -45,10 +45,10 @@ class GlimpseCompiler extends Actor {
   val toProcess = Buffer[IntermediateResult]()
   var classPathResolved = false
   var resultsReady = false
-  val classOutputter = new ClassOutputter("temp/")
-  classOutputter.start
   private val errorHandler = new ExceptionHandler
   errorHandler.start
+  val classOutputter = new ClassOutputter("temp/", errorHandler)
+  classOutputter.start
 
   val results = Buffer[CompilationResult]()
   val resultsActor = new Actor {
