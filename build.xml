@@ -8,4 +8,85 @@
       <arg value = "src/glimpse.sablecc" />
     </java>
   </target>
+  
+  <property name="sources.dir" value="src" />
+  <property name="tests.dir" value="test" />
+  <property name="build.dir" value="build" />
+  
+  <target name="init">
+    <property
+      name="scala-library.jar"
+      value="${scala.home}/lib/scala-library.jar"
+       />
+    <path id="build.classpath">
+      <pathelement location="${scala-library.jar}"   />
+      <pathelement location="${build.dir}"   />
+      <fileset dir="lib">
+        <include name="**/*.jar"/>
+      </fileset>
+      <fileset dir="${build.dir}">
+        <include name="**/*.class"/>
+      </fileset>
+    </path>
+    <taskdef resource="scala/tools/ant/antlib.xml">
+      <classpath>
+        <pathelement location="${scala.tools}"   />
+        <pathelement location="${scala-library.jar}"   />
+      </classpath>
+    </taskdef>
+    <mkdir dir="${build.dir}" />
+  </target>
+  
+  <target name="clean">
+    <delete>
+      <fileset dir="${build.dir}">
+          <include name="**/*"/>
+      </fileset>
+    </delete>
+  </target>
+  
+  <target name="compile.src" depends="init, clean">
+    <scalac srcdir="."
+            destdir="${build.dir}"
+            deprecation="true"
+            classpathref="build.classpath">
+      <include name="${sources.dir}/**/*.scala" />
+      <include name="${sources.dir}/**/*.java" />
+      <include name="${tests.dir}/**/*.scala" />
+      <include name="${tests.dir}/**/*.java" />
+    </scalac>
+    <javac srcdir="."
+            destdir="${build.dir}"
+            deprecation="true"
+            classpathref="build.classpath">
+      <include name="${sources.dir}/**/*.java" />
+      <include name="${tests.dir}/**/*.java" />
+    </javac>
+    
+  </target>
+	
+  <target name="compile" depends="compile.src">
+    <copy todir="${build.dir}">
+      <fileset dir="${sources.dir}/output">
+        <exclude name="**/*.java"/>
+      </fileset>
+    </copy>
+	</target>	
+  
+  <target name="runtests" depends="init">
+    <mkdir dir="junit-results" />
+    <property name="junit.failed" value="false" />
+    <junit printsummary="yes" failureproperty="junit.failed" >
+      <formatter type="plain" />
+      <classpath refid="build.classpath" />
+      <batchtest todir="junit-results">
+        <fileset dir="${build.dir}">
+          <include name="**/Test*.class"/>
+        </fileset>
+      </batchtest>
+    </junit>
+    <fail if="junit.failed" message="JUnit failed"/>
+  </target>
+  <target name="build" depends="compile, runtests">
+  </target> 
 </project>
