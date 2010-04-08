@@ -9,7 +9,6 @@ import java.io.File
 import uk.co.colinhowe.glimpse.compiler.Errored
 import uk.co.colinhowe.glimpse.compiler.IntermediateResult
 import scala.actors.Actor
-import scala.util.control.ControlException
 
 abstract class CompilationController(exceptionHandler : ExceptionHandler) extends Actor {
   def handleMessage : PartialFunction[Any, Unit]
@@ -25,9 +24,11 @@ abstract class CompilationController(exceptionHandler : ExceptionHandler) extend
       react {
         case message =>
           try {
-            handler.apply(message)
+            if (handler.isDefinedAt(message)) {
+              handler.apply(message)
+            }
           } catch {
-            case _ : ControlException => 
+            case _ : scala.util.control.ControlThrowable => // Ignore this
             case e => 
               println("oh noes!")
               exceptionHandler ! Errored(e)
