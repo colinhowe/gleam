@@ -137,7 +137,7 @@ class GlimpseCompiler extends Actor {
           // Run the type checker
           val typeChecker = new TypeChecker(intermediate.lineNumberProvider, macroProvider, typeResolver, intermediate.typeNameResolver, callResolver)
           ast.apply(typeChecker)
-          errors ++ typeChecker.errors
+          errors ++= typeChecker.errors
           
           // Compile all the nodes down to java
           val bcp = new ByteCodeProducer(
@@ -151,7 +151,7 @@ class GlimpseCompiler extends Actor {
               classOutputter,
               macroProvider)
           ast.apply(bcp)
-          errors ++ bcp.errors
+          errors ++= bcp.errors
           
           // Output the errors
           for (error <- errors) {
@@ -198,7 +198,7 @@ class GlimpseCompiler extends Actor {
 
         val finder = new MacroDefinitionFinder(intermediate.lineNumberProvider, typeProvider, macroProvider, intermediate.typeNameResolver)
         ast.apply(finder)
-        intermediate.errors ++ finder.errors
+        intermediate.errors ++= finder.errors
 
         // Output the errors
         for (error <- intermediate.errors) {
