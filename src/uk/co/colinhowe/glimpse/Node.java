@@ -6,7 +6,7 @@ import java.util.Map;
 
 public class Node {
   private final List<Node> nodes;
-  private final String id;
+  private final String tagName;
   private final Object value;
   private final Map<String, Object> attributes = new HashMap<String, Object>();
   
@@ -15,8 +15,8 @@ public class Node {
   }
   
   
-  public String getId() {
-    return id;
+  public String getTagName() {
+    return tagName;
   }
   
   
@@ -25,10 +25,10 @@ public class Node {
   }
 
 
-  public Node(List<Node> nodes, String id, Object value) {
+  public Node(List<Node> nodes, String tagName, Object value) {
     super();
     this.nodes = nodes;
-    this.id = id;
+    this.tagName = tagName;
     this.value = value;
   }
   

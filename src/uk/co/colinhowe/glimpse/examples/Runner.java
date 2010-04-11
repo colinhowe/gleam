@@ -28,7 +28,7 @@ public class Runner {
   }
   
   private static void print(Node node, String indent) {
-    System.out.print(indent + node.getId());
+    System.out.print(indent + node.getTagName());
     
     if (node.getValue() != null) {
       System.out.println(" \"" + node.getValue() + "\"");

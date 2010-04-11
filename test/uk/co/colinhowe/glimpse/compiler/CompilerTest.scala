@@ -175,9 +175,9 @@ abstract trait CompilerTest {
       } else {
         "  \n"
       }
-    "<" + node.getId() + attrs + ">\n" +
+    "<" + node.getTagName() + attrs + ">\n" +
     innerText +
-    "</" + node.getId() + ">"
+    "</" + node.getTagName() + ">"
   }
  
   
