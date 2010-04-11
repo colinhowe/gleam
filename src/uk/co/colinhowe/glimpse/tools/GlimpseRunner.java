@@ -8,12 +8,11 @@ import java.net.URLClassLoader;
 import java.util.LinkedList;
 import java.util.List;
 
-import uk.co.colinhowe.glimpse.CompilationResult;
 import uk.co.colinhowe.glimpse.Node;
 import uk.co.colinhowe.glimpse.View;
 import uk.co.colinhowe.glimpse.compiler.CompilationUnit;
-import uk.co.colinhowe.glimpse.compiler.StringCompilationUnit;
 import uk.co.colinhowe.glimpse.compiler.GlimpseCompiler;
+import uk.co.colinhowe.glimpse.compiler.StringCompilationUnit;
 
 public class GlimpseRunner {
   
@@ -27,7 +26,7 @@ public class GlimpseRunner {
    * 
    * @return
    */
-  @SuppressWarnings("deprecation")
+  @SuppressWarnings({ "deprecation", "unchecked" })
   public List<Node> run(String filename, Object controller) {
     try {
       final GlimpseCompiler compiler = new GlimpseCompiler();
