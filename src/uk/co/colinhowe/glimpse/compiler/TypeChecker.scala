@@ -16,7 +16,6 @@ import uk.co.colinhowe.glimpse.Generator
 import uk.co.colinhowe.glimpse.IdentifierNotFoundError
 import uk.co.colinhowe.glimpse.MacroNotFoundError
 import uk.co.colinhowe.glimpse.IdentifierNotFoundException
-import uk.co.colinhowe.glimpse.MapUtil
 import uk.co.colinhowe.glimpse.TypeCheckError
 import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
 import uk.co.colinhowe.glimpse.compiler.node._
@@ -25,7 +24,6 @@ import uk.co.colinhowe.glimpse.compiler.typing.GenericType
 import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
 import uk.co.colinhowe.glimpse.compiler.typing.Type
 import uk.co.colinhowe.glimpse.infrastructure.Scope
-import uk.co.colinhowe.glimpse.MapUtil
 import uk.co.colinhowe.glimpse.PropertyReference
 import uk.co.colinhowe.glimpse.compiler.IdentifierConverter._
  
