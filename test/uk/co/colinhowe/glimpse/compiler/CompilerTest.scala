@@ -140,7 +140,7 @@ abstract trait CompilerTest {
     val invokeMethod = view.getClass().getMethods()(0)
     val nodes = invokeMethod.invoke(view, compilationSet.controller).asInstanceOf[java.util.List[Node]]
     
-    val scalaNodes = List.fromArray(nodes.toArray).asInstanceOf[List[Node]]
+    val scalaNodes : List[Node] = nodes.toList
     
     // Print the nodes and check them out
     val xml = 
@@ -168,7 +168,7 @@ abstract trait CompilerTest {
       }
     val innerText =
       if (node.getNodes() != null) {
-        val inner = printXml(List.fromArray(node.getNodes().toArray).asInstanceOf[List[Node]])
+        val inner = printXml(node.getNodes().toList)
         inner.split("\n").foldLeft("") { _ + "  " + _ + "\n" }
       } else if (node.getValue() != null) {
         "  " + node.getValue() + "\n"

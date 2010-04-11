@@ -5,6 +5,7 @@ import scala.reflect.BeanProperty
 import org.scalatest.junit.AssertionsForJUnit
 import org.junit.Test
 import org.junit.Assert._
+import java.lang.Integer
 
 class TestScope extends AssertionsForJUnit {
 

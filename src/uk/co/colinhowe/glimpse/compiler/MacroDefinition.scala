@@ -2,6 +2,7 @@ package uk.co.colinhowe.glimpse.compiler
 
 import uk.co.colinhowe.glimpse.compiler.typing.Type
 import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
+import scala.math._
 
 case class MacroDefinition(
     val name : String, 
@@ -42,13 +43,13 @@ case class MacroDefinition(
     if (hasRuntimeTyping && !isAbstract) {
       val runtimeArgument = arguments.find(arg => arg._2.isRuntimeTyped).get._2
       val toHash = runtimeArgument.argType.asInstanceOf[SimpleType].clazz.getCanonicalName
-      return name + "$rtt" + Integer.toString(Math.abs(toHash.hashCode()), 16)
+      return name + "$rtt" + Integer.toString(abs(toHash.hashCode()), 16)
     } else if (!isDynamic && !isAbstract) {
       var toHash = name + valueType
       for ((key, value) <- arguments) {
         toHash += key + value
       }
-      return name + "$" + Integer.toString(Math.abs(toHash.hashCode()), 16)
+      return name + "$" + Integer.toString(abs(toHash.hashCode()), 16)
     } else {
       return name
     }

@@ -4,6 +4,7 @@
 package uk.co.colinhowe.glimpse.compiler
 
 import uk.co.colinhowe.glimpse.PropertyReference
+
 import uk.co.colinhowe.glimpse.infrastructure.DynamicMacro
 import uk.co.colinhowe.glimpse.Generator
 import uk.co.colinhowe.glimpse.Macro
@@ -39,6 +40,8 @@ import uk.co.colinhowe.glimpse.compiler.typing.{ Type => GType }
 import ArgumentSource._
 import uk.co.colinhowe.glimpse.ClassOutputter
 import uk.co.colinhowe.glimpse.OutputClass
+
+import java.lang.Integer
 
 class ByteCodeProducer(
     val viewname : String, 

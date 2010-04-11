@@ -29,12 +29,12 @@ import uk.co.colinhowe.glimpse.ParserController
 import uk.co.colinhowe.glimpse.ExceptionHandler
 import uk.co.colinhowe.glimpse.Parse
 
-case class Join
-case class Joined
+case class Join()
+case class Joined()
 
 case class Parsed(result : IntermediateResult)
 case class Errored(e : Throwable)
-case class Finished
+case class Finished()
 
 class GlimpseCompiler extends Actor {
   

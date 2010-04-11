@@ -10,7 +10,7 @@ import scala.actors.Actor._
 import scala.actors.Futures._
 
 object ClassPathResolver {
-  case class Resolved
+  case class Resolved()
 }
 
 class ClassPathResolver(paths : Iterable[String], notify : Actor) {

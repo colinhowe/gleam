@@ -12,7 +12,7 @@ class TypeResolver(
 
   private val types = scala.collection.mutable.Map[Node, Type]()
   
-  case class Stop
+  case class Stop()
   val typesActor = actor {
     loop {
       react {

@@ -1,22 +1,22 @@
 package uk.co.colinhowe.glimpse.compiler.ast
 
-case class GNode
+abstract class GNode
 
-case class GImport extends GNode
+abstract class GImport extends GNode
 case class GSingleImport(identifier : String) extends GImport
 case class GWildcardImport(identifier : String) extends GImport
 
 case class GController(identifier : String) extends GNode
 
-case class GMacroModifier extends GNode
-case class GAbstractMacro extends GMacroModifier
-case class GDynamicMacro extends GMacroModifier
+abstract class GMacroModifier extends GNode
+case class GAbstractMacro() extends GMacroModifier
+case class GDynamicMacro() extends GMacroModifier
 
-case class GArgumentModifier extends GNode
-case class GCascade extends GArgumentModifier
-case class GRuntimeTyped extends GArgumentModifier
+abstract class GArgumentModifier extends GNode
+case class GCascade() extends GArgumentModifier
+case class GRuntimeTyped() extends GArgumentModifier
 
-case class GStatement extends GNode
+abstract class GStatement extends GNode
 case class GAssignmentStatement(name : String, expression : GExpression) extends GStatement
 case class GForLoopStatement(
     iteratorName : String,
@@ -55,7 +55,7 @@ case class GGenerator(
     statements : GStatements
     ) extends GNode
 
-case class GExpression extends GNode
+abstract class GExpression extends GNode
 case class GConstantExpression(value : Int) extends GExpression
 case class GControllerMethodExpression(
     name : String, 
