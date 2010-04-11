@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse.tools;
+package uk.co.colinhowe.gleam.tools;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -8,13 +8,13 @@ import java.net.URLClassLoader;
 import java.util.LinkedList;
 import java.util.List;
 
-import uk.co.colinhowe.glimpse.Node;
-import uk.co.colinhowe.glimpse.View;
-import uk.co.colinhowe.glimpse.compiler.CompilationUnit;
-import uk.co.colinhowe.glimpse.compiler.GlimpseCompiler;
-import uk.co.colinhowe.glimpse.compiler.StringCompilationUnit;
+import uk.co.colinhowe.gleam.Node;
+import uk.co.colinhowe.gleam.View;
+import uk.co.colinhowe.gleam.compiler.CompilationUnit;
+import uk.co.colinhowe.gleam.compiler.GleamCompiler;
+import uk.co.colinhowe.gleam.compiler.StringCompilationUnit;
 
-public class GlimpseRunner {
+public class GleamRunner {
   
   /**
    * Runs the view with the given name with the given controller.
@@ -29,7 +29,7 @@ public class GlimpseRunner {
   @SuppressWarnings({ "deprecation", "unchecked" })
   public List<Node> run(String filename, Object controller) {
     try {
-      final GlimpseCompiler compiler = new GlimpseCompiler();
+      final GleamCompiler compiler = new GleamCompiler();
       
       final BufferedReader reader = new BufferedReader(new FileReader(filename));
       final StringBuffer lines = new StringBuffer();

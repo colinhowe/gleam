@@ -1,6 +1,6 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
-import uk.co.colinhowe.glimpse.compiler.node._
+import uk.co.colinhowe.gleam.compiler.node._
 
 trait Conversions {
   implicit def convertAMacroDefnToMacroDefinition(node : AMacroDefn)(implicit typeProvider : TypeProvider, typeNameResolver : TypeNameResolver) = AMacroDefnConversion.convert(node)

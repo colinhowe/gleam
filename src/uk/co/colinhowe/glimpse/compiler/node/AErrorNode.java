@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse.compiler.node;
+package uk.co.colinhowe.gleam.compiler.node;
 
 public final class AErrorNode extends PStmt {
   public void apply(Switch sw) {

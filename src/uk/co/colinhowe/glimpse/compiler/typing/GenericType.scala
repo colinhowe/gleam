@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse.compiler.typing
+package uk.co.colinhowe.gleam.compiler.typing
 
 /**
  * Used to check that a class is calling into a generic method correctly by 

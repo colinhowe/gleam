@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse.compiler;
+package uk.co.colinhowe.gleam.compiler;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -9,7 +9,7 @@ public class Speed {
   private static final int MACROS = 50;
   
   private static void createFile(int i, String s) throws IOException {
-    File file = new File("performance/v" + i + ".glimpse");
+    File file = new File("performance/v" + i + ".gleam");
     FileWriter writer = new FileWriter(file);
     writer.write(s);
     writer.close();

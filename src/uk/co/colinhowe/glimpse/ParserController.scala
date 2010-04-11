@@ -1,5 +1,5 @@
-package uk.co.colinhowe.glimpse
-import uk.co.colinhowe.glimpse.compiler.parser.ParserException
+package uk.co.colinhowe.gleam
+import uk.co.colinhowe.gleam.compiler.parser.ParserException
 
 import java.io.BufferedReader
 import java.io.PushbackReader
@@ -7,19 +7,19 @@ import java.io.StringReader
 import java.io.FileOutputStream
 import java.io.File
 
-import uk.co.colinhowe.glimpse.compiler.parser.Parser
-import uk.co.colinhowe.glimpse.compiler.lexer.Lexer
-import uk.co.colinhowe.glimpse.compiler.GlimpseCompiler
-import uk.co.colinhowe.glimpse.compiler.CompilationUnit
-import uk.co.colinhowe.glimpse.compiler.Errored
-import uk.co.colinhowe.glimpse.compiler.Parsed
-import uk.co.colinhowe.glimpse.compiler.Finished
-import uk.co.colinhowe.glimpse.compiler.IntermediateResult
+import uk.co.colinhowe.gleam.compiler.parser.Parser
+import uk.co.colinhowe.gleam.compiler.lexer.Lexer
+import uk.co.colinhowe.gleam.compiler.GleamCompiler
+import uk.co.colinhowe.gleam.compiler.CompilationUnit
+import uk.co.colinhowe.gleam.compiler.Errored
+import uk.co.colinhowe.gleam.compiler.Parsed
+import uk.co.colinhowe.gleam.compiler.Finished
+import uk.co.colinhowe.gleam.compiler.IntermediateResult
 import scala.actors.Actor
 
 case class Parse(unit : CompilationUnit)
 
-class ParserController(compiler : GlimpseCompiler, exceptionHandler : ExceptionHandler) extends CompilationController(exceptionHandler) {
+class ParserController(compiler : GleamCompiler, exceptionHandler : ExceptionHandler) extends CompilationController(exceptionHandler) {
   def handleMessage = {
     case message : Parse => parse(message)
     case Finished() => 

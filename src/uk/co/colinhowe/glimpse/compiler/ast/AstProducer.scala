@@ -1,6 +1,6 @@
-package uk.co.colinhowe.glimpse.compiler.ast
+package uk.co.colinhowe.gleam.compiler.ast
 
-import uk.co.colinhowe.glimpse.compiler.node._
+import uk.co.colinhowe.gleam.compiler.node._
 import scala.collection.JavaConversions._
 
 class AstProducer {

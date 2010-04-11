@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse.compiler.node
+package uk.co.colinhowe.gleam.compiler.node
 
 import scala.collection.mutable.Buffer
 import scala.collection.JavaConversions._

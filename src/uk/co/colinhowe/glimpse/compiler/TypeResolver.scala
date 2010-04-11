@@ -1,7 +1,7 @@
-package uk.co.colinhowe.glimpse.compiler
-import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
-import uk.co.colinhowe.glimpse.compiler.node._
-import uk.co.colinhowe.glimpse.compiler.typing.Type
+package uk.co.colinhowe.gleam.compiler
+import uk.co.colinhowe.gleam.compiler.analysis.DepthFirstAdapter
+import uk.co.colinhowe.gleam.compiler.node._
+import uk.co.colinhowe.gleam.compiler.typing.Type
 import scala.collection.JavaConversions._
 import scala.actors.Actor._
 

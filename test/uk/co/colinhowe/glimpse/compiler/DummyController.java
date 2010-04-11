@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse.compiler;
+package uk.co.colinhowe.gleam.compiler;
 
 import java.math.BigInteger;
 import java.util.LinkedList;

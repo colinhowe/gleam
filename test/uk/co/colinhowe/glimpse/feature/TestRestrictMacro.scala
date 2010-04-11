@@ -1,14 +1,14 @@
-package uk.co.colinhowe.glimpse.feature
+package uk.co.colinhowe.gleam.feature
 
 import org.junit.Test
 import org.junit.Assert._
 
-import uk.co.colinhowe.glimpse.compiler.typing.Type
-import uk.co.colinhowe.glimpse.MacroNotFoundError
-import uk.co.colinhowe.glimpse.compiler.TypeCheckerTest
-import uk.co.colinhowe.glimpse.compiler.MacroDefinition
-import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
-import uk.co.colinhowe.glimpse.compiler.Restriction
+import uk.co.colinhowe.gleam.compiler.typing.Type
+import uk.co.colinhowe.gleam.MacroNotFoundError
+import uk.co.colinhowe.gleam.compiler.TypeCheckerTest
+import uk.co.colinhowe.gleam.compiler.MacroDefinition
+import uk.co.colinhowe.gleam.compiler.typing.SimpleType
+import uk.co.colinhowe.gleam.compiler.Restriction
 
 class TestRestrictMacro extends TypeCheckerTest {
   

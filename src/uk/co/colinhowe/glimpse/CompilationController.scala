@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse
+package uk.co.colinhowe.gleam
 
 import java.io.BufferedReader
 import java.io.PushbackReader
@@ -6,8 +6,8 @@ import java.io.StringReader
 import java.io.FileOutputStream
 import java.io.File
 
-import uk.co.colinhowe.glimpse.compiler.Errored
-import uk.co.colinhowe.glimpse.compiler.IntermediateResult
+import uk.co.colinhowe.gleam.compiler.Errored
+import uk.co.colinhowe.gleam.compiler.IntermediateResult
 import scala.actors.Actor
 
 abstract class CompilationController(exceptionHandler : ExceptionHandler) extends Actor {

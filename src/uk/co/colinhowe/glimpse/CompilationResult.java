@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse;
+package uk.co.colinhowe.gleam;
 
 import java.io.File;
 import java.util.LinkedList;

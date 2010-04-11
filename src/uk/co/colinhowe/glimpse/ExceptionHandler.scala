@@ -1,12 +1,12 @@
-package uk.co.colinhowe.glimpse
+package uk.co.colinhowe.gleam
 
-import uk.co.colinhowe.glimpse.compiler.CompilationUnit
-import uk.co.colinhowe.glimpse.compiler.Errored
+import uk.co.colinhowe.gleam.compiler.CompilationUnit
+import uk.co.colinhowe.gleam.compiler.Errored
 
 import scala.actors.Actor
 import scala.collection.mutable.Buffer
-import uk.co.colinhowe.glimpse.compiler.Join
-import uk.co.colinhowe.glimpse.compiler.Joined
+import uk.co.colinhowe.gleam.compiler.Join
+import uk.co.colinhowe.gleam.compiler.Joined
 
 case class CompilationException(error : CompilationError) extends Exception
 

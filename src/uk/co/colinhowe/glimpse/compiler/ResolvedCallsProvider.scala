@@ -1,6 +1,6 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
-import uk.co.colinhowe.glimpse.compiler.node.AMacroStmt
+import uk.co.colinhowe.gleam.compiler.node.AMacroStmt
 import scala.collection.mutable.{ Map => MMap }
 
 class ResolvedCallsProvider {

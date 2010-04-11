@@ -1,18 +1,18 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
-import uk.co.colinhowe.glimpse.compiler.node._
-import uk.co.colinhowe.glimpse.compiler.typing.CompoundType
-import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
-import uk.co.colinhowe.glimpse.compiler.typing.GenericType
-import uk.co.colinhowe.glimpse.CompilationError
-import uk.co.colinhowe.glimpse.MultipleDefinitionError
-import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
-import uk.co.colinhowe.glimpse.compiler.typing.Type
+import uk.co.colinhowe.gleam.compiler.node._
+import uk.co.colinhowe.gleam.compiler.typing.CompoundType
+import uk.co.colinhowe.gleam.compiler.typing.SimpleType
+import uk.co.colinhowe.gleam.compiler.typing.GenericType
+import uk.co.colinhowe.gleam.CompilationError
+import uk.co.colinhowe.gleam.MultipleDefinitionError
+import uk.co.colinhowe.gleam.compiler.analysis.DepthFirstAdapter
+import uk.co.colinhowe.gleam.compiler.typing.Type
 import scala.collection.mutable.{ Map => MMap }
 import scala.collection.mutable.Buffer
 
 import scala.collection.JavaConversions._
-import uk.co.colinhowe.glimpse.compiler.ArgumentSource._
+import uk.co.colinhowe.gleam.compiler.ArgumentSource._
 
 class CallResolver(provider : MacroDefinitionProvider) extends DepthFirstAdapter {
 

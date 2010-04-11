@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
 import scala.collection.mutable.ListBuffer
 import scala.collection.mutable.SynchronizedBuffer
@@ -6,7 +6,7 @@ import scala.collection.mutable.Map
 import scala.collection.mutable.{ Set => MSet}
 import scala.actors.Actor
 import scala.actors.Actor._
-import uk.co.colinhowe.glimpse.compiler.node._
+import uk.co.colinhowe.gleam.compiler.node._
 
 class MacroDefinitionProvider extends Actor {
   val macros = Map.empty[String, MSet[MacroDefinition]]

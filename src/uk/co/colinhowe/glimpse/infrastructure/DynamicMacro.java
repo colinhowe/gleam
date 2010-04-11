@@ -1,7 +1,7 @@
-package uk.co.colinhowe.glimpse.infrastructure;
+package uk.co.colinhowe.gleam.infrastructure;
 
-import uk.co.colinhowe.glimpse.Node;
-import uk.co.colinhowe.glimpse.Macro;
+import uk.co.colinhowe.gleam.Node;
+import uk.co.colinhowe.gleam.Macro;
 
 public class DynamicMacro implements Macro {
   private ThreadLocal<Macro> toInvoke = new ThreadLocal<Macro>();

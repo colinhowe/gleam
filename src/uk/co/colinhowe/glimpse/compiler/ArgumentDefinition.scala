@@ -1,6 +1,6 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
-import uk.co.colinhowe.glimpse.compiler.typing.Type
+import uk.co.colinhowe.gleam.compiler.typing.Type
 
 case class ArgumentDefinition(
     val name : String, 

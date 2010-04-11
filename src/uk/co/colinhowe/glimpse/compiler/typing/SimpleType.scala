@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse.compiler.typing
+package uk.co.colinhowe.gleam.compiler.typing
 
 case class SimpleType(val clazz : Class[_ <: Any]) extends Type {
   def getClazz = clazz

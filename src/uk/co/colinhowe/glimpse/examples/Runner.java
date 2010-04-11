@@ -1,18 +1,18 @@
-package uk.co.colinhowe.glimpse.examples;
+package uk.co.colinhowe.gleam.examples;
 
 import java.io.IOException;
 import java.util.List;
 
-import uk.co.colinhowe.glimpse.Node;
-import uk.co.colinhowe.glimpse.tools.GlimpseRunner;
+import uk.co.colinhowe.gleam.Node;
+import uk.co.colinhowe.gleam.tools.GleamRunner;
 
 
 public class Runner {
   public static void main(final String[] args) throws IOException {
     while (true) {
-      // Run a glimpse view
-      final GlimpseRunner runner = new GlimpseRunner();
-      final List<Node> nodes = runner.run(Runner.class.getResource("runner.glimpse").getFile(), null);
+      // Run a gleam view
+      final GleamRunner runner = new GleamRunner();
+      final List<Node> nodes = runner.run(Runner.class.getResource("runner.gleam").getFile(), null);
       
       for (final Node node : nodes) {
         print(node);

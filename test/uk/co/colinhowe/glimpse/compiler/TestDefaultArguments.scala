@@ -1,6 +1,6 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 import org.junit.Test
-import uk.co.colinhowe.glimpse.IdentifierNotFoundError
+import uk.co.colinhowe.gleam.IdentifierNotFoundError
 
 import org.junit.Assert._
 

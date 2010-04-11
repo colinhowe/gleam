@@ -1,11 +1,11 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
 import java.lang.reflect.Method
-import uk.co.colinhowe.glimpse.Generator
-import uk.co.colinhowe.glimpse.compiler.typing.Type
-import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
+import uk.co.colinhowe.gleam.Generator
+import uk.co.colinhowe.gleam.compiler.typing.Type
+import uk.co.colinhowe.gleam.compiler.typing.SimpleType
 import org.scalatest.junit.AssertionsForJUnit
-import uk.co.colinhowe.glimpse.compiler.node._
+import uk.co.colinhowe.gleam.compiler.node._
 import scala.collection.mutable.{ Set => MSet, Buffer }
 import scala.collection.JavaConversions._
 
@@ -13,7 +13,7 @@ import org.junit.Test
 
 import org.mockito.Matchers._
 import org.mockito.Mockito._
-import uk.co.colinhowe.glimpse.compiler.ArgumentSource._
+import uk.co.colinhowe.gleam.compiler.ArgumentSource._
 
 class TestCallResolver extends AssertionsForJUnit {
   

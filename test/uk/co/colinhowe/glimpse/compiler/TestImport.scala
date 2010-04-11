@@ -1,10 +1,10 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 import org.junit.Test
 import java.io.File
 import java.net.URLClassLoader
 import java.net.URL
-import uk.co.colinhowe.glimpse.View
-import uk.co.colinhowe.glimpse.Node
+import uk.co.colinhowe.gleam.View
+import uk.co.colinhowe.gleam.Node
 
 import org.junit.Assert._
 
@@ -13,7 +13,7 @@ class TestImport extends CompilerTest {
   @Test
   def specificImport = {   
     """
-    import uk.co.colinhowe.glimpse.compiler.DummyController
+    import uk.co.colinhowe.gleam.compiler.DummyController
     controller DummyController
     node h1 with string
     h1 c.name
@@ -24,7 +24,7 @@ class TestImport extends CompilerTest {
   @Test
   def wildCardImport = {   
     """
-    import uk.co.colinhowe.glimpse.compiler.*
+    import uk.co.colinhowe.gleam.compiler.*
     controller DummyController
     node h1 with string
     h1 c.name

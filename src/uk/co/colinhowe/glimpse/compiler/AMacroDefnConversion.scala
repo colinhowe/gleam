@@ -1,8 +1,8 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
-import uk.co.colinhowe.glimpse.compiler.node._
-import uk.co.colinhowe.glimpse.compiler.typing.Type
-import uk.co.colinhowe.glimpse.compiler.typing.GenericType
+import uk.co.colinhowe.gleam.compiler.node._
+import uk.co.colinhowe.gleam.compiler.typing.Type
+import uk.co.colinhowe.gleam.compiler.typing.GenericType
 
 import scala.collection.mutable.{ Map => MMap, Buffer }
 import scala.collection.JavaConversions._

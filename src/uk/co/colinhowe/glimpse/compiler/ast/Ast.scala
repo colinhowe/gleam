@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse.compiler.ast
+package uk.co.colinhowe.gleam.compiler.ast
 
 abstract class GNode
 

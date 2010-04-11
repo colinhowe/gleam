@@ -1,6 +1,6 @@
-package uk.co.colinhowe.glimpse.infrastructure
+package uk.co.colinhowe.gleam.infrastructure
 
-import uk.co.colinhowe.glimpse.IdentifierNotFoundException
+import uk.co.colinhowe.gleam.IdentifierNotFoundException
 import scala.reflect.BeanProperty
 import org.scalatest.junit.AssertionsForJUnit
 import org.junit.Test

@@ -1,9 +1,9 @@
-package uk.co.colinhowe.glimpse
+package uk.co.colinhowe.gleam
 import java.io.FileOutputStream
 import java.io.File
 
-import uk.co.colinhowe.glimpse.compiler.Join
-import uk.co.colinhowe.glimpse.compiler.Joined
+import uk.co.colinhowe.gleam.compiler.Join
+import uk.co.colinhowe.gleam.compiler.Joined
 import scala.actors.Actor
 
 case class OutputClass(bytes : Array[Byte], className : String)

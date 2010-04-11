@@ -1,13 +1,13 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
-import uk.co.colinhowe.glimpse.compiler.typing.CompoundType
-import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
-import uk.co.colinhowe.glimpse.Generator
-import uk.co.colinhowe.glimpse.compiler.typing.GenericType
-import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
-import uk.co.colinhowe.glimpse.compiler.typing.Type
-import uk.co.colinhowe.glimpse.compiler.node._
-import uk.co.colinhowe.glimpse.compiler.IdentifierConverter._
+import uk.co.colinhowe.gleam.compiler.typing.CompoundType
+import uk.co.colinhowe.gleam.compiler.analysis.DepthFirstAdapter
+import uk.co.colinhowe.gleam.Generator
+import uk.co.colinhowe.gleam.compiler.typing.GenericType
+import uk.co.colinhowe.gleam.compiler.typing.SimpleType
+import uk.co.colinhowe.gleam.compiler.typing.Type
+import uk.co.colinhowe.gleam.compiler.node._
+import uk.co.colinhowe.gleam.compiler.IdentifierConverter._
 import scala.collection.JavaConversions._
 
 class TypeProvider {
@@ -51,7 +51,7 @@ class TypeProvider {
     // Check for known overrides
     val typeName = identifierListToString(node.getIdentifier) match {
       case "string" => "java.lang.String"
-      case "ref" => "uk.co.colinhowe.glimpse.PropertyReference"
+      case "ref" => "uk.co.colinhowe.gleam.PropertyReference"
       case s => s
     }
     

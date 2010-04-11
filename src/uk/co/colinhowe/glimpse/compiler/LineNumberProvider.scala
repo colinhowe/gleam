@@ -1,8 +1,8 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
-import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
-import uk.co.colinhowe.glimpse.compiler.node.Node
-import uk.co.colinhowe.glimpse.compiler.node.Token
+import uk.co.colinhowe.gleam.compiler.analysis.DepthFirstAdapter
+import uk.co.colinhowe.gleam.compiler.node.Node
+import uk.co.colinhowe.gleam.compiler.node.Token
 
 
 class LineNumberProvider extends DepthFirstAdapter {

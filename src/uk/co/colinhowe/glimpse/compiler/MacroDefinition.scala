@@ -1,7 +1,7 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
-import uk.co.colinhowe.glimpse.compiler.typing.Type
-import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
+import uk.co.colinhowe.gleam.compiler.typing.Type
+import uk.co.colinhowe.gleam.compiler.typing.SimpleType
 import scala.math._
 
 case class MacroDefinition(

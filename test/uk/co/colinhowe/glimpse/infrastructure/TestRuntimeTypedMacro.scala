@@ -1,8 +1,8 @@
-package uk.co.colinhowe.glimpse.infrastructure
+package uk.co.colinhowe.gleam.infrastructure
 
-import uk.co.colinhowe.glimpse.IdentifierNotFoundException
-import uk.co.colinhowe.glimpse.Macro
-import uk.co.colinhowe.glimpse.Node
+import uk.co.colinhowe.gleam.IdentifierNotFoundException
+import uk.co.colinhowe.gleam.Macro
+import uk.co.colinhowe.gleam.Node
 
 import scala.collection.mutable.{ Buffer, Map => MMap }
 import scala.collection.JavaConversions._

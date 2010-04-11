@@ -1,13 +1,13 @@
-package uk.co.colinhowe.glimpse.compiler
-import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
+package uk.co.colinhowe.gleam.compiler
+import uk.co.colinhowe.gleam.compiler.typing.SimpleType
 
 import org.junit.Test
 import java.io.File
 import java.net.URLClassLoader
 import java.net.URL
-import uk.co.colinhowe.glimpse.View
-import uk.co.colinhowe.glimpse.Node
-import uk.co.colinhowe.glimpse.TypeCheckError
+import uk.co.colinhowe.gleam.View
+import uk.co.colinhowe.gleam.Node
+import uk.co.colinhowe.gleam.TypeCheckError
 
 import org.junit.Assert._
 

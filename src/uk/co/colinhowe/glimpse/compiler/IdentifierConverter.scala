@@ -1,6 +1,6 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
-import uk.co.colinhowe.glimpse.compiler.node.TIdentifier
+import uk.co.colinhowe.gleam.compiler.node.TIdentifier
 import scala.collection.JavaConversions._
 
 object IdentifierConverter {

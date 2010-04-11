@@ -1,15 +1,15 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
-import uk.co.colinhowe.glimpse.CompilationError
+import uk.co.colinhowe.gleam.CompilationError
 
 
-import uk.co.colinhowe.glimpse.CompilationResult
+import uk.co.colinhowe.gleam.CompilationResult
 
 import java.io.File
 import java.net.URLClassLoader
 import java.net.URL
-import uk.co.colinhowe.glimpse.View
-import uk.co.colinhowe.glimpse.Node
+import uk.co.colinhowe.gleam.View
+import uk.co.colinhowe.gleam.Node
 import org.junit.Assert._
 import scala.collection.JavaConversions._
 import scala.xml._
@@ -107,7 +107,7 @@ abstract trait CompilerTest {
       compilationUnits += compilationUnit
     }
     
-    return new GlimpseCompiler().compile(compilationUnits, scala.collection.mutable.Buffer[String]("bin"))
+    return new GleamCompiler().compile(compilationUnits, scala.collection.mutable.Buffer[String]("bin"))
   }
   
   def checkCompilation(compilationSet : CompilationSet, expectedResult : scala.xml.Elem) {

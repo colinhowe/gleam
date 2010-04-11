@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse.compiler.typing
+package uk.co.colinhowe.gleam.compiler.typing
 
 case class CompoundType(val clazz : Class[_ <: Any], val innerTypes : List[Type]) extends Type {
   

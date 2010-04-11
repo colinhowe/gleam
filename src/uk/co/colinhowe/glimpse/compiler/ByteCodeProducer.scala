@@ -1,17 +1,17 @@
 /**
  * 
  */
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
-import uk.co.colinhowe.glimpse.PropertyReference
+import uk.co.colinhowe.gleam.PropertyReference
 
-import uk.co.colinhowe.glimpse.infrastructure.DynamicMacro
-import uk.co.colinhowe.glimpse.Generator
-import uk.co.colinhowe.glimpse.Macro
-import uk.co.colinhowe.glimpse.{ Node => GNode }
-import uk.co.colinhowe.glimpse.compiler.node.PModifier
+import uk.co.colinhowe.gleam.infrastructure.DynamicMacro
+import uk.co.colinhowe.gleam.Generator
+import uk.co.colinhowe.gleam.Macro
+import uk.co.colinhowe.gleam.{ Node => GNode }
+import uk.co.colinhowe.gleam.compiler.node.PModifier
 import java.util.LinkedList
-import uk.co.colinhowe.glimpse.compiler.typing.GenericType
+import uk.co.colinhowe.gleam.compiler.typing.GenericType
 import java.io.File
 import java.io.FileOutputStream
 
@@ -27,19 +27,19 @@ import scala.Tuple2
 import scala.collection.JavaConversions
 import scala.collection.JavaConversions._
 import scala.collection.mutable.{ Stack => MStack, Set => MSet, Map => MMap }
-import uk.co.colinhowe.glimpse.CompilationError
-import uk.co.colinhowe.glimpse.DynamicMacroMismatchError
-import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
-import uk.co.colinhowe.glimpse.compiler.node._
-import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
-import uk.co.colinhowe.glimpse.infrastructure.Scope
-import uk.co.colinhowe.glimpse.compiler.IdentifierConverter._
+import uk.co.colinhowe.gleam.CompilationError
+import uk.co.colinhowe.gleam.DynamicMacroMismatchError
+import uk.co.colinhowe.gleam.compiler.analysis.DepthFirstAdapter
+import uk.co.colinhowe.gleam.compiler.node._
+import uk.co.colinhowe.gleam.compiler.typing.SimpleType
+import uk.co.colinhowe.gleam.infrastructure.Scope
+import uk.co.colinhowe.gleam.compiler.IdentifierConverter._
 
-import uk.co.colinhowe.glimpse.compiler.typing.{ Type => GType }
+import uk.co.colinhowe.gleam.compiler.typing.{ Type => GType }
 
 import ArgumentSource._
-import uk.co.colinhowe.glimpse.ClassOutputter
-import uk.co.colinhowe.glimpse.OutputClass
+import uk.co.colinhowe.gleam.ClassOutputter
+import uk.co.colinhowe.gleam.OutputClass
 
 import java.lang.Integer
 
@@ -266,8 +266,8 @@ class ByteCodeProducer(
       mv.visitLocalVariable("this", "Lcheese/HelloWorld;", null, l0, l3, 0)
       
       // TODO This isn't technically accurate... the start label is too early
-      mv.visitLocalVariable("scope", "Luk/co/colinhowe/glimpse/infrastructure/Scope;", null, l0, l3, 1)
-      mv.visitLocalVariable("nodes", "Ljava/util/List;", "Ljava/util/List<Luk/co/colinhowe/glimpse/Node;>;", l0, l3, 2)
+      mv.visitLocalVariable("scope", "Luk/co/colinhowe/gleam/infrastructure/Scope;", null, l0, l3, 1)
+      mv.visitLocalVariable("nodes", "Ljava/util/List;", "Ljava/util/List<Luk/co/colinhowe/gleam/Node;>;", l0, l3, 2)
       mv.visitLocalVariable("controller", "Ljava/lang/Object;", null, l0, l3, 3)
       mv.visitMaxs(0, 0)
       mv.visitEnd()
@@ -354,7 +354,7 @@ class ByteCodeProducer(
       trailingLabels.push(None)
       
       val classWriter = classWriters.head
-      classWriter.visit(V1_6, ACC_PUBLIC + ACC_SUPER, viewname, null, "uk/co/colinhowe/glimpse/View", Array[String]())
+      classWriter.visit(V1_6, ACC_PUBLIC + ACC_SUPER, viewname, null, "uk/co/colinhowe/gleam/View", Array[String]())
       // TODO Check up on relative paths
       classWriter.visitSource(sourcename, null)
       
@@ -377,7 +377,7 @@ class ByteCodeProducer(
         val l0 = new Label()
         mv.visitLabel(l0)
         mv.visitVarInsn(ALOAD, 0)
-        mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/glimpse/View", "<init>", "()V")
+        mv.visitMethodInsn(INVOKESPECIAL, "uk/co/colinhowe/gleam/View", "<init>", "()V")
     
         // Initialise the scope
         mv.visitVarInsn(ALOAD, 0)
@@ -403,7 +403,7 @@ class ByteCodeProducer(
       {
         // TODO Make this use the classes... currently mess!
         val mv = classWriter.visitMethod(
-            ACC_PUBLIC, "view", "(Ljava/lang/Object;)Ljava/util/List;", "(Ljava/lang/Object;)Ljava/util/List<Luk/co/colinhowe/glimpse/Node;>;", null)
+            ACC_PUBLIC, "view", "(Ljava/lang/Object;)Ljava/util/List;", "(Ljava/lang/Object;)Ljava/util/List<Luk/co/colinhowe/gleam/Node;>;", null)
         methodVisitors.push(mv)
         mv.visitCode()
         
@@ -522,17 +522,17 @@ class ByteCodeProducer(
 
     val className = macroDefinition.className
     val (parentClass, interfaces) = if (macroDefinition.isAbstract) {
-      ("uk/co/colinhowe/glimpse/infrastructure/RuntimeTypedMacro", Array[String]())
+      ("uk/co/colinhowe/gleam/infrastructure/RuntimeTypedMacro", Array[String]())
     } else if (macroDefinition.isDynamic) {
-      ("uk/co/colinhowe/glimpse/infrastructure/DynamicMacro", Array[String]())
+      ("uk/co/colinhowe/gleam/infrastructure/DynamicMacro", Array[String]())
     } else {
-      ("java/lang/Object", Array[String]("uk/co/colinhowe/glimpse/Macro"))
+      ("java/lang/Object", Array[String]("uk/co/colinhowe/gleam/Macro"))
     }
     cw.visit(V1_6, ACC_SUPER + ACC_PUBLIC, className, null, parentClass, interfaces)
     cw.visitSource(sourcename, null)
 
     // Instance field for the macro
-    val fv = cw.visitField(ACC_PRIVATE + ACC_STATIC, "instance", "Luk/co/colinhowe/glimpse/Macro;", null, null)
+    val fv = cw.visitField(ACC_PRIVATE + ACC_STATIC, "instance", "Luk/co/colinhowe/gleam/Macro;", null, null)
     fv.visitEnd()
     
     // Static constructor
@@ -543,7 +543,7 @@ class ByteCodeProducer(
 
       // Initialise the instance
       NEW(className) { }
-      mv.visitFieldInsn(PUTSTATIC, className, "instance", "Luk/co/colinhowe/glimpse/Macro;")
+      mv.visitFieldInsn(PUTSTATIC, className, "instance", "Luk/co/colinhowe/gleam/Macro;")
       
       mv.visitInsn(RETURN)
       mv.visitMaxs(0, 0)
@@ -553,10 +553,10 @@ class ByteCodeProducer(
     
     // getInstance method
     {
-      val mv = cw.visitMethod(ACC_STATIC | ACC_PUBLIC, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;", null, null)
+      val mv = cw.visitMethod(ACC_STATIC | ACC_PUBLIC, "getInstance", "()Luk/co/colinhowe/gleam/Macro;", null, null)
       mv.visitCode()
 
-      mv.visitFieldInsn(GETSTATIC, className, "instance", "Luk/co/colinhowe/glimpse/Macro;")
+      mv.visitFieldInsn(GETSTATIC, className, "instance", "Luk/co/colinhowe/gleam/Macro;")
       mv.visitInsn(ARETURN)
       mv.visitMaxs(0, 0)
       mv.visitEnd();
@@ -594,8 +594,8 @@ class ByteCodeProducer(
       
       val mv = cw.visitMethod(ACC_PUBLIC, 
           "invoke", 
-          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;",
-          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;Ljava/lang/Object;)Ljava/util/List<Luk/co/colinhowe/glimpse/Node;>;", null)
+          "(Luk/co/colinhowe/gleam/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;",
+          "(Luk/co/colinhowe/gleam/infrastructure/Scope;Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;Ljava/lang/Object;)Ljava/util/List<Luk/co/colinhowe/gleam/Node;>;", null)
       methodVisitors.push(mv)
       mv.visitCode()
 
@@ -696,10 +696,10 @@ class ByteCodeProducer(
       val l6 = new Label()
       mv.visitLabel(l6)
       mv.visitLocalVariable("this", "Lcheese/HelloWorld;", null, l0, l6, 0)
-      mv.visitLocalVariable("callerScope", "Luk/co/colinhowe/glimpse/infrastructure/Scope;", null, l0, l6, 1)
+      mv.visitLocalVariable("callerScope", "Luk/co/colinhowe/gleam/infrastructure/Scope;", null, l0, l6, 1)
       mv.visitLocalVariable("_args", "Ljava/util/Map;", "Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;", l0, l6, 2)
       mv.visitLocalVariable("value", "Ljava/lang/String;", null, l0, l6, 3)
-      mv.visitLocalVariable("scope", "Luk/co/colinhowe/glimpse/infrastructure/Scope;", null, l0, l6, 4)
+      mv.visitLocalVariable("scope", "Luk/co/colinhowe/gleam/infrastructure/Scope;", null, l0, l6, 4)
     }
     
     if (node.getController != null) {
@@ -727,7 +727,7 @@ class ByteCodeProducer(
 
       // generator
       mv.visitVarInsn(ALOAD, 4) // scope, generator
-      INVOKE(classOf[Generator], "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
+      INVOKE(classOf[Generator], "view", "(Luk/co/colinhowe/gleam/infrastructure/Scope;)Ljava/util/List;")
       // nodes
   
       mv.visitInsn(ARETURN)
@@ -765,13 +765,13 @@ class ByteCodeProducer(
     macros.add(macroName)
 
     val parentClass = "java/lang/Object"
-    val interfaces = Array[String]("uk/co/colinhowe/glimpse/Macro")
+    val interfaces = Array[String]("uk/co/colinhowe/gleam/Macro")
 
     cw.visit(V1_6, ACC_SUPER + ACC_PUBLIC, className, null, parentClass, interfaces)
     cw.visitSource(sourcename, null)
 
     // Instance field for the macro
-    val fv = cw.visitField(ACC_PRIVATE + ACC_STATIC, "instance", "Luk/co/colinhowe/glimpse/Macro;", null, null)
+    val fv = cw.visitField(ACC_PRIVATE + ACC_STATIC, "instance", "Luk/co/colinhowe/gleam/Macro;", null, null)
     fv.visitEnd()
     
     // Static constructor
@@ -782,7 +782,7 @@ class ByteCodeProducer(
 
       // Initialise the instance
       NEW(className) { }
-      mv.visitFieldInsn(PUTSTATIC, className, "instance", "Luk/co/colinhowe/glimpse/Macro;")
+      mv.visitFieldInsn(PUTSTATIC, className, "instance", "Luk/co/colinhowe/gleam/Macro;")
       
       mv.visitInsn(RETURN)
       mv.visitMaxs(0, 0)
@@ -792,11 +792,11 @@ class ByteCodeProducer(
     
     // getInstance method
     {
-      val mv = cw.visitMethod(ACC_STATIC | ACC_PUBLIC, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;", null, null)
+      val mv = cw.visitMethod(ACC_STATIC | ACC_PUBLIC, "getInstance", "()Luk/co/colinhowe/gleam/Macro;", null, null)
       mv.visitCode()
       methodVisitors.push(mv)
 
-      mv.visitFieldInsn(GETSTATIC, className, "instance", "Luk/co/colinhowe/glimpse/Macro;")
+      mv.visitFieldInsn(GETSTATIC, className, "instance", "Luk/co/colinhowe/gleam/Macro;")
       mv.visitInsn(ARETURN)
       mv.visitMaxs(0, 0)
       mv.visitEnd();
@@ -809,8 +809,8 @@ class ByteCodeProducer(
     {
       val mv = cw.visitMethod(ACC_PUBLIC, 
           "invoke", 
-          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;",
-          "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;Ljava/lang/Object;)Ljava/util/List<Luk/co/colinhowe/glimpse/Node;>;", null)
+          "(Luk/co/colinhowe/gleam/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;",
+          "(Luk/co/colinhowe/gleam/infrastructure/Scope;Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;Ljava/lang/Object;)Ljava/util/List<Luk/co/colinhowe/gleam/Node;>;", null)
       methodVisitors.push(mv)
       mv.visitCode()
       
@@ -849,7 +849,7 @@ class ByteCodeProducer(
       NEW(classOf[java.util.LinkedList[_]]) { }
       DUP
       
-      NEW(classOf[uk.co.colinhowe.glimpse.Node], classOf[java.util.List[_]], classOf[String], classOf[Object]) {
+      NEW(classOf[uk.co.colinhowe.gleam.Node], classOf[java.util.List[_]], classOf[String], classOf[Object]) {
         node.getType match {
           case null => 
             mv.visitInsn(ACONST_NULL)
@@ -883,7 +883,7 @@ class ByteCodeProducer(
             }
             
             mv.visitVarInsn(ALOAD, 4) // scope
-            INVOKE(classOf[Generator], "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
+            INVOKE(classOf[Generator], "view", "(Luk/co/colinhowe/gleam/infrastructure/Scope;)Ljava/util/List;")
             mv.visitLdcInsn(macroName);  // id, nodes, node, node
             mv.visitInsn(ACONST_NULL) // null, id, nodes, node, node
           
@@ -914,10 +914,10 @@ class ByteCodeProducer(
       mv.visitLabel(l6)
 
       mv.visitLocalVariable("this", "Lcheese/HelloWorld;", null, l0, l6, 0)
-      mv.visitLocalVariable("callerScope", "Luk/co/colinhowe/glimpse/infrastructure/Scope;", null, l0, l6, 1)
+      mv.visitLocalVariable("callerScope", "Luk/co/colinhowe/gleam/infrastructure/Scope;", null, l0, l6, 1)
       mv.visitLocalVariable("_args", "Ljava/util/Map;", "Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;", l0, l6, 2)
       mv.visitLocalVariable("value", "Ljava/lang/String;", null, l0, l6, 3)
-      mv.visitLocalVariable("scope", "Luk/co/colinhowe/glimpse/infrastructure/Scope;", null, l0, l6, 4)
+      mv.visitLocalVariable("scope", "Luk/co/colinhowe/gleam/infrastructure/Scope;", null, l0, l6, 4)
 
       mv.visitMaxs(4, 7)
       mv.visitEnd()
@@ -993,7 +993,7 @@ class ByteCodeProducer(
     }
     // Ends with the scope at the top of the stack
     
-    INVOKE(classOf[Generator], "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
+    INVOKE(classOf[Generator], "view", "(Luk/co/colinhowe/gleam/infrastructure/Scope;)Ljava/util/List;")
 
     addAllNodesFromStack
     
@@ -1021,7 +1021,7 @@ class ByteCodeProducer(
     val innerClassWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS)
     classWriters.push(innerClassWriter)
 
-    innerClassWriter.visit(V1_6, ACC_SUPER, viewname + "$" + generatorName, null, "java/lang/Object", Array[String]("uk/co/colinhowe/glimpse/Generator"))
+    innerClassWriter.visit(V1_6, ACC_SUPER, viewname + "$" + generatorName, null, "java/lang/Object", Array[String]("uk/co/colinhowe/gleam/Generator"))
     innerClassWriter.visitSource(sourcename, null)
     val fullClassName = viewname + "$" + generatorName
     innerClassWriter.visitInnerClass(fullClassName, viewname, generatorName, ACC_PRIVATE + ACC_STATIC)
@@ -1029,7 +1029,7 @@ class ByteCodeProducer(
     generatorIds.put(node, id)
 
     // Instance field for the generator
-    val fv = innerClassWriter.visitField(ACC_PRIVATE + ACC_STATIC, "instance", "Luk/co/colinhowe/glimpse/Generator;", null, null)
+    val fv = innerClassWriter.visitField(ACC_PRIVATE + ACC_STATIC, "instance", "Luk/co/colinhowe/gleam/Generator;", null, null)
     fv.visitEnd()
     
     // Static constructor
@@ -1040,7 +1040,7 @@ class ByteCodeProducer(
 
       // Initialise the instance
       NEW(fullClassName) { }
-      mv.visitFieldInsn(PUTSTATIC, fullClassName, "instance", "Luk/co/colinhowe/glimpse/Generator;")
+      mv.visitFieldInsn(PUTSTATIC, fullClassName, "instance", "Luk/co/colinhowe/gleam/Generator;")
       
       mv.visitInsn(RETURN)
       mv.visitMaxs(0, 0)
@@ -1050,12 +1050,12 @@ class ByteCodeProducer(
     
     // getInstance method
     {
-      val mv = innerClassWriter.visitMethod(ACC_STATIC | ACC_PUBLIC, "getInstance", "()Luk/co/colinhowe/glimpse/Generator;", null, null)
+      val mv = innerClassWriter.visitMethod(ACC_STATIC | ACC_PUBLIC, "getInstance", "()Luk/co/colinhowe/gleam/Generator;", null, null)
       mv.visitCode()
 
       val l1 = new Label()
       mv.visitLabel(l1)
-      mv.visitFieldInsn(GETSTATIC, fullClassName, "instance", "Luk/co/colinhowe/glimpse/Generator;")
+      mv.visitFieldInsn(GETSTATIC, fullClassName, "instance", "Luk/co/colinhowe/gleam/Generator;")
       mv.visitInsn(ARETURN)
       mv.visitMaxs(0, 0)
       mv.visitEnd(); 
@@ -1081,7 +1081,7 @@ class ByteCodeProducer(
     {
       // TODO Make this use the classes... currently mess!
       val mv = innerClassWriter.visitMethod(
-          ACC_PUBLIC, "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List<Luk/co/colinhowe/glimpse/Node;>;", null)
+          ACC_PUBLIC, "view", "(Luk/co/colinhowe/gleam/infrastructure/Scope;)Ljava/util/List;", "(Luk/co/colinhowe/gleam/infrastructure/Scope;)Ljava/util/List<Luk/co/colinhowe/gleam/Node;>;", null)
       methodVisitors.push(mv)
       mv.visitCode()
       
@@ -1118,8 +1118,8 @@ class ByteCodeProducer(
     mv.visitLocalVariable("this", "L" + viewname + "$" + generatorName + ";", null, l0, l3, 0)
     
     // TODO This isn't technically accurate... the start label is too early
-    mv.visitLocalVariable("scope", "Luk/co/colinhowe/glimpse/infrastructure/Scope;", null, l0, l3, 1)
-    mv.visitLocalVariable("nodes", "Ljava/util/List;", "Ljava/util/List<Luk/co/colinhowe/glimpse/Node;>;", l0, l3, 2)
+    mv.visitLocalVariable("scope", "Luk/co/colinhowe/gleam/infrastructure/Scope;", null, l0, l3, 1)
+    mv.visitLocalVariable("nodes", "Ljava/util/List;", "Ljava/util/List<Luk/co/colinhowe/gleam/Node;>;", l0, l3, 2)
     mv.visitMaxs(0, 0)
     mv.visitEnd()
     
@@ -1132,7 +1132,7 @@ class ByteCodeProducer(
     
     // Get the instance of the generator
     mv = methodVisitors.head
-    mv.visitMethodInsn(Opcodes.INVOKESTATIC, generatorIdentifier, "getInstance", "()Luk/co/colinhowe/glimpse/Generator;") // macro, value, args
+    mv.visitMethodInsn(Opcodes.INVOKESTATIC, generatorIdentifier, "getInstance", "()Luk/co/colinhowe/gleam/Generator;") // macro, value, args
   }
 
   override def outAInvertExpr(node : AInvertExpr) {
@@ -1193,10 +1193,10 @@ class ByteCodeProducer(
         defn.arguments == dynamicMacroDefinition.arguments)
     val sourceClassName = sourceMacroDefinition.get.className
     
-    mv.visitMethodInsn(Opcodes.INVOKESTATIC, dynamicMacroName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
+    mv.visitMethodInsn(Opcodes.INVOKESTATIC, dynamicMacroName, "getInstance", "()Luk/co/colinhowe/gleam/Macro;") // target
     CHECKCAST(classOf[DynamicMacro])
-    mv.visitMethodInsn(Opcodes.INVOKESTATIC, sourceClassName, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // target
-    INVOKE(classOf[DynamicMacro], "setToInvoke", "(Luk/co/colinhowe/glimpse/Macro;)V")
+    mv.visitMethodInsn(Opcodes.INVOKESTATIC, sourceClassName, "getInstance", "()Luk/co/colinhowe/gleam/Macro;") // target
+    INVOKE(classOf[DynamicMacro], "setToInvoke", "(Luk/co/colinhowe/gleam/Macro;)V")
   }
   
   override def caseAAssignmentStmt(node : AAssignmentStmt) {
@@ -1230,7 +1230,7 @@ class ByteCodeProducer(
     val call = resolvedCallsProvider.get(node) 
 
     // Load the macro and scope onto the stack
-    mv.visitMethodInsn(Opcodes.INVOKESTATIC, call.macro.className, "getInstance", "()Luk/co/colinhowe/glimpse/Macro;") // macro, value, args
+    mv.visitMethodInsn(Opcodes.INVOKESTATIC, call.macro.className, "getInstance", "()Luk/co/colinhowe/gleam/Macro;") // macro, value, args
     mv.visitVarInsn(ALOAD, 1)
 
     // Put all the arguments into a map on the stack
@@ -1267,7 +1267,7 @@ class ByteCodeProducer(
     } 
     // Stack: value, args, scope, macro
 
-    INVOKE(classOf[Macro], "invoke", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;")
+    INVOKE(classOf[Macro], "invoke", "(Luk/co/colinhowe/gleam/infrastructure/Scope;Ljava/util/Map;Ljava/lang/Object;)Ljava/util/List;")
     addAllNodesFromStack
   }
   
@@ -1287,7 +1287,7 @@ class ByteCodeProducer(
 //    // Create the node on the stack ready for setting properties on it
 //    val l1 = startLabel(node)
 //    
-//    NEW(classOf[uk.co.colinhowe.glimpse.Node], classOf[java.util.List[_]], classOf[String], classOf[Object]) {
+//    NEW(classOf[uk.co.colinhowe.gleam.Node], classOf[java.util.List[_]], classOf[String], classOf[Object]) {
 //      node.getExpr match {
 //        case null => 
 //          mv.visitInsn(ACONST_NULL)
@@ -1300,7 +1300,7 @@ class ByteCodeProducer(
 //          val generatorIdentifier = viewname + "$$generator" + generatorIds.get(expr.getGenerator())
 //          // Stack: generator, node, node
 //          mv.visitVarInsn(ALOAD, 1) // scope, generator, node, node
-//          INVOKE(classOf[Generator], "view", "(Luk/co/colinhowe/glimpse/infrastructure/Scope;)Ljava/util/List;")
+//          INVOKE(classOf[Generator], "view", "(Luk/co/colinhowe/gleam/infrastructure/Scope;)Ljava/util/List;")
 //          // nodes, node, node
 //          mv.visitLdcInsn(id);  // id, nodes, node, node
 //          mv.visitInsn(ACONST_NULL) // null, id, nodes, node, node

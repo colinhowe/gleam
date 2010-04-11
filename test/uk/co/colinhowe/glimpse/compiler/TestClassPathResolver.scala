@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
 import org.scalatest.junit.AssertionsForJUnit
 import org.junit.Test
@@ -10,13 +10,13 @@ class TestClassPathResolver extends AssertionsForJUnit {
   def testFolder = {
 //    val resolver = new ClassPathResolver(Array[String]("bin"))
 //    
-//    assert(true === resolver.isClassOnClassPath("uk.co.colinhowe.glimpse.Node"))
+//    assert(true === resolver.isClassOnClassPath("uk.co.colinhowe.gleam.Node"))
   }
   
   @Test
   def testJar = {
-//    val resolver = new ClassPathResolver(Array[String]("bin/uk/co/colinhowe/glimpse/compiler/node.jar"))
+//    val resolver = new ClassPathResolver(Array[String]("bin/uk/co/colinhowe/gleam/compiler/node.jar"))
 //    
-//    assert(true === resolver.isClassOnClassPath("uk.co.colinhowe.glimpse.Node"))
+//    assert(true === resolver.isClassOnClassPath("uk.co.colinhowe.gleam.Node"))
   }
 }

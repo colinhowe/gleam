@@ -1,7 +1,7 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
-import uk.co.colinhowe.glimpse.compiler.node.Start
-import uk.co.colinhowe.glimpse.CompilationError
+import uk.co.colinhowe.gleam.compiler.node.Start
+import uk.co.colinhowe.gleam.CompilationError
 
 class IntermediateResult(
     val ast : Start,

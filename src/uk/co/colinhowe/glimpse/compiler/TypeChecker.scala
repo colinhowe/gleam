@@ -1,8 +1,8 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
-import uk.co.colinhowe.glimpse.IdentifierNotFoundException
-import uk.co.colinhowe.glimpse.MethodNotFoundError
-import uk.co.colinhowe.glimpse.IncompatibleControllerError
+import uk.co.colinhowe.gleam.IdentifierNotFoundException
+import uk.co.colinhowe.gleam.MethodNotFoundError
+import uk.co.colinhowe.gleam.IncompatibleControllerError
 
 import java.lang.reflect.Method
 
@@ -10,22 +10,22 @@ import scala.collection.JavaConversions
 import scala.collection.JavaConversions._
 import scala.collection.mutable.{ Map => MMap, Buffer, Stack => MStack }
 import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl
-import uk.co.colinhowe.glimpse.CompilationError
-import uk.co.colinhowe.glimpse.DynamicMacroMismatchError
-import uk.co.colinhowe.glimpse.Generator
-import uk.co.colinhowe.glimpse.IdentifierNotFoundError
-import uk.co.colinhowe.glimpse.MacroNotFoundError
-import uk.co.colinhowe.glimpse.IdentifierNotFoundException
-import uk.co.colinhowe.glimpse.TypeCheckError
-import uk.co.colinhowe.glimpse.compiler.analysis.DepthFirstAdapter
-import uk.co.colinhowe.glimpse.compiler.node._
-import uk.co.colinhowe.glimpse.compiler.typing.CompoundType
-import uk.co.colinhowe.glimpse.compiler.typing.GenericType
-import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
-import uk.co.colinhowe.glimpse.compiler.typing.Type
-import uk.co.colinhowe.glimpse.infrastructure.Scope
-import uk.co.colinhowe.glimpse.PropertyReference
-import uk.co.colinhowe.glimpse.compiler.IdentifierConverter._
+import uk.co.colinhowe.gleam.CompilationError
+import uk.co.colinhowe.gleam.DynamicMacroMismatchError
+import uk.co.colinhowe.gleam.Generator
+import uk.co.colinhowe.gleam.IdentifierNotFoundError
+import uk.co.colinhowe.gleam.MacroNotFoundError
+import uk.co.colinhowe.gleam.IdentifierNotFoundException
+import uk.co.colinhowe.gleam.TypeCheckError
+import uk.co.colinhowe.gleam.compiler.analysis.DepthFirstAdapter
+import uk.co.colinhowe.gleam.compiler.node._
+import uk.co.colinhowe.gleam.compiler.typing.CompoundType
+import uk.co.colinhowe.gleam.compiler.typing.GenericType
+import uk.co.colinhowe.gleam.compiler.typing.SimpleType
+import uk.co.colinhowe.gleam.compiler.typing.Type
+import uk.co.colinhowe.gleam.infrastructure.Scope
+import uk.co.colinhowe.gleam.PropertyReference
+import uk.co.colinhowe.gleam.compiler.IdentifierConverter._
  
 class TypeChecker(
     val lineNumberProvider : LineNumberProvider,

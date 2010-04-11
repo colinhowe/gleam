@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse
+package uk.co.colinhowe.gleam
 
 class PropertyReference[T](val path : String, val value : T) {
 

@@ -1,27 +1,27 @@
-package uk.co.colinhowe.glimpse.feature
+package uk.co.colinhowe.gleam.feature
 
 import org.junit.Test
 import org.junit.Assert._
 
-import uk.co.colinhowe.glimpse.compiler.typing.Type
-import uk.co.colinhowe.glimpse.IdentifierNotFoundError
-import uk.co.colinhowe.glimpse.IncompatibleControllerError
-import uk.co.colinhowe.glimpse.compiler.TypeCheckerTest
-import uk.co.colinhowe.glimpse.compiler.MacroDefinition
-import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
-import uk.co.colinhowe.glimpse.compiler.Restriction
-import uk.co.colinhowe.glimpse.compiler.DummyInterface
-import uk.co.colinhowe.glimpse.compiler.DummyController
+import uk.co.colinhowe.gleam.compiler.typing.Type
+import uk.co.colinhowe.gleam.IdentifierNotFoundError
+import uk.co.colinhowe.gleam.IncompatibleControllerError
+import uk.co.colinhowe.gleam.compiler.TypeCheckerTest
+import uk.co.colinhowe.gleam.compiler.MacroDefinition
+import uk.co.colinhowe.gleam.compiler.typing.SimpleType
+import uk.co.colinhowe.gleam.compiler.Restriction
+import uk.co.colinhowe.gleam.compiler.DummyInterface
+import uk.co.colinhowe.gleam.compiler.DummyController
 
 class TestMacroWithController extends TypeCheckerTest {
   
   @Test
   def basicMacroController = {
     """
-    controller uk.co.colinhowe.glimpse.compiler.DummyController
+    controller uk.co.colinhowe.gleam.compiler.DummyController
     node x with java.lang.Object
     macro p with s : string
-        controller uk.co.colinhowe.glimpse.compiler.DummyController {
+        controller uk.co.colinhowe.gleam.compiler.DummyController {
       x c.someString
     }
     p "ignored"
@@ -32,10 +32,10 @@ class TestMacroWithController extends TypeCheckerTest {
   @Test
   def interfaceAsMacroController = {
     """
-    controller uk.co.colinhowe.glimpse.compiler.DummyController
+    controller uk.co.colinhowe.gleam.compiler.DummyController
     node x with java.lang.Object
     macro p with s : string
-        controller uk.co.colinhowe.glimpse.compiler.DummyInterface {
+        controller uk.co.colinhowe.gleam.compiler.DummyInterface {
       x c.someString
     }
     p "ignored"
@@ -46,9 +46,9 @@ class TestMacroWithController extends TypeCheckerTest {
   @Test
   def interfaceAsMacroControllerIgnoresViewController = {
     """
-    controller uk.co.colinhowe.glimpse.compiler.DummyController
+    controller uk.co.colinhowe.gleam.compiler.DummyController
     macro p with s : string
-        controller uk.co.colinhowe.glimpse.compiler.DummyInterface {
+        controller uk.co.colinhowe.gleam.compiler.DummyInterface {
       var x = c.someObject
     }
     p "ignored"
@@ -64,7 +64,7 @@ class TestMacroWithController extends TypeCheckerTest {
     """
     node x with string
     macro p with s : string
-        controller uk.co.colinhowe.glimpse.compiler.DummyInterface {
+        controller uk.co.colinhowe.gleam.compiler.DummyInterface {
       x "ignored"
     }
     p "ignored"
@@ -82,7 +82,7 @@ class TestMacroWithController extends TypeCheckerTest {
     """
     controller java.lang.String
     macro p with s : string
-        controller uk.co.colinhowe.glimpse.compiler.DummyInterface {
+        controller uk.co.colinhowe.gleam.compiler.DummyInterface {
       var x = 1
     }
     p "ignored"

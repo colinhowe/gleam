@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes._
@@ -43,7 +43,7 @@ trait ByteCodePatterns {
   def getFromScope(name : String) : Unit = {
     mv.visitVarInsn(ALOAD, 1) // scope
     mv.visitLdcInsn(name) // name, scope
-    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
+    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/gleam/infrastructure/Scope", "get", "(Ljava/lang/String;)Ljava/lang/Object;")
   }
   
   def getFromScope(name : String, expectedClass : Class[_]) : Unit = {
@@ -67,7 +67,7 @@ trait ByteCodePatterns {
     mv.visitInsn(SWAP) // string, scope
     mv.visitLdcInsn(identifier) // name, value, scope
     mv.visitInsn(SWAP) // value, name, scope
-    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
+    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/gleam/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
   }
   
   /**
@@ -78,7 +78,7 @@ trait ByteCodePatterns {
     mv.visitVarInsn(ALOAD, 1)
     mv.visitLdcInsn(identifier)
     value
-    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/glimpse/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
+    mv.visitMethodInsn(INVOKEVIRTUAL, "uk/co/colinhowe/gleam/infrastructure/Scope", "add", "(Ljava/lang/String;Ljava/lang/Object;)V")
   }
   
   def CHECKCAST(clazz : Class[_]) = {

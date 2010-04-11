@@ -1,4 +1,4 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
 import java.io.BufferedReader
 import java.io.File
@@ -16,18 +16,18 @@ import scala.actors.OutputChannel
 import scala.actors.Futures._
 import scala.collection.mutable.Buffer
 
-import uk.co.colinhowe.glimpse.CompilationController
-import uk.co.colinhowe.glimpse.CompilationException
-import uk.co.colinhowe.glimpse.CompilationError
-import uk.co.colinhowe.glimpse.CompilationResult
-import uk.co.colinhowe.glimpse.compiler.lexer.Lexer
-import uk.co.colinhowe.glimpse.compiler.node.Start
-import uk.co.colinhowe.glimpse.compiler.parser.Parser
+import uk.co.colinhowe.gleam.CompilationController
+import uk.co.colinhowe.gleam.CompilationException
+import uk.co.colinhowe.gleam.CompilationError
+import uk.co.colinhowe.gleam.CompilationResult
+import uk.co.colinhowe.gleam.compiler.lexer.Lexer
+import uk.co.colinhowe.gleam.compiler.node.Start
+import uk.co.colinhowe.gleam.compiler.parser.Parser
 import scala.actors.Future
-import uk.co.colinhowe.glimpse.ClassOutputter
-import uk.co.colinhowe.glimpse.ParserController
-import uk.co.colinhowe.glimpse.ExceptionHandler
-import uk.co.colinhowe.glimpse.Parse
+import uk.co.colinhowe.gleam.ClassOutputter
+import uk.co.colinhowe.gleam.ParserController
+import uk.co.colinhowe.gleam.ExceptionHandler
+import uk.co.colinhowe.gleam.Parse
 
 case class Join()
 case class Joined()
@@ -36,7 +36,7 @@ case class Parsed(result : IntermediateResult)
 case class Errored(e : Throwable)
 case class Finished()
 
-class GlimpseCompiler extends Actor {
+class GleamCompiler extends Actor {
   
   var classPathResolver : ClassPathResolver = null
   

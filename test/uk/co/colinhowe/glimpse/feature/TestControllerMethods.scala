@@ -1,25 +1,25 @@
-package uk.co.colinhowe.glimpse.feature
+package uk.co.colinhowe.gleam.feature
 
 import org.junit.Test
 import org.junit.Assert._
 
-import uk.co.colinhowe.glimpse.compiler.typing.Type
-import uk.co.colinhowe.glimpse.IdentifierNotFoundError
-import uk.co.colinhowe.glimpse.MethodNotFoundError
-import uk.co.colinhowe.glimpse.IncompatibleControllerError
-import uk.co.colinhowe.glimpse.compiler.TypeCheckerTest
-import uk.co.colinhowe.glimpse.compiler.MacroDefinition
-import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
-import uk.co.colinhowe.glimpse.compiler.Restriction
-import uk.co.colinhowe.glimpse.compiler.DummyInterface
-import uk.co.colinhowe.glimpse.compiler.DummyController
+import uk.co.colinhowe.gleam.compiler.typing.Type
+import uk.co.colinhowe.gleam.IdentifierNotFoundError
+import uk.co.colinhowe.gleam.MethodNotFoundError
+import uk.co.colinhowe.gleam.IncompatibleControllerError
+import uk.co.colinhowe.gleam.compiler.TypeCheckerTest
+import uk.co.colinhowe.gleam.compiler.MacroDefinition
+import uk.co.colinhowe.gleam.compiler.typing.SimpleType
+import uk.co.colinhowe.gleam.compiler.Restriction
+import uk.co.colinhowe.gleam.compiler.DummyInterface
+import uk.co.colinhowe.gleam.compiler.DummyController
 
 class TestControllerMethods extends TypeCheckerTest {
   
   @Test
   def withArgsInvocation = {
     """
-    controller uk.co.colinhowe.glimpse.compiler.DummyController
+    controller uk.co.colinhowe.gleam.compiler.DummyController
     node p with string
     p c.makeMessage("hi")
     """ controller(new DummyController) compilesTo 
@@ -29,7 +29,7 @@ class TestControllerMethods extends TypeCheckerTest {
   @Test
   def onInterface = {
     """
-    controller uk.co.colinhowe.glimpse.compiler.DummyInterface
+    controller uk.co.colinhowe.gleam.compiler.DummyInterface
     node p with java.lang.Object
     p c.getSomeString()
     """ controller(new DummyController) compilesTo 
@@ -39,7 +39,7 @@ class TestControllerMethods extends TypeCheckerTest {
   @Test
   def withLocalVariableInvocation = {
     """
-    controller uk.co.colinhowe.glimpse.compiler.DummyController
+    controller uk.co.colinhowe.gleam.compiler.DummyController
     node p with string
     var x = "hi"
     p c.makeMessage(x)
@@ -50,7 +50,7 @@ class TestControllerMethods extends TypeCheckerTest {
   @Test
   def withoutArgsInvocation = {
     """
-    controller uk.co.colinhowe.glimpse.compiler.DummyController
+    controller uk.co.colinhowe.gleam.compiler.DummyController
     node p with string
     p c.getName()
     """ controller(new DummyController) compilesTo 
@@ -60,7 +60,7 @@ class TestControllerMethods extends TypeCheckerTest {
   @Test
   def returnValueTyping = {
     """
-    controller uk.co.colinhowe.glimpse.compiler.DummyController
+    controller uk.co.colinhowe.gleam.compiler.DummyController
     node p with string
     var message = c.makeMessage("hi")
     p message
@@ -71,7 +71,7 @@ class TestControllerMethods extends TypeCheckerTest {
   @Test
   def nonexistentMethod = {
     """
-    controller uk.co.colinhowe.glimpse.compiler.DummyController
+    controller uk.co.colinhowe.gleam.compiler.DummyController
     node p with string
     var message = c.makeCompileFailure()
     """ controller(new DummyController) failsWith
@@ -85,7 +85,7 @@ class TestControllerMethods extends TypeCheckerTest {
   @Test
   def incorrectArgumentsToMethod = {
     """
-    controller uk.co.colinhowe.glimpse.compiler.DummyController
+    controller uk.co.colinhowe.gleam.compiler.DummyController
     node p with string
     var message = c.makeMessage(4)
     """ controller(new DummyController) failsWith
@@ -99,7 +99,7 @@ class TestControllerMethods extends TypeCheckerTest {
   @Test
   def incorrectVariableToMethod = {
     """
-    controller uk.co.colinhowe.glimpse.compiler.DummyController
+    controller uk.co.colinhowe.gleam.compiler.DummyController
     node p with string
     var x = 4
     var message = c.makeMessage(x)

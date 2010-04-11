@@ -1,20 +1,20 @@
-package uk.co.colinhowe.glimpse.feature
+package uk.co.colinhowe.gleam.feature
 
-import uk.co.colinhowe.glimpse.compiler.typing.Type
-import uk.co.colinhowe.glimpse.Generator
+import uk.co.colinhowe.gleam.compiler.typing.Type
+import uk.co.colinhowe.gleam.Generator
 
 import org.junit.Test
 import java.io.File
 import java.net.URLClassLoader
 import java.net.URL
-import uk.co.colinhowe.glimpse.compiler.TypeCheckerTest
-import uk.co.colinhowe.glimpse.compiler.MacroDefinition
-import uk.co.colinhowe.glimpse.compiler.ArgumentDefinition
-import uk.co.colinhowe.glimpse.compiler.Restriction
-import uk.co.colinhowe.glimpse.TypeCheckError
-import uk.co.colinhowe.glimpse.MacroNotFoundError
-import uk.co.colinhowe.glimpse.IdentifierNotFoundError
-import uk.co.colinhowe.glimpse.compiler.typing.SimpleType
+import uk.co.colinhowe.gleam.compiler.TypeCheckerTest
+import uk.co.colinhowe.gleam.compiler.MacroDefinition
+import uk.co.colinhowe.gleam.compiler.ArgumentDefinition
+import uk.co.colinhowe.gleam.compiler.Restriction
+import uk.co.colinhowe.gleam.TypeCheckError
+import uk.co.colinhowe.gleam.MacroNotFoundError
+import uk.co.colinhowe.gleam.IdentifierNotFoundError
+import uk.co.colinhowe.gleam.compiler.typing.SimpleType
 import org.junit.Assert._
 
 class TestTypeChecker extends TypeCheckerTest {

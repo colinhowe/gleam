@@ -1,7 +1,7 @@
-package uk.co.colinhowe.glimpse.compiler
+package uk.co.colinhowe.gleam.compiler
 
-import uk.co.colinhowe.glimpse.compiler.typing._
-import uk.co.colinhowe.glimpse.compiler.node._
+import uk.co.colinhowe.gleam.compiler.typing._
+import uk.co.colinhowe.gleam.compiler.node._
 
 import scala.collection.JavaConversions._
 

@@ -1,8 +1,8 @@
-package uk.co.colinhowe.glimpse
+package uk.co.colinhowe.gleam
 
-import uk.co.colinhowe.glimpse.compiler.CompilationUnit
-import uk.co.colinhowe.glimpse.compiler.MacroDefinition
-import uk.co.colinhowe.glimpse.compiler.typing.Type
+import uk.co.colinhowe.gleam.compiler.CompilationUnit
+import uk.co.colinhowe.gleam.compiler.MacroDefinition
+import uk.co.colinhowe.gleam.compiler.typing.Type
 
 abstract sealed class CompilationError(val lineNumber : Int)
 
