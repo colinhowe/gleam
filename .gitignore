@@ -1,5 +1,7 @@
 bin
 temp
+build
+junit-results
 src/output
 .settings
 .scala_dependencies

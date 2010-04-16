@@ -1,4 +1,4 @@
-Package uk.co.colinhowe.gleam.compiler;
+Package gleam.compiler;
 
 Helpers     
     letter = ['a' .. 'z'] | ['A' .. 'Z'];  

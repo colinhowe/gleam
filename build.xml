@@ -1,6 +1,11 @@
 <project name="Gleam">
   <target name = "gen">
   	<property name="gendir" value="src/output" />
+    <delete>
+      <fileset dir="${gendir}">
+          <include name="**/*"/>
+      </fileset>
+    </delete>
     <mkdir dir="${gendir}" />
     <java jar = "lib/sablecc.jar" fork="true" failonerror="true">
       <arg value = "-d" />
