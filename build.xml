@@ -1,4 +1,10 @@
 <project name="Gleam">
+	<!-- 
+	  For this script to work the following must be set in Ant properties:
+	  scala.home - Where Scala is installed
+	  scala.tools - Location of scala.tools jar
+	-->
+	
   <target name = "gen">
   	<property name="gendir" value="src/output" />
     <delete>
@@ -76,6 +82,11 @@
         <exclude name="**/*.java"/>
       </fileset>
     </copy>
+  	
+    <jar destfile="gleam.jar"
+         basedir="${build.dir}"
+         excludes="**/Test.class"
+    />
 	</target>	
   
   <target name="runtests" depends="init">
