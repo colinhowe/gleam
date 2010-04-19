@@ -5,3 +5,4 @@ junit-results
 src/output
 .settings
 .scala_dependencies
+gleam.jar
