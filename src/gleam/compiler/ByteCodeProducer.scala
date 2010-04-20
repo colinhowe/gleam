@@ -427,32 +427,12 @@ class ByteCodeProducer(
   }
   
   override def caseTString(node : TString) {
-    
-    val sep = "\"\""
-    
-    if (node.getText().startsWith(sep)) {
-      val lines = node.getText().split("\n")
-      
-      // Determine indentation from the last line - and then 2 spaces more
-      val indentation = lines(lines.length - 1).indexOf(sep) + 2
-      
-      // Remove the indentation from each line and build up a string to output
-      val outputStringBuffer = new StringBuffer()
-      
-      for (line <- lines.slice(1, lines.length - 1)) {
-        outputStringBuffer.append(line.substring(indentation) + "\n")
-      }
-      
-      // Remove the trailing + and quote and new line
-      val text = outputStringBuffer.substring(0, outputStringBuffer.length() - 1)
-      node.setText(text)
-    } else {
-      node.setText(node.getText().replaceAll("\"", ""))
-    }
+    val text = StringHandler.parseString(node.getText)
+    node.setText(text)
     
     // Put the text onto the stack
     val mv = methodVisitors.head
-    mv.visitLdcInsn(node.getText())
+    mv.visitLdcInsn(text)
   }
   
   override def outAController(node : AController) {
