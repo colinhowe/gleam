@@ -2,14 +2,12 @@ package gleam.compiler
 
 object StringHandler {
   def parseString(value : String) : String = {
+    val lines = value.replaceAll("\r\n", "\n").split("\r|\n")
     
-    val sep = "\"\""
-    
-    if (value.startsWith(sep)) {
-      val lines = value.split("\n")
-      
-      // Determine indentation from the last line - and then 2 spaces more
-      val indentation = lines(lines.length - 1).indexOf(sep) + 2
+    // This is a multi-line string if it has a new-line straight away
+    val text = if (lines(0) == "\"") {
+      // Determine indentation from the last line - and then 1 spaces more
+      val indentation = lines(lines.length - 1).indexOf("\"") + 2
       
       // Remove the indentation from each line and build up a string to output
       val outputStringBuffer = new StringBuffer()
@@ -19,10 +17,10 @@ object StringHandler {
       }
       
       // Remove the trailing + and quote and new line
-      val text = outputStringBuffer.substring(0, outputStringBuffer.length() - 1)
-      return text
+      outputStringBuffer.substring(0, outputStringBuffer.length() - 1)
     } else {
-      return value.replaceAll("\"", "")
+      value.substring(1, value.length - 1)
     }
+    text.replaceAll("\\\\\"", "\"")
   }
 }
