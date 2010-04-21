@@ -57,7 +57,6 @@ class TypeProvider {
     
     // TODO Check if this is a generic type
     if (additionalTypes.contains(typeName)) {
-          println("additional " + node)
       return additionalTypes(typeName)
     } else {
       return typeNameResolver.getClassByName(typeName) match {
