@@ -1,5 +1,7 @@
 package gleam.compiler
 
+import scala.util.matching.Regex
+
 object StringHandler {
   def parseString(value : String) : String = {
     val lines = value.replaceAll("\r\n", "\n").split("\r|\n")
@@ -21,6 +23,27 @@ object StringHandler {
     } else {
       value.substring(1, value.length - 1)
     }
-    text.replaceAll("\\\\\"", "\"")
+    
+    // Handle escaping
+    var index = 0
+    var result = new StringBuilder
+    while (index < text.length) {
+      val firstSlash = text.indexOf("\\", index)
+      
+      if (firstSlash == -1) {
+        result.append(text.substring(index))
+        index = text.length
+      } else {
+        val escapedCharacter = text.charAt(firstSlash + 1)
+        escapedCharacter match {
+          case '\\' | '\"' => // Do nothing
+          case _ => throw new IllegalArgumentException("Unsupported escape sequence [\\" + escapedCharacter + "]")
+        }
+        result.append(text.substring(index, firstSlash))
+        result.append(escapedCharacter)
+        index = firstSlash + 2
+      }
+    }
+    return result.toString
   }
 }

@@ -3,6 +3,9 @@ package gleam.compiler
 import org.junit.Test
 import org.junit.Assert._
 
+import gleam.CompilationException
+import gleam.ParseError
+
 class TestStringHandler {
   
   @Test
@@ -49,5 +52,22 @@ class TestStringHandler {
   def quoteEscaping = {
     val result = StringHandler.parseString("\"I said \\\"Work please\\\". And it worked.\"")
     assertEquals("I said \"Work please\". And it worked.", result)
+  }
+  
+  @Test
+  def backslashEscaping = {
+    val result = StringHandler.parseString("\"Backslash \\\\ works\"")
+    assertEquals("Backslash \\ works", result)
+  }
+  
+  @Test
+  def invalidEscaping = {
+    try {
+      StringHandler.parseString("\"Not escaped properly \\a\"")
+      fail("Should have caused a compilation error")
+    } catch {
+      case e : IllegalArgumentException =>
+        assertEquals("Unsupported escape sequence [\\a]", e.getMessage)
+    }
   }
 }
