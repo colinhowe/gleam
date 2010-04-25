@@ -127,6 +127,7 @@ class GleamCompiler extends Actor {
   private class Phase2Controller(errorHandler : ExceptionHandler) extends CompilationController(errorHandler) {
     def handleMessage = {
       case intermediate : IntermediateResult =>
+        println("Intermediate: " + intermediate)
         try {
           val viewname = intermediate.viewName.replaceAll("-", "_")
           val ast = intermediate.ast
@@ -163,14 +164,18 @@ class GleamCompiler extends Actor {
           for (error <- errors) {
             result.addError(error)
           }
+          println("Informing results actor")
           resultsActor ! result
         } catch {
           case e : Exception => e.printStackTrace
+            println("Informing results actor of exception")
             resultsActor ! Errored(e)
         }
       case Finished() => 
+        println("Phase 2 finished")
         classOutputter !? Join()
         errorHandler !? Join()
+        println("Informing results actor")
         resultsActor ! Finished()
         exit
     }
@@ -186,6 +191,7 @@ class GleamCompiler extends Actor {
     
     def handleMessage = {
       case intermediate : IntermediateResult =>
+        println("Intermediate: " + intermediate)
         val ast = intermediate.ast
         intermediate.typeNameResolver = new TypeNameResolver(ast, classPathResolver)
         ast.apply(intermediate.lineNumberProvider)
@@ -204,6 +210,7 @@ class GleamCompiler extends Actor {
         intermediates += intermediate
 
       case Finished() => 
+        println("Starting phase 2")
         macroProvider !? Join()
         typeResolver.stop
         intermediates.foreach(phase2 ! _)
