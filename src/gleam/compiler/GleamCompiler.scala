@@ -92,6 +92,10 @@ class GleamCompiler extends Actor {
   def act() {
     loop {
       react {
+        
+        case result : CompilationResult =>
+          resultsActor ! result
+        
         case ClassPathResolver.Resolved => 
           classPathResolved = true
           if (finished) {

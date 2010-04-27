@@ -14,7 +14,7 @@ case class IncompatibleControllerError(line : Int, name : String, controllerFoun
 
 case class MethodNotFoundError(line : Int, identifier : String, arguments : List[Type]) extends CompilationError(line)
 
-case class ParseError(compilationUnit : CompilationUnit, line : Int, column : Int, message : String) extends CompilationError(line)
+case class ParseError(line : Int, column : Int, message : String) extends CompilationError(line)
 
 case class IdentifierNotFoundError(line : Int, identifier : String) extends CompilationError(line)
 

@@ -9,6 +9,7 @@ import java.io.File
 
 import gleam.compiler.parser.Parser
 import gleam.compiler.lexer.Lexer
+import gleam.compiler.lexer.LexerException
 import gleam.compiler.GleamCompiler
 import gleam.compiler.CompilationUnit
 import gleam.compiler.Errored
@@ -46,8 +47,23 @@ class ParserController(compiler : GleamCompiler, exceptionHandler : ExceptionHan
         val comma = e.getMessage().indexOf(",")
         val closeBracket = e.getMessage().indexOf("]")
         val lineNumber = Integer.parseInt(e.getMessage().substring(openBracket + 1, comma))
-        val parseMessage = e.getMessage().substring(closeBracket + 2)
-        exceptionHandler ! CompilationException(ParseError(message.unit, lineNumber, e.getToken.getPos, parseMessage))
+        val parseMessage = e.getMessage().substring(closeBracket + 2).replaceAll("\n", "\\\\n");
+        exceptionHandler ! CompilationException(ParseError(lineNumber, e.getToken.getPos, parseMessage))
+        val result = new CompilationResult(message.unit.getSourceName, null)
+        result.addError(ParseError(lineNumber, e.getToken.getPos, parseMessage))
+        compiler ! result
+      case e : LexerException =>
+        // Expect the error to look like [line, position] blahblah
+        val openBracket = e.getMessage().indexOf("[")
+        val comma = e.getMessage().indexOf(",")
+        val closeBracket = e.getMessage().indexOf("]")
+        val lineNumber = Integer.parseInt(e.getMessage().substring(openBracket + 1, comma))
+        val columnNumber = Integer.parseInt(e.getMessage().substring(comma + 1, closeBracket))
+        val parseMessage = e.getMessage().substring(closeBracket + 2).replaceAll("\n", "\\\\n");
+        exceptionHandler ! CompilationException(ParseError(lineNumber, columnNumber, parseMessage))
+        val result = new CompilationResult(message.unit.getViewName, null)
+        result.addError(ParseError(lineNumber, columnNumber, parseMessage))
+        compiler ! result
     } finally {
       if (reader != null) {
         reader.close
