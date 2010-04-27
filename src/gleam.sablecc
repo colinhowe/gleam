@@ -217,7 +217,7 @@ Productions
       | {runtimetyped} runtimetyped {-> New modifier.runtimetyped()}
       ;
     
-    generator = lbrace [n1]:newline* gen_args? stmt+ rbrace {-> New generator([gen_args.arg_defn], [stmt])};
+    generator = lbrace [n1]:newline* gen_args? stmt* rbrace {-> New generator([gen_args.arg_defn], [stmt])};
     
     gen_args {-> arg_defn*} = arg_defns2 rightarrow [n1]:newline* {-> [arg_defns2.arg_defn] };
     
